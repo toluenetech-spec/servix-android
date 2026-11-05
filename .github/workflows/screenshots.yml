@@ -37,7 +37,15 @@ jobs:
           gradle-version: '8.9'
 
       - name: Render screen screenshots (Robolectric, offline fixtures)
-        run: gradle :app:testDebugUnitTest --tests "ng.name.servix.app.screenshots.*" --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --tests "ng.name.servix.app.screenshots.*" --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
+
+      - name: Surface Gradle errors
+        if: failure()
+        run: |
+          grep -E "^e: |error:|FAILED|Execution failed|Caused by|AssertionError|IllegalStateException" gradle-screenshots.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+          exit 0
 
       - name: Upload screenshots
         if: always()
@@ -46,6 +54,14 @@ jobs:
           name: screenshots
           path: app/build/reports/screenshots/**/*.png
           if-no-files-found: error
+
+      - name: Upload gradle log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-screenshots-log
+          path: gradle-screenshots.log
+          if-no-files-found: ignore
 
       - name: Upload test report
         if: failure()
