@@ -135,10 +135,10 @@ class HomeViewModel(
                     loading = false,
                     refreshing = false,
                     error = accountError,
-                    categories = categoriesRes.getOrDefault(current.categories),
-                    professionals = professionalsRes.getOrDefault(current.professionals),
+                    categories = categoriesRes.getOrNull() ?: current.categories,
+                    professionals = professionalsRes.getOrNull()?.items ?: current.professionals,
                     overview = overviewRes?.getOrNull() ?: current.overview,
-                    bookings = bookingsRes?.getOrDefault(current.bookings) ?: if (signedIn) current.bookings else emptyList(),
+                    bookings = bookingsRes?.getOrNull() ?: if (signedIn) current.bookings else emptyList(),
                     loadedForUserId = userId,
                 )
             }
