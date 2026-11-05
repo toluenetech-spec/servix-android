@@ -23,9 +23,6 @@ sealed interface ServixRoute {
     data object ForgotPassword : ServixRoute
 
     @Serializable
-    data object Dashboard : ServixRoute
-
-    @Serializable
     data object Home : ServixRoute
 
     @Serializable

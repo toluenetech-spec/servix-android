@@ -19,6 +19,8 @@ import ng.name.servix.app.data.network.ServixApiService
 import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.ui.ai.AiScreen
+import ng.name.servix.app.ui.home.HomeTabScreen
+import ng.name.servix.app.ui.home.HomeUiState
 import ng.name.servix.app.ui.ai.AiUiState
 import ng.name.servix.app.ui.ai.AiViewModel
 import ng.name.servix.app.ui.auth.AuthUiState
@@ -28,8 +30,6 @@ import ng.name.servix.app.ui.bookings.BookingDetailScreen
 import ng.name.servix.app.ui.bookings.BookingDetailUiState
 import ng.name.servix.app.ui.bookings.BookingsScreen
 import ng.name.servix.app.ui.bookings.BookingsUiState
-import ng.name.servix.app.ui.catalogue.HomeScreen
-import ng.name.servix.app.ui.catalogue.HomeUiState
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileUiState
 import ng.name.servix.app.ui.catalogue.SearchMode
@@ -37,8 +37,6 @@ import ng.name.servix.app.ui.catalogue.SearchScreen
 import ng.name.servix.app.ui.catalogue.SearchUiState
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
 import ng.name.servix.app.ui.catalogue.ServiceDetailUiState
-import ng.name.servix.app.ui.dashboard.DashboardScreen
-import ng.name.servix.app.ui.dashboard.DashboardUiState
 import ng.name.servix.app.ui.components.ComponentsGallery
 import androidx.compose.runtime.Composable
 
@@ -92,45 +90,54 @@ class ScreenshotTest {
 
     @Test
     fun homeSignedIn() = rule.capture("03_home_signed_in") {
-        HomeScreen(
-            city = "Lagos",
+        HomeTabScreen(
             user = Fixtures.user,
+            city = "Lagos",
             uiState = HomeUiState(
                 loading = false,
                 categories = Fixtures.categories,
-                topProfessionals = Fixtures.professionals,
-                stats = StatsDto(7, 13, 8, 4.8),
-                nextBooking = Fixtures.booking("requested"),
+                professionals = Fixtures.professionals,
+                overview = AccountOverviewDto(emailVerified = true),
             ),
-            onRefresh = {}, onSearchSubmit = { _, _ -> }, onOpenProfessional = {},
-            onOpenBookingsTab = {}, onVerifyEmailClick = {}, onSignInClick = {},
-            onCreateAccountClick = {},
+            aiUsage = Fixtures.usage,
         )
     }
 
     @Test
     fun homeGuest() = rule.capture("04_home_guest") {
-        HomeScreen(
-            city = null,
+        HomeTabScreen(
             user = null,
-            uiState = HomeUiState(loading = false, categories = Fixtures.categories, topProfessionals = Fixtures.professionals),
-            onRefresh = {}, onSearchSubmit = { _, _ -> }, onOpenProfessional = {},
-            onOpenBookingsTab = {}, onVerifyEmailClick = {}, onSignInClick = {},
-            onCreateAccountClick = {},
+            city = "Lagos",
+            uiState = HomeUiState(
+                loading = false,
+                categories = Fixtures.categories,
+                professionals = Fixtures.professionals,
+            ),
         )
     }
 
     @Test
-    fun dashboardSignedIn() = rule.capture("05_dashboard_signed_in") {
-        DashboardScreen(
+    fun homeWithBookings() = rule.capture("05_home_bookings") {
+        HomeTabScreen(
             user = Fixtures.user,
-            uiState = DashboardUiState(
+            city = "Lagos",
+            uiState = HomeUiState(
                 loading = false,
+                categories = Fixtures.categories,
+                professionals = Fixtures.professionals,
                 overview = AccountOverviewDto(emailVerified = true),
                 bookings = Fixtures.bookings,
             ),
-            onRefresh = {}, onFindProfessionalClick = {}, onExploreServicesClick = {},
-            onVerifyEmailClick = {}, onOpenBookingsTab = {}, onOpenBookingDetail = {},
+            aiUsage = Fixtures.usage,
+        )
+    }
+
+    @Test
+    fun homeLoading() = rule.capture("05b_home_loading") {
+        HomeTabScreen(
+            user = Fixtures.user,
+            city = "Lagos",
+            uiState = HomeUiState(loading = true),
         )
     }
 

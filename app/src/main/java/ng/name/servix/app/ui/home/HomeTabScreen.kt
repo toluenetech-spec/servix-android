@@ -1,0 +1,453 @@
+package ng.name.servix.app.ui.home
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.text.NumberFormat
+import java.util.Locale
+import ng.name.servix.app.R
+import ng.name.servix.app.data.model.AiUsage
+import ng.name.servix.app.data.model.BookingDto
+import ng.name.servix.app.data.model.UserDto
+import ng.name.servix.app.ui.components.AttentionCard
+import ng.name.servix.app.ui.components.AvatarImage
+import ng.name.servix.app.ui.components.CategoryChip
+import ng.name.servix.app.ui.components.EmptyState
+import ng.name.servix.app.ui.components.ErrorCard
+import ng.name.servix.app.ui.components.ListSkeleton
+import ng.name.servix.app.ui.components.ProfessionalRow
+import ng.name.servix.app.ui.components.SearchField
+import ng.name.servix.app.ui.components.SectionHeader
+import ng.name.servix.app.ui.components.ServixCard
+import ng.name.servix.app.ui.components.ServixPrimaryButton
+import ng.name.servix.app.ui.components.ServixSecondaryButton
+import ng.name.servix.app.ui.components.ServixTextButton
+import ng.name.servix.app.ui.components.StatusChip
+import ng.name.servix.app.ui.theme.BorderSand
+import ng.name.servix.app.ui.theme.Charcoal
+import ng.name.servix.app.ui.theme.DeepForest
+import ng.name.servix.app.ui.theme.MutedGray
+import ng.name.servix.app.ui.theme.PureWhite
+import ng.name.servix.app.ui.theme.ServixButtonRadius
+import ng.name.servix.app.ui.theme.WarmIvory
+import ng.name.servix.app.util.ServixFormatters
+
+/**
+ * Pass 2 §2 of the design plan: the whole app opens straight onto the work, never a landing page.
+ * Home is the dashboard — greeting, search, what needs attention, live bookings — and below the
+ * fold it is also the catalogue: categories and recommended professionals. One scroll, one screen.
+ */
+@Composable
+fun HomeTabScreen(
+    user: UserDto?,
+    city: String?,
+    uiState: HomeUiState,
+    aiUsage: AiUsage? = null,
+    onRefresh: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onOpenCategory: (String?) -> Unit = {},
+    onOpenProfessional: (String) -> Unit = {},
+    onOpenBookingDetail: (String) -> Unit = {},
+    onOpenBookingsTab: () -> Unit = {},
+    onOpenAi: () -> Unit = {},
+    onOpenAccount: () -> Unit = {},
+    onSignInClick: () -> Unit = {},
+    onCreateAccountClick: () -> Unit = {},
+) {
+    val signedIn = user != null
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        HomeTopBar(user = user, city = city, onOpenAccount = onOpenAccount)
+
+        SearchField(
+            placeholder = stringResource(R.string.home_search_placeholder),
+            onClick = onOpenSearch,
+            testTag = "home_search_field",
+        )
+
+        if (signedIn && uiState.attention.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionHeader(title = stringResource(R.string.home_needs_attention))
+                uiState.attention.forEach { item ->
+                    AttentionCard(
+                        text = item.message,
+                        actionLabel = item.action,
+                        onClick = { onOpenBookingDetail(item.bookingId) },
+                        modifier = Modifier.testTag("home_attention_card"),
+                    )
+                }
+            }
+        }
+
+        if (signedIn) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionHeader(
+                    title = stringResource(R.string.home_your_bookings),
+                    action = stringResource(R.string.home_see_all),
+                    onAction = onOpenBookingsTab,
+                )
+                if (uiState.upcomingBookings.isEmpty()) {
+                    if (!uiState.loading) {
+                        EmptyState(
+                            title = stringResource(R.string.home_no_bookings_title),
+                            body = stringResource(R.string.home_no_bookings_body),
+                            actionLabel = stringResource(R.string.home_explore_services),
+                            onAction = { onOpenCategory(null) },
+                            icon = Icons.Rounded.CalendarMonth,
+                        )
+                    }
+                } else {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(uiState.upcomingBookings, key = { it.id }) { booking ->
+                            UpcomingBookingCard(
+                                booking = booking,
+                                onClick = { onOpenBookingDetail(booking.id) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (uiState.loading && uiState.categories.isEmpty()) {
+            ListSkeleton(rows = 4)
+        } else {
+            if (uiState.error != null) {
+                ErrorCard(message = uiState.error, onRetry = onRefresh)
+            }
+
+            if (uiState.categories.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(
+                        title = stringResource(R.string.home_categories),
+                        action = stringResource(R.string.home_see_all),
+                        onAction = { onOpenCategory(null) },
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(uiState.categories.take(8), key = { it.id }) { category ->
+                            CategoryChip(
+                                label = category.name,
+                                selected = false,
+                                onClick = { onOpenCategory(category.id) },
+                            )
+                        }
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                SectionHeader(
+                    title = stringResource(R.string.home_recommended),
+                    action = stringResource(R.string.home_see_all),
+                    onAction = { onOpenCategory(null) },
+                )
+                uiState.recommended.forEach { professional ->
+                    ProfessionalRow(
+                        name = professional.name,
+                        title = professional.title.ifBlank { professional.location },
+                        rating = professional.rating,
+                        reviewCount = professional.reviewCount,
+                        startingPrice = professional.startingPrice,
+                        verified = professional.verified,
+                        initials = professional.name,
+                        subtitle = professional.location.takeIf { it.isNotBlank() },
+                        avatarUrl = professional.image,
+                        onClick = { onOpenProfessional(professional.slug) },
+                        modifier = Modifier.testTag("home_professional_row"),
+                    )
+                }
+                if (!uiState.loading && uiState.recommended.isEmpty()) {
+                    EmptyState(
+                        title = stringResource(R.string.home_no_professionals_title),
+                        body = stringResource(R.string.home_no_professionals_body),
+                        actionLabel = stringResource(R.string.home_explore_services),
+                        onAction = { onOpenCategory(null) },
+                    )
+                }
+            }
+        }
+
+        AiCard(onOpenAi = onOpenAi)
+
+        if (signedIn) {
+            PlanLine(
+                planName = uiState.planName,
+                usage = aiUsage,
+                onManage = onOpenAccount,
+            )
+        } else {
+            SignInCard(
+                onSignInClick = onSignInClick,
+                onCreateAccountClick = onCreateAccountClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeTopBar(
+    user: UserDto?,
+    city: String?,
+    onOpenAccount: () -> Unit,
+) {
+    val greeting = when (LocalTime.now(ZoneId.of("Africa/Lagos")).hour) {
+        in 0..11 -> stringResource(R.string.home_good_morning)
+        in 12..16 -> stringResource(R.string.home_good_afternoon)
+        else -> stringResource(R.string.home_good_evening)
+    }
+    val today = LocalDate.now(ZoneId.of("Africa/Lagos"))
+        .format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.UK))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = if (user != null) "$greeting, ${user.firstName}" else greeting,
+                style = MaterialTheme.typography.titleLarge,
+                color = DeepForest,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = if (user == null) (city?.takeIf { it.isNotBlank() } ?: stringResource(R.string.home_city_fallback)) else today,
+                style = MaterialTheme.typography.labelMedium,
+                color = MutedGray,
+            )
+        }
+        IconButton(
+            onClick = onOpenAccount,
+            modifier = Modifier.size(48.dp).testTag("home_account_avatar"),
+        ) {
+            AvatarImage(
+                size = 36.dp,
+                initials = user?.firstName ?: "",
+                image = null,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpcomingBookingCard(
+    booking: BookingDto,
+    onClick: () -> Unit,
+) {
+    ServixCard(
+        modifier = Modifier
+            .width(280.dp)
+            .clickable(onClick = onClick)
+            .testTag("home_upcoming_card"),
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = booking.serviceTitle.ifBlank { stringResource(R.string.home_booking_fallback) },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = DeepForest,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                StatusChip(status = booking.status)
+            }
+            Text(
+                text = booking.professionalName.orEmpty().ifBlank { stringResource(R.string.home_professional_fallback) },
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedGray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = listOf(
+                        ServixFormatters.formatShortDayMonth(booking.scheduledAt),
+                        ServixFormatters.formatSlotTime(booking.scheduledAt),
+                    ).filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Charcoal,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MutedGray,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiCard(onOpenAi: () -> Unit) {
+    ServixCard(
+        containerColor = DeepForest,
+        borderColor = DeepForest,
+        contentPadding = PaddingValues(20.dp),
+        modifier = Modifier.testTag("home_ai_card"),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AutoAwesome,
+                    contentDescription = null,
+                    tint = WarmIvory,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = stringResource(R.string.nav_ai),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = WarmIvory,
+                )
+            }
+            Text(
+                text = stringResource(R.string.home_ai_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = WarmIvory.copy(alpha = 0.82f),
+            )
+            Surface(
+                onClick = onOpenAi,
+                shape = RoundedCornerShape(ServixButtonRadius),
+                color = WarmIvory,
+                border = BorderStroke(1.dp, BorderSand),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.home_ai_cta),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = DeepForest,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanLine(
+    planName: String,
+    usage: AiUsage?,
+    onManage: () -> Unit,
+) {
+    val usageText = usage?.allowed?.takeIf { it > 0 }?.let { allowed ->
+        stringResource(
+            R.string.home_plan_ai_usage,
+            usage.used.grouped(),
+            allowed.grouped(),
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = listOfNotNull(
+                stringResource(R.string.home_plan_name, planName),
+                usageText,
+            ).joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedGray,
+            modifier = Modifier.weight(1f),
+        )
+        ServixTextButton(text = stringResource(R.string.home_manage_plan), onClick = onManage)
+    }
+}
+
+@Composable
+private fun SignInCard(
+    onSignInClick: () -> Unit,
+    onCreateAccountClick: () -> Unit,
+) {
+    ServixCard(
+        containerColor = PureWhite,
+        contentPadding = PaddingValues(20.dp),
+        modifier = Modifier.testTag("home_sign_in_card"),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = stringResource(R.string.home_sign_in_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = DeepForest,
+            )
+            Text(
+                text = stringResource(R.string.home_sign_in_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MutedGray,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ServixPrimaryButton(
+                    text = stringResource(R.string.sign_in),
+                    onClick = onSignInClick,
+                    modifier = Modifier.weight(1f),
+                    testTag = "home_sign_in_button",
+                )
+                ServixSecondaryButton(
+                    text = stringResource(R.string.create_account),
+                    onClick = onCreateAccountClick,
+                    modifier = Modifier.weight(1f),
+                    testTag = "home_create_account_button",
+                )
+            }
+        }
+    }
+}
+
+/** Tabular grouping for the AI word counts in the plan line. */
+private fun Long.grouped(): String = NumberFormat.getIntegerInstance(Locale.UK).format(this)

@@ -37,21 +37,40 @@ data class ReleaseAsset(val name: String, val browser_download_url: String, val 
 data class Release(val tag_name: String, val name: String, val html_url: String, val body: String? = null, val assets: List<ReleaseAsset> = emptyList())
 data class AvailableUpdate(val version: String, val release: Release, val asset: ReleaseAsset)
 
+private fun parseVersion(value: String): List<Long>? {
+    val parts = value.split('.')
+    return if (parts.size == 3) parts.map { it.toLongOrNull() ?: return null } else null
+}
+
+/** New releases are named "Servix v0.6.2 (build 21)" on tag "v0.6.2-b21"; older ones said "… (v0.3.2)". */
+private fun versionOf(release: Release): String? =
+    Regex("v(\\d+\\.\\d+\\.\\d+)").find(release.name)?.groupValues?.get(1)
+        ?: Regex("v?(\\d+\\.\\d+\\.\\d+)").find(release.tag_name)?.groupValues?.get(1)
+
+private fun isNewer(candidate: List<Long>, current: List<Long>): Boolean =
+    (0..2).firstOrNull { candidate[it] != current[it] }?.let { candidate[it] > current[it] } ?: false
+
+/**
+ * GitHub lists releases by tag text, so "test-build-7" sorts above "test-build-20" and the first
+ * release is not necessarily the newest. Scan the first ten and keep the highest semantic version
+ * that actually carries an .apk, then apply the trusted-URL checks.
+ */
 fun selectUpdate(releases: List<Release>, current: String): AvailableUpdate? {
-    val release = releases.firstOrNull { r -> r.assets.any { it.name.endsWith(".apk", ignoreCase = true) } } ?: return null
-    val asset = release.assets.first { it.name.endsWith(".apk", ignoreCase = true) }
-    val version = Regex("v(\\d+\\.\\d+\\.\\d+)").find(release.name)?.groupValues?.get(1) ?: return null
-    fun parse(value: String): List<Long>? {
-        val parts = value.split('.')
-        return if (parts.size == 3) parts.map { it.toLongOrNull() ?: return null } else null
-    }
-    val a = parse(version) ?: return null
-    val b = parse(current) ?: return null
-    val newer = (0..2).firstOrNull { a[it] != b[it] }?.let { a[it] > b[it] } ?: false
+    val currentParts = parseVersion(current) ?: return null
+    val best = releases.take(10).mapNotNull { release ->
+        val asset = release.assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) } ?: return@mapNotNull null
+        val version = versionOf(release) ?: return@mapNotNull null
+        val parts = parseVersion(version) ?: return@mapNotNull null
+        if (!isNewer(parts, currentParts)) return@mapNotNull null
+        Triple(version, parts, release to asset)
+    }.maxWithOrNull(compareBy({ it.second[0] }, { it.second[1] }, { it.second[2] })) ?: return null
+
+    val version = best.first
+    val (release, asset) = best.third
     val uri = runCatching { URI(asset.browser_download_url) }.getOrNull() ?: return null
     val page = runCatching { URI(release.html_url) }.getOrNull() ?: return null
     val repository = "/toluenetech-spec/servix-android/releases/"
-    if (!newer || uri.scheme != "https" || uri.host != "github.com" ||
+    if (uri.scheme != "https" || uri.host != "github.com" ||
         !uri.path.startsWith(repository + "download/") || page.scheme != "https" ||
         page.host != "github.com" || !page.path.startsWith(repository)) return null
     return AvailableUpdate(version, release, asset)
@@ -70,7 +89,7 @@ class Updates(private val context: Context) {
             val raw = if (throttled) prefs[cached] else null
             if (raw == null) context.updateStore.edit { it[checked] = now; it.remove(cached) }
             val json = raw ?: withContext(Dispatchers.IO) {
-                val request = Request.Builder().url("https://api.github.com/repos/toluenetech-spec/servix-android/releases?per_page=5")
+                val request = Request.Builder().url("https://api.github.com/repos/toluenetech-spec/servix-android/releases?per_page=10")
                     .header("Accept", "application/vnd.github+json").header("User-Agent", servixUserAgent).build()
                 client.newCall(request).execute().use { response ->
                     check(response.isSuccessful) { "GitHub HTTP ${response.code}" }

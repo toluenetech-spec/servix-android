@@ -20,13 +20,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
@@ -85,8 +83,6 @@ import ng.name.servix.app.ui.bookings.BookingDetailScreen
 import ng.name.servix.app.ui.bookings.BookingDetailViewModel
 import ng.name.servix.app.ui.bookings.BookingsScreen
 import ng.name.servix.app.ui.bookings.BookingsViewModel
-import ng.name.servix.app.ui.catalogue.HomeScreen
-import ng.name.servix.app.ui.catalogue.HomeViewModel
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
 import ng.name.servix.app.ui.catalogue.SearchMode
@@ -102,8 +98,8 @@ import ng.name.servix.app.ui.components.ServixLogoMark
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
-import ng.name.servix.app.ui.dashboard.DashboardScreen
-import ng.name.servix.app.ui.dashboard.DashboardViewModel
+import ng.name.servix.app.ui.home.HomeTabScreen
+import ng.name.servix.app.ui.home.HomeViewModel
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DeepForest
@@ -125,88 +121,48 @@ private data class BottomTabItem(
     val testTag: String,
 )
 
-private val AUTHENTICATED_BOTTOM_TABS = listOf(
-    BottomTabItem(
-        route = ServixRoute.Dashboard,
-        labelRes = R.string.nav_dashboard,
-        selectedIcon = Icons.Filled.Dashboard,
-        unselectedIcon = Icons.Outlined.Dashboard,
-        testTag = "nav_tab_dashboard",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Home,
-        labelRes = R.string.nav_home,
-        selectedIcon = Icons.Filled.Home,
-        unselectedIcon = Icons.Outlined.Home,
-        testTag = "nav_tab_home",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Search,
-        labelRes = R.string.nav_search,
-        selectedIcon = Icons.Filled.Search,
-        unselectedIcon = Icons.Outlined.Search,
-        testTag = "nav_tab_search",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Bookings,
-        labelRes = R.string.nav_bookings,
-        selectedIcon = Icons.Filled.CalendarMonth,
-        unselectedIcon = Icons.Outlined.CalendarMonth,
-        testTag = "nav_tab_bookings",
-    ),
-    BottomTabItem(
-        route = ServixRoute.ServixAi,
-        labelRes = R.string.nav_ai,
-        selectedIcon = Icons.Filled.AutoAwesome,
-        unselectedIcon = Icons.Outlined.AutoAwesome,
-        testTag = "nav_tab_ai",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Account,
-        labelRes = R.string.nav_account,
-        selectedIcon = Icons.Filled.AccountCircle,
-        unselectedIcon = Icons.Outlined.AccountCircle,
-        testTag = "nav_tab_account",
-    ),
+private fun homeTab() = BottomTabItem(
+    route = ServixRoute.Home,
+    labelRes = R.string.nav_home,
+    selectedIcon = Icons.Filled.Home,
+    unselectedIcon = Icons.Outlined.Home,
+    testTag = "nav_tab_home",
 )
 
-private val GUEST_BOTTOM_TABS = listOf(
-    BottomTabItem(
-        route = ServixRoute.Home,
-        labelRes = R.string.nav_home,
-        selectedIcon = Icons.Filled.Home,
-        unselectedIcon = Icons.Outlined.Home,
-        testTag = "nav_tab_home",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Search,
-        labelRes = R.string.nav_search,
-        selectedIcon = Icons.Filled.Search,
-        unselectedIcon = Icons.Outlined.Search,
-        testTag = "nav_tab_search",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Bookings,
-        labelRes = R.string.nav_bookings,
-        selectedIcon = Icons.Filled.CalendarMonth,
-        unselectedIcon = Icons.Outlined.CalendarMonth,
-        testTag = "nav_tab_bookings",
-    ),
-    BottomTabItem(
-        route = ServixRoute.ServixAi,
-        labelRes = R.string.nav_ai,
-        selectedIcon = Icons.Filled.AutoAwesome,
-        unselectedIcon = Icons.Outlined.AutoAwesome,
-        testTag = "nav_tab_ai",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Account,
-        labelRes = R.string.nav_account,
-        selectedIcon = Icons.Filled.AccountCircle,
-        unselectedIcon = Icons.Outlined.AccountCircle,
-        testTag = "nav_tab_account",
-    ),
+private fun exploreTab() = BottomTabItem(
+    route = ServixRoute.Search,
+    labelRes = R.string.nav_explore,
+    selectedIcon = Icons.Filled.Search,
+    unselectedIcon = Icons.Outlined.Search,
+    testTag = "nav_tab_search",
 )
+
+private fun bookingsTab() = BottomTabItem(
+    route = ServixRoute.Bookings,
+    labelRes = R.string.nav_bookings,
+    selectedIcon = Icons.Filled.CalendarMonth,
+    unselectedIcon = Icons.Outlined.CalendarMonth,
+    testTag = "nav_tab_bookings",
+)
+
+private fun aiTab() = BottomTabItem(
+    route = ServixRoute.ServixAi,
+    labelRes = R.string.nav_ai,
+    selectedIcon = Icons.Filled.AutoAwesome,
+    unselectedIcon = Icons.Outlined.AutoAwesome,
+    testTag = "nav_tab_ai",
+)
+
+private fun accountTab() = BottomTabItem(
+    route = ServixRoute.Account,
+    labelRes = R.string.nav_account,
+    selectedIcon = Icons.Filled.AccountCircle,
+    unselectedIcon = Icons.Outlined.AccountCircle,
+    testTag = "nav_tab_account",
+)
+
+/** Plan §2: exactly five tabs, identical for guests and signed-in customers — no sixth Dashboard. */
+private val BOTTOM_TABS = listOf(homeTab(), exploreTab(), bookingsTab(), aiTab(), accountTab())
 
 @Composable
 fun ServixAppShell(
@@ -234,11 +190,8 @@ fun ServixAppShell(
     val currentUserId = (sessionState as? SessionState.Authenticated)?.user?.id
     LaunchedEffect(currentUserId) { aiViewModel.setUser(currentUserId) }
 
-    val dashboardViewModel: DashboardViewModel = viewModel(
-        factory = DashboardViewModel.factory(accountRepository, bookingRepository)
-    )
     val homeViewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.factory(catalogueRepository)
+        factory = HomeViewModel.factory(catalogueRepository, accountRepository, bookingRepository)
     )
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.factory(catalogueRepository)
@@ -248,10 +201,19 @@ fun ServixAppShell(
     )
 
     fun navigateAfterAuthComplete() {
-        val target = pendingPostAuthRoute ?: ServixRoute.Dashboard
+        val target = pendingPostAuthRoute ?: ServixRoute.Home
         pendingPostAuthRoute = null
         navController.navigate(target) {
             popUpTo(0) { inclusive = true }
+        }
+    }
+
+    fun openExplore(query: String?, categorySlug: String?) {
+        searchViewModel.applyExternalNavigation(query = query, categorySlug = categorySlug)
+        navController.navigate(ServixRoute.Search) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
     }
 
@@ -287,11 +249,10 @@ fun ServixAppShell(
 
     val isAuthenticated = sessionState is SessionState.Authenticated
     val startRoute: ServixRoute = if (isAuthenticated) {
-        ServixRoute.Dashboard
+        ServixRoute.Home
     } else {
         ServixRoute.Welcome
     }
-    val visibleBottomTabs = if (isAuthenticated) AUTHENTICATED_BOTTOM_TABS else GUEST_BOTTOM_TABS
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -308,7 +269,7 @@ fun ServixAppShell(
                         contentColor = Charcoal,
                         tonalElevation = 0.dp,
                     ) {
-                        visibleBottomTabs.forEach { tab ->
+                        BOTTOM_TABS.forEach { tab ->
                             val selected = when (tab.route) {
                                 is ServixRoute.Search -> {
                                     currentDest?.hasRoute(ServixRoute.Search::class) == true ||
@@ -537,40 +498,28 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Dashboard> {
+            composable<ServixRoute.Home> {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                val dashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+                val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+                val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
 
                 LaunchedEffect(user?.id, isOnline) {
-                    dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = false)
+                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
                 }
 
-                DashboardScreen(
-                    updateContent = { UpdateCard(updateState) },
+                HomeTabScreen(
                     user = user,
-                    uiState = dashboardUiState,
-                    onOpenAi = { navController.navigate(ServixRoute.ServixAi) { launchSingleTop = true } },
-                    onRefresh = {
-                        dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = true)
+                    city = city,
+                    uiState = homeUiState,
+                    aiUsage = aiUiState.usage,
+                    onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
+                    onOpenSearch = { openExplore(query = null, categorySlug = null) },
+                    onOpenCategory = { slug -> openExplore(query = null, categorySlug = slug) },
+                    onOpenProfessional = { slug ->
+                        navController.navigate(ServixRoute.ProfessionalProfile(slug = slug))
                     },
-                    onFindProfessionalClick = {
-                        searchViewModel.setMode(SearchMode.PROFESSIONALS)
-                        navController.navigate(ServixRoute.Search) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onExploreServicesClick = {
-                        searchViewModel.setMode(SearchMode.SERVICES)
-                        navController.navigate(ServixRoute.Search) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onVerifyEmailClick = {
-                        navController.navigate(ServixRoute.VerifyEmail)
+                    onOpenBookingDetail = { bookingId ->
+                        navController.navigate(ServixRoute.BookingDetail(id = bookingId))
                     },
                     onOpenBookingsTab = {
                         navController.navigate(ServixRoute.Bookings) {
@@ -579,49 +528,20 @@ fun ServixAppShell(
                             restoreState = true
                         }
                     },
-                    onOpenBookingDetail = { bookingId ->
-                        navController.navigate(ServixRoute.BookingDetail(id = bookingId))
-                    },
-                )
-            }
-
-            composable<ServixRoute.Home> {
-                val user = (sessionState as? SessionState.Authenticated)?.user
-                val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
-
-                LaunchedEffect(user?.id, isOnline) {
-                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
-                }
-
-                HomeScreen(
-                    city = city,
-                    user = user,
-                    uiState = homeUiState,
-                    onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
-                    onSearchSubmit = { query, categorySlug ->
-                        searchViewModel.applyExternalNavigation(query = query, categorySlug = categorySlug)
-                        navController.navigate(ServixRoute.Search) {
+                    onOpenAi = {
+                        navController.navigate(ServixRoute.ServixAi) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                    onOpenProfessional = { slug ->
-                        navController.navigate(ServixRoute.ProfessionalProfile(slug = slug))
-                    },
-                    onOpenBookingsTab = {
-                        val nextId = homeUiState.nextBooking?.id
-                        if (!nextId.isNullOrBlank()) {
-                            navController.navigate(ServixRoute.BookingDetail(id = nextId))
-                        } else {
-                            navController.navigate(ServixRoute.Bookings) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                    onOpenAccount = {
+                        navController.navigate(ServixRoute.Account) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     },
-                    onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                 )
