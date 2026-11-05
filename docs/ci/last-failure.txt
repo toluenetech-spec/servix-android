@@ -1,0 +1,60 @@
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/location/LocationButton.kt:36:41 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/location/LocationButton.kt:115:9 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/account/DeviceCard.kt:28:41 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/account/DeviceCard.kt:61:5 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/account/DeviceCard.kt:62:9 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:50:41 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:51:41 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:52:41 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:53:41 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:75:13 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:75:26 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:77:17 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:88:17 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:88:30 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:91:45 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:91:116 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:92:43 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:92:115 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:103:5 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:103:18 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:121:5 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:121:18 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:143:9 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:197:5 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:197:18 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:202:13 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/ai/AiScreen.kt:211:9 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:67:41 Unresolved reference 'ServixBadge'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:68:41 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:69:41 Unresolved reference 'ServixLogoMark'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:70:41 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:71:41 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:72:41 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:106:13 Unresolved reference 'ServixLogoMark'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:133:13 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:139:13 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:202:13 Unresolved reference 'ServixLogoMark'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:208:9 Unresolved reference 'ServixCard'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:213:13 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:244:13 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:257:13 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:310:13 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:386:13 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:399:13 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:412:13 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:431:13 Unresolved reference 'ServixTextField'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:546:13 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:678:17 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:701:21 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:765:21 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:772:21 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:823:21 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:839:21 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:992:17 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:1010:17 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:1016:17 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:1087:17 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:1094:21 Unresolved reference 'ServixSecondaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:1127:21 Unresolved reference 'ServixPrimaryButton'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:1135:21 Unresolved reference 'ServixSecondaryButton'.
