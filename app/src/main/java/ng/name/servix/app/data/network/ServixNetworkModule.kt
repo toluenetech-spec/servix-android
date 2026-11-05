@@ -177,6 +177,16 @@ class ServixNetworkModule(
         .build()
         .create(ServixApiService::class.java)
 
+    // AI tasks may take up to the backend's 60-second limit (web client: 75 seconds).
+    val aiHttpClient: OkHttpClient = okHttpClient.newBuilder()
+        .readTimeout(75, TimeUnit.SECONDS).callTimeout(75, TimeUnit.SECONDS).build()
+
+    val aiApiService: ServixApiService = Retrofit.Builder()
+        .baseUrl(BuildConfig.API_BASE_URL)
+        .client(aiHttpClient)
+        .addConverterFactory(ApiErrorParser.json.asConverterFactory("application/json".toMediaType()))
+        .build().create(ServixApiService::class.java)
+
     private fun responseCount(response: Response): Int {
         var count = 1
         var prior = response.priorResponse

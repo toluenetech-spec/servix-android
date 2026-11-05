@@ -50,6 +50,16 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ServixApiService {
+    // reference/api-routes/ai.ts:104-108,147-152,185-190; aiFeedback.ts:43-78.
+    @POST("ai/assistant")
+    suspend fun aiAssistant(@Body request: ng.name.servix.app.data.model.AiChatRequest): ng.name.servix.app.data.model.AiAnswer
+    @GET("ai/usage")
+    suspend fun aiUsage(): ng.name.servix.app.data.model.AiUsage
+    @POST("ai/pricing/guidance")
+    suspend fun aiPricing(@Body request: ng.name.servix.app.data.model.AiPricingRequest): ng.name.servix.app.data.model.AiPricingResponse
+    @POST("ai/feedback")
+    suspend fun aiFeedback(@Body request: ng.name.servix.app.data.model.AiFeedbackRequest): Response<Unit>
+
     // reference/api-routes/account.ts:40-46: device summary for the current request.
     @GET("account/device")
     suspend fun getAccountDevice(): ng.name.servix.app.data.model.AccountDeviceDto
