@@ -75,6 +75,7 @@ import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.ServixButtonRadius
+import ng.name.servix.app.ui.theme.ServixCardRadius
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
