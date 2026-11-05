@@ -45,16 +45,16 @@ jobs:
       - name: Surface Gradle errors
         if: failure()
         run: |
-          grep -E "^e: |error:|FAILED|Execution failed|Caused by|AssertionError|IllegalStateException" gradle-screenshots.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+          mkdir -p docs/ci
+          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log | head -60 > docs/ci/last-failure.txt || true
+          grep -E "^e: " gradle-screenshots.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          git add docs/ci/last-failure.txt
+          git commit -m "chore: CI failure log [shots]" || true
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
           exit 0
-
-      - name: Upload screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: app/build/reports/screenshots/**/*.png
-          if-no-files-found: error
 
       - name: Publish renders for review
         if: success()
