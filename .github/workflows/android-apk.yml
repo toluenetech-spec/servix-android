@@ -46,7 +46,7 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Run offline feature tests only
-        run: gradle testDebugUnitTest --tests 'ng.name.servix.app.OfflineFeaturesTest' --no-daemon --stacktrace
+        run: gradle testDebugUnitTest --tests 'ng.name.servix.app.OfflineFeaturesTest' --tests 'ng.name.servix.app.AiOfflineTest' --no-daemon --stacktrace
 
       - name: Name the APK
         id: apk
