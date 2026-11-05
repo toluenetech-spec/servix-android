@@ -14,7 +14,6 @@
     <style name="Theme.Servix.Starting" parent="Theme.SplashScreen">
         <item name="android:windowBackground">@color/warm_ivory</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="windowActionBar">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:forceDarkAllowed">false</item>
