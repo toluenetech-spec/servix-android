@@ -46,7 +46,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p docs/ci
-          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log | head -60 > docs/ci/last-failure.txt || true
+          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log > docs/ci/last-failure.txt || true
           grep -E "^e: " gradle-screenshots.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
