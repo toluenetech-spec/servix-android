@@ -195,6 +195,7 @@ private enum class DashboardSheet {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+    updateContent: @Composable () -> Unit = {},
     user: UserDto?,
     uiState: DashboardUiState,
     onRefresh: () -> Unit,
@@ -280,6 +281,8 @@ fun DashboardScreen(
                 testTag = "dashboard_find_pro_button",
             )
         }
+
+        updateContent()
 
         // Unverified email notice (DashboardPage.jsx:57-62)
         if (user != null && !emailVerified) {

@@ -250,6 +250,7 @@ private val WHY_ITEMS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    city: String? = null,
     user: UserDto?,
     uiState: HomeUiState,
     onRefresh: () -> Unit,
@@ -299,6 +300,10 @@ fun HomeScreen(
                         testTag = "home_top_sign_in_button",
                     )
                 }
+            }
+
+            if (!city.isNullOrBlank()) {
+                Text("Near $city", style = MaterialTheme.typography.labelMedium, color = ForestGreen)
             }
 
             // Greeting (first name when signed in, else "Welcome")

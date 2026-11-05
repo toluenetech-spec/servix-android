@@ -60,6 +60,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import ng.name.servix.app.location.storedCity
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.UserDto
@@ -67,6 +68,7 @@ import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.ui.account.DeviceCard
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.auth.ForgotPasswordScreen
 import ng.name.servix.app.ui.auth.LoginScreen
@@ -106,6 +108,9 @@ import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
+import ng.name.servix.app.updates.UpdateCard
+import ng.name.servix.app.updates.UpdateUiState
+import ng.name.servix.app.updates.rememberUpdateUiState
 import ng.name.servix.app.util.CustomTabLauncher
 
 private data class BottomTabItem(
@@ -200,6 +205,10 @@ fun ServixAppShell(
     accountRepository: AccountRepository,
     isOnline: Boolean,
 ) {
+    val context = LocalContext.current
+    val cityFlow = remember(context) { storedCity(context) }
+    val city by cityFlow.collectAsStateWithLifecycle(initialValue = null)
+    val updateState = rememberUpdateUiState()
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
     val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()
@@ -521,6 +530,7 @@ fun ServixAppShell(
                 }
 
                 DashboardScreen(
+                    updateContent = { UpdateCard(updateState) },
                     user = user,
                     uiState = dashboardUiState,
                     onRefresh = {
@@ -567,6 +577,7 @@ fun ServixAppShell(
                 }
 
                 HomeScreen(
+                    city = city,
                     user = user,
                     uiState = homeUiState,
                     onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
@@ -871,6 +882,9 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 Stage1AccountTab(
                     user = user,
+                    accountRepository = accountRepository,
+                    updateState = updateState,
+                    city = city,
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
@@ -936,6 +950,9 @@ private fun Stage1AiPlaceholder(
 @Composable
 private fun Stage1AccountTab(
     user: UserDto?,
+    accountRepository: AccountRepository,
+    updateState: UpdateUiState,
+    city: String?,
     onSignInClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
     onVerifyEmailClick: () -> Unit,
@@ -1060,6 +1077,12 @@ private fun Stage1AccountTab(
                 testTag = "account_sign_out_button",
             )
         }
+
+        UpdateCard(updateState)
+        if (updateState.enabled) {
+            ServixSecondaryButton(text = "Check for updates", onClick = { updateState.check(force = true) }, testTag = "check_updates")
+        }
+        DeviceCard(repository = accountRepository, userId = user?.id, city = city)
 
         ServixCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

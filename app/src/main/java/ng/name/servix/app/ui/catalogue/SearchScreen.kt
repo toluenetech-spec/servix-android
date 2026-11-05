@@ -66,6 +66,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ng.name.servix.app.location.LocationButton
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.CategoryDto
 import ng.name.servix.app.data.model.ProfessionalSummaryDto
@@ -913,6 +914,8 @@ private fun SearchFilterSheetContent(
             placeholder = "e.g. Lagos",
             testTag = "filter_location_input",
         )
+
+        LocationButton(onCityChosen = onLocationChange)
 
         HorizontalDivider(color = BorderSand)
 
