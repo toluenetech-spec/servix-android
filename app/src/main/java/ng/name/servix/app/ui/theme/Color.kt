@@ -11,3 +11,8 @@ val Coral = Color(0xFFE56B5D)
 val Charcoal = Color(0xFF202622)
 val MutedGray = Color(0xFF68716B)
 val PureWhite = Color(0xFFFFFFFF)
+
+// Semantic border & danger tokens from tokens.css
+val BorderSand = Color(0xFFDDD7C9)
+val BorderStrongSand = Color(0xFFC9C2B1)
+val DangerRed = Color(0xFFB3372A)

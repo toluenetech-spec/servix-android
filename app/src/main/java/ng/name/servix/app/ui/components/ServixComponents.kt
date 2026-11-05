@@ -1,0 +1,469 @@
+package ng.name.servix.app.ui.components
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import ng.name.servix.app.R
+import ng.name.servix.app.ui.theme.BorderSand
+import ng.name.servix.app.ui.theme.BorderStrongSand
+import ng.name.servix.app.ui.theme.Charcoal
+import ng.name.servix.app.ui.theme.Coral
+import ng.name.servix.app.ui.theme.DangerRed
+import ng.name.servix.app.ui.theme.DeepForest
+import ng.name.servix.app.ui.theme.ForestGreen
+import ng.name.servix.app.ui.theme.MutedGray
+import ng.name.servix.app.ui.theme.PureWhite
+import ng.name.servix.app.ui.theme.SoftSand
+import ng.name.servix.app.ui.theme.WarmIvory
+import ng.name.servix.app.util.CustomTabLauncher
+
+@Composable
+fun ServixLogoMark(
+    modifier: Modifier = Modifier,
+    darkSurface: Boolean = false,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = if (darkSurface) WarmIvory else DeepForest,
+            modifier = Modifier.size(34.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = "SX",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.5).sp,
+                    ),
+                    color = if (darkSurface) DeepForest else WarmIvory,
+                )
+            }
+        }
+        Text(
+            text = "SERVIX",
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.8.sp,
+            ),
+            color = if (darkSurface) WarmIvory else DeepForest,
+        )
+    }
+}
+
+@Composable
+fun ServixPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    testTag: String? = null,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled && !loading,
+        shape = RoundedCornerShape(6.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = DeepForest,
+            contentColor = WarmIvory,
+            disabledContainerColor = DeepForest.copy(alpha = 0.45f),
+            disabledContentColor = WarmIvory.copy(alpha = 0.8f),
+        ),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .let { if (testTag != null) it.testTag(testTag) else it },
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = WarmIvory,
+            )
+            Spacer(modifier = Modifier.size(10.dp))
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+@Composable
+fun ServixSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    testTag: String? = null,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, BorderStrongSand),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = PureWhite,
+            contentColor = Charcoal,
+            disabledContentColor = MutedGray,
+        ),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .let { if (testTag != null) it.testTag(testTag) else it },
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+@Composable
+fun ServixTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    hint: String? = null,
+    error: String? = null,
+    required: Boolean = false,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else 5,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    isPassword: Boolean = false,
+    passwordVisible: Boolean = false,
+    onTogglePasswordVisibility: (() -> Unit)? = null,
+    readOnly: Boolean = false,
+    testTag: String? = null,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = Charcoal,
+            )
+            if (required) {
+                Text(
+                    text = " *",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Coral,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            readOnly = readOnly,
+            singleLine = singleLine,
+            minLines = minLines,
+            maxLines = maxLines,
+            isError = !error.isNullOrBlank(),
+            placeholder = placeholder?.let {
+                {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MutedGray,
+                    )
+                }
+            },
+            visualTransformation = if (isPassword && !passwordVisible) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            },
+            trailingIcon = if (isPassword && onTogglePasswordVisibility != null) {
+                {
+                    IconButton(
+                        onClick = onTogglePasswordVisibility,
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = stringResource(
+                                if (passwordVisible) R.string.hide_password else R.string.show_password
+                            ),
+                            tint = MutedGray,
+                        )
+                    }
+                }
+            } else {
+                null
+            },
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            shape = RoundedCornerShape(6.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = PureWhite,
+                unfocusedContainerColor = PureWhite,
+                errorContainerColor = PureWhite,
+                focusedBorderColor = DeepForest,
+                unfocusedBorderColor = BorderSand,
+                errorBorderColor = DangerRed,
+                focusedTextColor = Charcoal,
+                unfocusedTextColor = Charcoal,
+                cursorColor = DeepForest,
+            ),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .fillMaxWidth()
+                .let { if (testTag != null) it.testTag(testTag) else it },
+        )
+        if (!error.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodySmall,
+                color = DangerRed,
+            )
+        } else if (!hint.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (hint.startsWith("✓")) ForestGreen else MutedGray,
+            )
+        }
+    }
+}
+
+@Composable
+fun ServixCard(
+    modifier: Modifier = Modifier,
+    containerColor: Color = PureWhite,
+    contentPadding: PaddingValues = PaddingValues(20.dp),
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(1.dp, BorderSand),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Box(modifier = Modifier.padding(contentPadding)) {
+            content()
+        }
+    }
+}
+
+@Composable
+fun ServixBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    containerColor: Color = SoftSand,
+    contentColor: Color = Charcoal,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(3.dp),
+        color = containerColor,
+        border = BorderStroke(1.dp, BorderSand),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        )
+    }
+}
+
+@Composable
+fun OfflineBanner(
+    isOnline: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = !isOnline,
+        enter = expandVertically(),
+        exit = shrinkVertically(),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Charcoal)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .testTag("offline_banner"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CloudOff,
+                contentDescription = stringResource(R.string.offline_banner),
+                tint = Coral,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = stringResource(R.string.offline_banner),
+                style = MaterialTheme.typography.bodySmall,
+                color = WarmIvory,
+            )
+        }
+    }
+}
+
+@Composable
+fun ProfessionalToolsWebCard(
+    role: String,
+    modifier: Modifier = Modifier,
+) {
+    if (role != "professional" && role != "admin") return
+    val context = LocalContext.current
+    ServixCard(
+        modifier = modifier.testTag("pro_tools_web_card"),
+        containerColor = SoftSand,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ServixBadge(
+                text = if (role == "admin") "ADMIN ACCOUNT" else "PROFESSIONAL ACCOUNT",
+                containerColor = DeepForest,
+                contentColor = WarmIvory,
+            )
+            Text(
+                text = stringResource(R.string.pro_tools_on_web),
+                style = MaterialTheme.typography.titleMedium,
+                color = DeepForest,
+            )
+            Text(
+                text = stringResource(R.string.pro_tools_on_web_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Charcoal,
+            )
+            ServixSecondaryButton(
+                text = stringResource(R.string.open_servix_web),
+                onClick = {
+                    val path = if (role == "admin") "/admin" else "/pro"
+                    CustomTabLauncher.launchWebPath(context, path)
+                },
+                testTag = "open_pro_web_button",
+            )
+        }
+    }
+}
+
+@Composable
+fun SkeletonBox(
+    modifier: Modifier = Modifier,
+    height: Dp = 18.dp,
+    shape: RoundedCornerShape = RoundedCornerShape(6.dp),
+) {
+    val transition = rememberInfiniteTransition(label = "skeleton_pulse")
+    val alpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 850),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "skeleton_alpha",
+    )
+    Box(
+        modifier = modifier
+            .height(height)
+            .clip(shape)
+            .background(SoftSand.copy(alpha = alpha))
+            .semantics { contentDescription = "Loading" }
+    )
+}
+
+@Composable
+fun ErrorStateCard(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ServixCard(modifier = modifier.testTag("error_state_card")) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ErrorOutline,
+                contentDescription = message,
+                tint = DangerRed,
+                modifier = Modifier.size(32.dp),
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Charcoal,
+            )
+            ServixSecondaryButton(
+                text = stringResource(R.string.retry),
+                onClick = onRetry,
+                testTag = "retry_button",
+            )
+        }
+    }
+}

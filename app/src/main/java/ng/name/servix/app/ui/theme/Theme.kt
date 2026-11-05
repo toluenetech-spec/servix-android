@@ -14,6 +14,8 @@ private val ServixLightColors = lightColorScheme(
     onPrimaryContainer = WarmIvory,
     secondary = ForestGreen,
     onSecondary = WarmIvory,
+    secondaryContainer = SoftSand,
+    onSecondaryContainer = Charcoal,
     tertiary = Coral,
     onTertiary = PureWhite,
     background = WarmIvory,
@@ -22,21 +24,27 @@ private val ServixLightColors = lightColorScheme(
     onSurface = Charcoal,
     surfaceVariant = SoftSand,
     onSurfaceVariant = MutedGray,
-    outline = SoftSand,
-    error = Coral,
+    outline = BorderSand,
+    outlineVariant = SoftSand,
+    error = DangerRed,
     onError = PureWhite,
 )
 
-// Radii from the web design system: 3 / 6 / 10 px. No gradients anywhere.
-private val ServixShapes = Shapes(
+// Radii from the web design system: 3 / 6 / 10 dp. No gradients anywhere.
+val ServixShapes = Shapes(
     extraSmall = RoundedCornerShape(3.dp),
     small = RoundedCornerShape(6.dp),
     medium = RoundedCornerShape(10.dp),
     large = RoundedCornerShape(10.dp),
-    extraLarge = RoundedCornerShape(14.dp),
+    extraLarge = RoundedCornerShape(10.dp),
 )
 
 @Composable
 fun ServixTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = ServixLightColors, typography = ServixTypography, shapes = ServixShapes, content = content)
+    MaterialTheme(
+        colorScheme = ServixLightColors,
+        typography = ServixTypography,
+        shapes = ServixShapes,
+        content = content
+    )
 }

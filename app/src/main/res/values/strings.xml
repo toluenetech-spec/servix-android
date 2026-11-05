@@ -1,6 +1,114 @@
 <resources>
     <string name="app_name">Servix</string>
     <string name="tagline">Services, delivered professionally.</string>
+    <string name="hero_eyebrow">Professional services, simplified.</string>
+    <string name="hero_lead">Discover trusted professionals, compare services, and manage your bookings from one place.</string>
     <string name="escrow_copy">The price is locked when you book. Payment is held securely and only released after you confirm completion.</string>
     <string name="ai_disclaimer">AI suggestions are drafts — check them before you rely on them. Servix AI never moves money or changes your bookings.</string>
+    <string name="ai_quota_exceeded">Your plan\'s AI allowance is used up for this month — upgrade on www.servix.name.ng</string>
+    <string name="pro_tools_on_web">Professional tools are on www.servix.name.ng</string>
+    <string name="pro_tools_on_web_body">Your professional and admin workspaces live on the Servix website. You can continue using the Android app to browse, book services, and chat with Servix AI.</string>
+    <string name="open_servix_web">Open www.servix.name.ng</string>
+
+    <!-- Navigation tabs -->
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_bookings">Bookings</string>
+    <string name="nav_ai">Servix AI</string>
+    <string name="nav_account">Account</string>
+
+    <!-- Offline & Common -->
+    <string name="offline_banner">You are offline. Check your connection — cached content may be limited.</string>
+    <string name="retry">Try again</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+
+    <!-- Welcome & Auth -->
+    <string name="sign_in">Sign In</string>
+    <string name="create_account">Create Account</string>
+    <string name="continue_browsing">Browse catalogue first</string>
+    <string name="login_title">Welcome back</string>
+    <string name="login_subtitle">Sign in to manage your bookings and services.</string>
+    <string name="field_email">Email</string>
+    <string name="field_password">Password</string>
+    <string name="field_full_name">Full name</string>
+    <string name="field_confirm_password">Confirm password</string>
+    <string name="password_hint">Choose a unique password you do not use elsewhere.</string>
+    <string name="confirm_password_hint_empty">Enter your password again.</string>
+    <string name="confirm_password_hint_match">✓ Passwords match</string>
+    <string name="confirm_password_hint_mismatch">Passwords do not match yet</string>
+    <string name="forgot_password_link">Forgot password?</string>
+    <string name="signing_in">Signing in…</string>
+    <string name="creating_account">Creating account…</string>
+    <string name="new_to_servix">New to Servix?</string>
+    <string name="already_have_account">Already have an account?</string>
+    <string name="register_title">Create your account</string>
+    <string name="register_subtitle">Book verified professionals with locked pricing and escrow protection.</string>
+    <string name="register_terms_note">By selecting Create Account, you agree to the Terms of Service and acknowledge the Privacy Policy. You must be 18 or over.</string>
+    <string name="register_pro_apply_prompt">Want to offer your services on Servix? Apply at www.servix.name.ng</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+
+    <!-- Validation & Auth Errors -->
+    <string name="err_enter_full_name">Please enter your full name.</string>
+    <string name="err_enter_email">Please enter your email address.</string>
+    <string name="err_valid_email">Please enter a valid email address.</string>
+    <string name="err_enter_password">Please enter your password.</string>
+    <string name="err_password_requirements">Please meet all the password requirements below.</string>
+    <string name="err_passwords_must_match">Enter the same password in both fields.</string>
+    <string name="err_invalid_credentials">Incorrect email or password.</string>
+    <string name="err_rate_limit">Too many attempts. Please wait a minute.</string>
+    <string name="err_register_rate_limit">Too many attempts. Please wait a minute before trying again. Your details are still here.</string>
+    <string name="err_login_unavailable">Sign in is temporarily unavailable. Please try again.</string>
+    <string name="err_register_unavailable">We could not finish creating your account. Check your connection and try again. If you already registered, try signing in.</string>
+
+    <!-- Password rules -->
+    <string name="pwd_rule_length">At least 8 characters</string>
+    <string name="pwd_rule_uppercase">One uppercase letter</string>
+    <string name="pwd_rule_lowercase">One lowercase letter</string>
+    <string name="pwd_rule_number">One number</string>
+    <string name="pwd_rule_symbol">One symbol</string>
+    <string name="pwd_rule_max">No more than 200 characters</string>
+
+    <!-- Email Verification (OTP & Link) -->
+    <string name="verify_eyebrow">ACCOUNT VERIFICATION</string>
+    <string name="verify_otp_title">Your inbox. Your code.</string>
+    <string name="verify_otp_lead">Enter the six-digit code sent to %1$s. It expires after 10 minutes.</string>
+    <string name="verify_code_label">Email verification code</string>
+    <string name="verify_code_hint">Use the newest code. You can paste all six digits at once.</string>
+    <string name="verify_submit">Verify email</string>
+    <string name="verify_please_wait">Please wait…</string>
+    <string name="verify_send_new_code">Send a new code</string>
+    <string name="verify_resend_cooldown">Request another code in %1$ds</string>
+    <string name="verify_security_footer">Never share your code. Servix support will never ask for it.</string>
+    <string name="verify_queued_notice">A new code is queued for delivery. Check your inbox and spam folder. Only the newest code will work.</string>
+    <string name="verify_confirmed_title">Email confirmed</string>
+    <string name="verify_confirmed_body">Your email address has been verified successfully.</string>
+    <string name="verify_continue_home">Continue to Servix</string>
+    <string name="verify_link_title">Check your inbox</string>
+    <string name="verify_link_body">We sent a verification link to your email address. Clicking it confirms your account.</string>
+    <string name="verify_resend_email">Resend Verification Email</string>
+    <string name="verify_check_status">I have verified my email</string>
+    <string name="err_otp_six_digits">Enter all six digits from your latest email.</string>
+    <string name="err_otp_invalid">That code is incorrect, expired, or already used. Use the newest email or request a new code.</string>
+    <string name="err_otp_limit_hour">Too many attempts. Wait one hour before trying again.</string>
+    <string name="err_otp_session_expired">Your session expired. Sign in again to continue verification.</string>
+    <string name="err_otp_network">We could not check your code. Check your connection and try again.</string>
+
+    <!-- Forgot Password -->
+    <string name="forgot_title">Reset your password</string>
+    <string name="forgot_subtitle">Enter your account email to begin secure password recovery.</string>
+    <string name="forgot_submit">Continue recovery</string>
+    <string name="forgot_sending">Sending…</string>
+    <string name="forgot_sent_title">Check your inbox</string>
+    <string name="forgot_sent_body">If an account exists for %1$s, we’ve sent a password reset link. The link expires in 30 minutes.</string>
+    <string name="back_to_sign_in">Back to sign in</string>
+    <string name="remembered_it">Remembered it?</string>
+
+    <!-- Sign Out & Account -->
+    <string name="sign_out">Sign out</string>
+    <string name="signing_out">Signing out…</string>
+    <string name="verify_email_banner_title">Verify your email to finish setting up your account.</string>
+    <string name="verify_email_cta">Verify email</string>
 </resources>
