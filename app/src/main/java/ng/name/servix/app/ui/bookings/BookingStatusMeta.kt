@@ -50,18 +50,9 @@ object BookingStatusMeta {
         else -> status
     }
 
-    fun colorsFor(status: String): Pair<Color, Color> = when (status) {
-        "pending_payment" -> Coral.copy(alpha = 0.16f) to Coral
-        "requested" -> SoftSand to Charcoal
-        "accepted" -> DeepForest.copy(alpha = 0.12f) to DeepForest
-        "in_progress" -> ForestGreen.copy(alpha = 0.14f) to ForestGreen
-        "delivered" -> Coral.copy(alpha = 0.16f) to Coral
-        "completed" -> DeepForest to WarmIvory
-        "cancelled" -> SoftSand to MutedGray
-        "declined" -> SoftSand to MutedGray
-        "disputed" -> DangerRed.copy(alpha = 0.14f) to DangerRed
-        "refunded" -> SoftSand to Charcoal
-        else -> SoftSand to Charcoal
+    fun colorsFor(status: String): Pair<Color, Color> {
+        val (_, background, foreground) = ng.name.servix.app.ui.components.statusStyle(status)
+        return background to foreground
     }
 }
 
@@ -70,12 +61,5 @@ fun BookingStatusChip(
     status: String,
     modifier: Modifier = Modifier,
 ) {
-    val label = BookingStatusMeta.labelFor(status)
-    val (bg, fg) = BookingStatusMeta.colorsFor(status)
-    ServixBadge(
-        text = label,
-        containerColor = bg,
-        contentColor = fg,
-        modifier = modifier,
-    )
+    ng.name.servix.app.ui.components.StatusChip(status = status, modifier = modifier)
 }
