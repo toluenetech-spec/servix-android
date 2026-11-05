@@ -10,8 +10,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ThumbDown
+import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,6 +41,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.AiMeter
 import ng.name.servix.app.data.model.AiUsage
@@ -61,7 +68,6 @@ fun AiScreen(user: UserDto?, state: AiUiState, viewModel: AiViewModel, onSignIn:
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp).testTag("ai_screen"),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("SERVIX AI", style = MaterialTheme.typography.labelSmall, color = ForestGreen)
         Text(if (user != null) "Good to see you, ${user.firstName}." else "Your AI helper", style = MaterialTheme.typography.headlineMedium, color = DeepForest)
         Text("Ask anything about professionals, prices or how Servix works, and get budget guidance from real Servix listings.", style = MaterialTheme.typography.bodyMedium, color = Charcoal)
         Text("Private to your account · never books, pays or edits anything for you", style = MaterialTheme.typography.bodySmall, color = MutedGray)
@@ -158,12 +164,18 @@ private fun FeedbackActions(turn: ChatTurn, vm: AiViewModel, clipboard: Clipboar
     var asking by remember(turn.id) { mutableStateOf(false) }
     var comment by rememberSaveable(turn.id) { mutableStateOf("") }
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        TextButton(onClick = { clipboard.setText(AnnotatedString(turn.content)) }) { Text("Copy") }
+        IconButton(onClick = { clipboard.setText(AnnotatedString(turn.content)) }) {
+            Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy answer", tint = MutedGray, modifier = Modifier.size(20.dp))
+        }
         if (turn.feedback == "sent") Text("Thanks for the feedback.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp))
         else if (turn.feedback == "sending") Text("Sending…", modifier = Modifier.padding(top = 14.dp))
         else {
-            TextButton(onClick = { vm.feedback(turn.id, "up") }) { Text("Helpful 👍") }
-            TextButton(onClick = { asking = true }) { Text("Not helpful 👎") }
+            IconButton(onClick = { vm.feedback(turn.id, "up") }) {
+                Icon(Icons.Rounded.ThumbUp, contentDescription = "Helpful", tint = MutedGray, modifier = Modifier.size(20.dp))
+            }
+            IconButton(onClick = { asking = true }) {
+                Icon(Icons.Rounded.ThumbDown, contentDescription = "Not helpful", tint = MutedGray, modifier = Modifier.size(20.dp))
+            }
         }
     }
     turn.feedbackError?.let { Text("Couldn't send feedback: $it", style = MaterialTheme.typography.bodySmall) }

@@ -481,14 +481,6 @@ fun SearchScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = stringResource(
-                            if (uiState.mode == SearchMode.PROFESSIONALS) R.string.search_pros_eyebrow
-                            else R.string.search_services_eyebrow
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ForestGreen,
-                    )
-                    Text(
-                        text = stringResource(
                             if (uiState.mode == SearchMode.PROFESSIONALS) R.string.search_pros_title
                             else R.string.search_services_title
                         ),

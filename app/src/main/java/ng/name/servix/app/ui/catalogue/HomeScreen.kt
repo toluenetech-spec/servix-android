@@ -286,14 +286,8 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ServixLogoMark()
-                if (user != null) {
-                    ServixBadge(
-                        text = user.role.uppercase(),
-                        containerColor = SoftSand,
-                        contentColor = DeepForest,
-                    )
-                } else {
+                ServixLogoMark(wordmark = false)
+                if (user == null) {
                     ServixSecondaryButton(
                         text = stringResource(R.string.sign_in),
                         onClick = onSignInClick,
@@ -361,11 +355,6 @@ fun HomeScreen(
                     modifier = Modifier.padding(22.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Text(
-                        text = stringResource(R.string.hero_eyebrow).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WarmIvory.copy(alpha = 0.78f),
-                    )
                     Text(
                         text = stringResource(R.string.tagline),
                         style = MaterialTheme.typography.headlineLarge,
@@ -490,12 +479,6 @@ fun HomeScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.home_categories_eyebrow),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ForestGreen,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
                             text = stringResource(R.string.home_categories_title),
                             style = MaterialTheme.typography.headlineSmall,
                             color = DeepForest,
@@ -590,12 +573,6 @@ fun HomeScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.home_top_pros_eyebrow),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ForestGreen,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
                             text = stringResource(R.string.home_top_pros_title),
                             style = MaterialTheme.typography.headlineSmall,
                             color = DeepForest,
@@ -638,11 +615,6 @@ fun HomeScreen(
             // How Servix Works (HomePage.jsx:272-288)
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = stringResource(R.string.home_how_eyebrow),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ForestGreen,
-                )
-                Text(
                     text = stringResource(R.string.home_how_title),
                     style = MaterialTheme.typography.headlineSmall,
                     color = DeepForest,
@@ -677,11 +649,6 @@ fun HomeScreen(
 
             // Why Servix (HomePage.jsx:327-347)
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "WHY SERVIX",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ForestGreen,
-                )
                 Text(
                     text = "Built around quality service delivery",
                     style = MaterialTheme.typography.headlineSmall,
@@ -734,11 +701,6 @@ fun HomeScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(
-                        text = "FOR PROFESSIONALS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = WarmIvory.copy(alpha = 0.75f),
-                    )
                     Text(
                         text = "Turn your skills into a business.",
                         style = MaterialTheme.typography.headlineSmall,
@@ -829,11 +791,6 @@ private fun NextBookingCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.home_next_booking_eyebrow),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ForestGreen,
-                )
                 ServixBadge(
                     text = booking.status.replace('_', ' ').replaceFirstChar { it.uppercase() },
                     containerColor = PureWhite,

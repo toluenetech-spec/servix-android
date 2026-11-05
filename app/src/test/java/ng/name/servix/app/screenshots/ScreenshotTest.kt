@@ -39,6 +39,7 @@ import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
 import ng.name.servix.app.ui.catalogue.ServiceDetailUiState
 import ng.name.servix.app.ui.dashboard.DashboardScreen
 import ng.name.servix.app.ui.dashboard.DashboardUiState
+import ng.name.servix.app.ui.components.ComponentsGallery
 import androidx.compose.runtime.Composable
 
 @RunWith(RobolectricTestRunner::class)
@@ -69,6 +70,11 @@ class ScreenshotTest {
         category = "graphic-design",
         input = "Can you compare the two designers?",
     )
+
+    @Test
+    fun components() = rule.capture("00_components") {
+        ComponentsGallery()
+    }
 
     @Test
     fun welcome() = rule.capture("01_welcome") {

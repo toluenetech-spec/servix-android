@@ -30,15 +30,19 @@ private val ServixLightColors = lightColorScheme(
     onError = PureWhite,
 )
 
-// Radii from the web design system: 3 / 6 / 10 dp. No gradients anywhere.
+// Mobile radii (plan §3): cards 16, sheets 24 (top), buttons/inputs 12, chips pill. No gradients.
+val ServixCardRadius = 16.dp
+val ServixButtonRadius = 12.dp
+val ServixSheetRadius = 24.dp
 val ServixShapes = Shapes(
-    extraSmall = RoundedCornerShape(3.dp),
-    small = RoundedCornerShape(6.dp),
-    medium = RoundedCornerShape(10.dp),
-    large = RoundedCornerShape(10.dp),
-    extraLarge = RoundedCornerShape(10.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(ServixButtonRadius),
+    medium = RoundedCornerShape(ServixCardRadius),
+    large = RoundedCornerShape(ServixCardRadius),
+    extraLarge = RoundedCornerShape(ServixSheetRadius),
 )
 
+/** v1 is light only (plan §3): the system theme must never invert the brand. */
 @Composable
 fun ServixTheme(content: @Composable () -> Unit) {
     MaterialTheme(

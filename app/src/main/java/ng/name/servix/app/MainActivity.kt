@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,8 +24,11 @@ import ng.name.servix.app.ui.theme.ServixTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Transparent bars with dark icons on the Warm Ivory canvas (plan §3).
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
         val container = AppContainer.getInstance(applicationContext)
         // Images use their own client: never attach account tokens to third-party URLs.
         Coil.setImageLoader(ImageLoader.Builder(applicationContext)

@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -71,43 +74,36 @@ import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
+import ng.name.servix.app.ui.theme.ServixButtonRadius
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
 
+/**
+ * The real Servix brand artwork (public/brand/*.svg → res/drawable), replacing the old "SX" text tile.
+ * [wordmark] = mark + lettering for Welcome/auth; mark-only for the Home top bar.
+ */
 @Composable
 fun ServixLogoMark(
     modifier: Modifier = Modifier,
     darkSurface: Boolean = false,
+    wordmark: Boolean = true,
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = if (darkSurface) WarmIvory else DeepForest,
-            modifier = Modifier.size(34.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "SX",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.5).sp,
-                    ),
-                    color = if (darkSurface) DeepForest else WarmIvory,
-                )
-            }
-        }
-        Text(
-            text = "SERVIX",
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.8.sp,
-            ),
-            color = if (darkSurface) WarmIvory else DeepForest,
+    if (wordmark) {
+        Image(
+            painter = painterResource(R.drawable.ic_servix_wordmark),
+            contentDescription = stringResource(R.string.app_name),
+            contentScale = ContentScale.Fit,
+            modifier = modifier
+                .height(30.dp)
+                .then(if (darkSurface) Modifier else Modifier),
+        )
+    } else {
+        Image(
+            painter = painterResource(R.drawable.ic_servix_mark),
+            contentDescription = stringResource(R.string.app_name),
+            contentScale = ContentScale.Fit,
+            modifier = modifier.size(28.dp),
         )
     }
 }
@@ -124,16 +120,17 @@ fun ServixPrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(ServixButtonRadius),
         colors = ButtonDefaults.buttonColors(
             containerColor = DeepForest,
             contentColor = WarmIvory,
             disabledContainerColor = DeepForest.copy(alpha = 0.45f),
             disabledContentColor = WarmIvory.copy(alpha = 0.8f),
         ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = 52.dp)
             .let { if (testTag != null) it.testTag(testTag) else it },
     ) {
         if (loading) {
@@ -159,19 +156,20 @@ fun ServixSecondaryButton(
     enabled: Boolean = true,
     testTag: String? = null,
 ) {
-    OutlinedButton(
+    Button(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(6.dp),
-        border = BorderStroke(1.dp, BorderStrongSand),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = PureWhite,
+        shape = RoundedCornerShape(ServixButtonRadius),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = SoftSand,
             contentColor = Charcoal,
+            disabledContainerColor = SoftSand.copy(alpha = 0.5f),
             disabledContentColor = MutedGray,
         ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = modifier
-            .heightIn(min = 48.dp)
+            .heightIn(min = 52.dp)
             .let { if (testTag != null) it.testTag(testTag) else it },
     ) {
         Text(
@@ -260,7 +258,7 @@ fun ServixTextField(
             },
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
-            shape = RoundedCornerShape(6.dp),
+            shape = RoundedCornerShape(ServixButtonRadius),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = PureWhite,
                 unfocusedContainerColor = PureWhite,
@@ -305,7 +303,7 @@ fun ServixCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(ServixCardRadius),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -325,9 +323,8 @@ fun ServixBadge(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(3.dp),
+        shape = RoundedCornerShape(50),
         color = containerColor,
-        border = BorderStroke(1.dp, BorderSand),
     ) {
         Text(
             text = text,
@@ -424,7 +421,7 @@ fun SkeletonBox(
         initialValue = 0.45f,
         targetValue = 0.9f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 850),
+            animation = tween(durationMillis = 1200),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "skeleton_alpha",

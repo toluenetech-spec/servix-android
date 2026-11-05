@@ -800,11 +800,6 @@ fun VerifyEmailScreen(
                 // 6-digit OTP verification screen matching EmailCodeVerification.jsx
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
-                        text = stringResource(R.string.verify_eyebrow),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ForestGreen,
-                    )
-                    Text(
                         text = stringResource(R.string.verify_otp_title),
                         style = MaterialTheme.typography.headlineMedium,
                         color = DeepForest,
@@ -1007,11 +1002,6 @@ fun SecurityCheckScreen(
         if (uiState.securityConfigEnabled == false) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    text = stringResource(R.string.security_eyebrow),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ForestGreen,
-                )
-                Text(
                     text = stringResource(R.string.security_disabled_on_web),
                     style = MaterialTheme.typography.headlineSmall,
                     color = DeepForest,
@@ -1046,12 +1036,6 @@ fun SecurityCheckScreen(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                text = stringResource(R.string.security_eyebrow),
-                style = MaterialTheme.typography.labelSmall,
-                color = ForestGreen,
-            )
-
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,

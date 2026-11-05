@@ -151,11 +151,6 @@ fun BookingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = stringResource(R.string.bookings_eyebrow),
-                style = MaterialTheme.typography.labelSmall,
-                color = ForestGreen,
-            )
-            Text(
                 text = stringResource(R.string.bookings_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = DeepForest,
@@ -188,11 +183,6 @@ fun BookingsScreen(
         ) {
             item(key = "header") {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = stringResource(R.string.bookings_eyebrow),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ForestGreen,
-                    )
                     Text(
                         text = stringResource(R.string.bookings_title),
                         style = MaterialTheme.typography.headlineMedium,

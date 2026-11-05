@@ -231,15 +231,9 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = stringResource(R.string.dashboard_eyebrow).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ForestGreen,
-                        modifier = Modifier.testTag("dashboard_eyebrow"),
-                    )
                     uiState.overview?.plan?.takeIf { it.isNotBlank() }?.let { plan ->
                         ServixBadge(
-                            text = plan.uppercase(),
+                            text = plan.replaceFirstChar { it.uppercase() },
                             containerColor = SoftSand,
                             contentColor = DeepForest,
                         )

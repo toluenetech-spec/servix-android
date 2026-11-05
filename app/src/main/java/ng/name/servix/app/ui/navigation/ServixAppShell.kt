@@ -304,7 +304,7 @@ fun ServixAppShell(
                 Column {
                     HorizontalDivider(color = BorderSand, thickness = 1.dp)
                     NavigationBar(
-                        containerColor = PureWhite,
+                        containerColor = WarmIvory,
                         contentColor = Charcoal,
                         tonalElevation = 0.dp,
                     ) {

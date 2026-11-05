@@ -602,9 +602,9 @@ fun BookingDetailScreen(
         // Header: Eyebrow + Service Title (BookingDetailPage.jsx:112-113)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "BOOKING ${booking.reference}",
-                style = MaterialTheme.typography.labelSmall,
-                color = ForestGreen,
+                text = "Booking ${booking.reference}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MutedGray,
                 modifier = Modifier.testTag("booking_detail_reference"),
             )
             Text(
