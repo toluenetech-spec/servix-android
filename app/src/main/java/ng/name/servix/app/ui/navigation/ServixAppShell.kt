@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,10 +65,13 @@ import ng.name.servix.app.location.storedCity
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.UserDto
+import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.ui.ai.AiScreen
+import ng.name.servix.app.ui.ai.AiViewModel
 import ng.name.servix.app.ui.account.DeviceCard
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.auth.ForgotPasswordScreen
@@ -151,6 +155,13 @@ private val AUTHENTICATED_BOTTOM_TABS = listOf(
         testTag = "nav_tab_bookings",
     ),
     BottomTabItem(
+        route = ServixRoute.ServixAi,
+        labelRes = R.string.nav_ai,
+        selectedIcon = Icons.Filled.AutoAwesome,
+        unselectedIcon = Icons.Outlined.AutoAwesome,
+        testTag = "nav_tab_ai",
+    ),
+    BottomTabItem(
         route = ServixRoute.Account,
         labelRes = R.string.nav_account,
         selectedIcon = Icons.Filled.AccountCircle,
@@ -203,6 +214,7 @@ fun ServixAppShell(
     catalogueRepository: CatalogueRepository,
     bookingRepository: BookingRepository,
     accountRepository: AccountRepository,
+    aiRepository: AiRepository,
     isOnline: Boolean,
 ) {
     val context = LocalContext.current
@@ -217,6 +229,10 @@ fun ServixAppShell(
 
     // Pending destination to return to when a guest signs in from the Booking Sheet
     var pendingPostAuthRoute by remember { mutableStateOf<ServixRoute?>(null) }
+
+    val aiViewModel: AiViewModel = viewModel(factory = AiViewModel.factory(aiRepository, catalogueRepository))
+    val currentUserId = (sessionState as? SessionState.Authenticated)?.user?.id
+    LaunchedEffect(currentUserId) { aiViewModel.setUser(currentUserId) }
 
     val dashboardViewModel: DashboardViewModel = viewModel(
         factory = DashboardViewModel.factory(accountRepository, bookingRepository)
@@ -533,6 +549,7 @@ fun ServixAppShell(
                     updateContent = { UpdateCard(updateState) },
                     user = user,
                     uiState = dashboardUiState,
+                    onOpenAi = { navController.navigate(ServixRoute.ServixAi) { launchSingleTop = true } },
                     onRefresh = {
                         dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = true)
                     },
@@ -872,9 +889,16 @@ fun ServixAppShell(
 
             composable<ServixRoute.ServixAi> {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                Stage1AiPlaceholder(
+                val aiState by aiViewModel.state.collectAsStateWithLifecycle()
+                DisposableEffect(aiViewModel) { onDispose { aiViewModel.stopAll() } }
+                AiScreen(
                     user = user,
-                    onSignInClick = { navController.navigate(ServixRoute.Login) },
+                    state = aiState,
+                    viewModel = aiViewModel,
+                    onSignIn = {
+                        pendingPostAuthRoute = ServixRoute.ServixAi
+                        navController.navigate(ServixRoute.Login)
+                    },
                 )
             }
 
@@ -896,52 +920,6 @@ fun ServixAppShell(
                         }
                     }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Stage1AiPlaceholder(
-    user: UserDto?,
-    onSignInClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = "SERVIX AI",
-            style = MaterialTheme.typography.labelSmall,
-            color = ForestGreen,
-        )
-        Text(
-            text = if (user != null) "Good to see you, ${user.firstName}." else "Your AI helper",
-            style = MaterialTheme.typography.headlineMedium,
-            color = DeepForest,
-        )
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "Ask anything about professionals, prices or how Servix works, and get budget guidance from real Servix listings.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                )
-                Text(
-                    text = stringResource(R.string.ai_disclaimer),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedGray,
-                )
-                if (user == null) {
-                    ServixPrimaryButton(
-                        text = stringResource(R.string.sign_in),
-                        onClick = onSignInClick,
-                        testTag = "ai_sign_in_button",
-                    )
-                }
             }
         }
     }

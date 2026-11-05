@@ -187,7 +187,6 @@ class DashboardViewModel(
 
 private enum class DashboardSheet {
     NONE,
-    AI_STAGE_4,
     ACCOUNT_SECURITY,
     PAYMENTS,
 }
@@ -196,6 +195,7 @@ private enum class DashboardSheet {
 @Composable
 fun DashboardScreen(
     updateContent: @Composable () -> Unit = {},
+    onOpenAi: () -> Unit = {},
     user: UserDto?,
     uiState: DashboardUiState,
     onRefresh: () -> Unit,
@@ -391,7 +391,7 @@ fun DashboardScreen(
                 DashboardActionCard(
                     title = stringResource(R.string.dashboard_card_ai_eyebrow),
                     subtitle = stringResource(R.string.dashboard_card_ai_body),
-                    badgeText = "STAGE 4",
+                    badgeText = null,
                     icon = {
                         Icon(
                             imageVector = Icons.Outlined.AutoAwesome,
@@ -400,7 +400,7 @@ fun DashboardScreen(
                             modifier = Modifier.size(20.dp),
                         )
                     },
-                    onClick = { activeSheet = DashboardSheet.AI_STAGE_4 },
+                    onClick = onOpenAi,
                     testTag = "dashboard_card_servix_ai",
                 )
 
@@ -502,11 +502,6 @@ fun DashboardScreen(
             contentColor = Charcoal,
         ) {
             when (activeSheet) {
-                DashboardSheet.AI_STAGE_4 -> {
-                    ServixAiStage4SheetContent(
-                        onDismiss = { activeSheet = DashboardSheet.NONE }
-                    )
-                }
                 DashboardSheet.ACCOUNT_SECURITY -> {
                     AccountSecuritySheetContent(
                         emailVerified = emailVerified,
@@ -679,46 +674,6 @@ private fun RecentBookingRow(
                 BookingStatusChip(status = booking.status)
             }
         }
-    }
-}
-
-@Composable
-private fun ServixAiStage4SheetContent(
-    onDismiss: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        ServixBadge(
-            text = "COMING IN STAGE 4",
-            containerColor = SoftSand,
-            contentColor = DeepForest,
-        )
-        Text(
-            text = "Servix AI is coming in Stage 4",
-            style = MaterialTheme.typography.headlineSmall,
-            color = DeepForest,
-        )
-        Text(
-            text = stringResource(R.string.dashboard_card_ai_body),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Charcoal,
-        )
-        Text(
-            text = stringResource(R.string.ai_disclaimer),
-            style = MaterialTheme.typography.bodySmall,
-            color = MutedGray,
-        )
-        ServixSecondaryButton(
-            text = stringResource(R.string.close),
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth(),
-            testTag = "dashboard_ai_sheet_close",
-        )
     }
 }
 

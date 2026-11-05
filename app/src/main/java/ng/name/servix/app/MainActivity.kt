@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
                         catalogueRepository = container.catalogueRepository,
                         bookingRepository = container.bookingRepository,
                         accountRepository = container.accountRepository,
+                        aiRepository = container.aiRepository,
                         isOnline = isOnline,
                     )
                 }
