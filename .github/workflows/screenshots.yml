@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: screenshots-${{ github.ref }}
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   screenshots:
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[shots]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -54,6 +55,19 @@ jobs:
           name: screenshots
           path: app/build/reports/screenshots/**/*.png
           if-no-files-found: error
+
+      - name: Publish renders for review
+        if: success()
+        run: |
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          rm -rf docs/screenshots
+          mkdir -p docs/screenshots
+          cp app/build/reports/screenshots/screens/*.png docs/screenshots/
+          git add -A docs/screenshots
+          git commit -m "chore: screen renders for ${GITHUB_SHA::7} [shots]"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload gradle log
         if: always()

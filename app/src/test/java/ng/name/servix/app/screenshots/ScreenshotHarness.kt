@@ -15,7 +15,7 @@ import org.robolectric.Shadows.shadowOf
 import java.io.File
 import java.io.FileOutputStream
 
-val PIXEL_7_QUALIFIERS = "w411dp-h914dp-xxhdpi"
+const val PIXEL_7_QUALIFIERS = "w411dp-h914dp-xxhdpi"
 
 /**
  * Renders a composable on a Robolectric Pixel-7-class window (411 x 914 dp, xxhdpi)

@@ -129,9 +129,9 @@ object Fixtures {
     )
 
     val aiTurns = listOf(
-        ChatTurn("t1", "user", "Who can design a logo for a small bakery in Lagos?"),
+        ChatTurn(1L, "user", "Who can design a logo for a small bakery in Lagos?"),
         ChatTurn(
-            "t2", "assistant",
+            2L, "assistant",
             "**Tunde Bakare** is a strong fit — a verified brand designer in Abuja with a 4.9 rating from 156 reviews.\n\n" +
                 "His Complete Brand Identity Package starts at **₦120,000** and includes a logo suite, colour and type system, and brand guidelines.",
         ),

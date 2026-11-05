@@ -12,6 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import retrofit2.Retrofit
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import ng.name.servix.app.data.model.*
 import ng.name.servix.app.data.network.ApiErrorParser
 import ng.name.servix.app.data.network.ServixApiService
@@ -256,7 +257,7 @@ class ScreenshotTest {
             pollingAfterPay = false,
             onResumeCheck = {}, onBackClick = {}, onRetry = {}, onRefreshPaymentStatus = {},
             onPayClick = {}, onOpenModal = {}, onCloseModal = {}, onSubmitCancel = {},
-            onSubmitConfirmCompletion = {}, onSubmitDispute = {}, onSubmitReview = {},
+            onSubmitConfirmCompletion = {}, onSubmitDispute = {}, onSubmitReview = { _, _ -> },
             onStartBookAgain = {}, onContinueRebook = { _, _, _ -> }, onOpenProfessional = {},
             onOpenService = {},
         )
