@@ -80,7 +80,7 @@ import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
 
 /**
- * The real Servix brand artwork (public/brand/*.svg → res/drawable), replacing the old "SX" text tile.
+ * The real Servix brand artwork (converted from the brand SVGs in public/brand), replacing the old "SX" text tile.
  * [wordmark] = mark + lettering for Welcome/auth; mark-only for the Home top bar.
  */
 @Composable

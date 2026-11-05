@@ -82,12 +82,12 @@ fun ComponentsGallery(modifier: Modifier = Modifier) {
 
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Empty state", style = MaterialTheme.typography.titleMedium, color = DeepForest)
-            EmptyState(title = "No bookings yet", body = "Book a professional and it will show up here.", actionLabel = "Find a professional") {}
+            EmptyState(title = "No bookings yet", body = "Book a professional and it will show up here.", actionLabel = "Find a professional", onAction = {})
         }
 
         ErrorCard(message = "We couldn't load your bookings.", onRetry = {})
 
-        AttentionCard(text = "Finish paying ₦350,000", actionLabel = "Pay now") {}
+        AttentionCard(text = "Finish paying ₦350,000", actionLabel = "Pay now", onClick = {})
 
         PriceText(amount = 350000, unit = "per project", style = MaterialTheme.typography.headlineSmall)
 
