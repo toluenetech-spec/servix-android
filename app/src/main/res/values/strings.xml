@@ -85,16 +85,31 @@
     <string name="verify_queued_notice">A new code is queued for delivery. Check your inbox and spam folder. Only the newest code will work.</string>
     <string name="verify_confirmed_title">Email confirmed</string>
     <string name="verify_confirmed_body">Your email address has been verified successfully.</string>
-    <string name="verify_continue_home">Continue to Servix</string>
-    <string name="verify_link_title">Check your inbox</string>
+    <string name="verify_continue_home">Go to dashboard</string>
+    <string name="verify_link_title">Check your email for the verification link</string>
     <string name="verify_link_body">We sent a verification link to your email address. Clicking it confirms your account.</string>
     <string name="verify_resend_email">Resend Verification Email</string>
-    <string name="verify_check_status">I have verified my email</string>
+    <string name="verify_check_status">I\'ve verified — continue</string>
     <string name="err_otp_six_digits">Enter all six digits from your latest email.</string>
     <string name="err_otp_invalid">That code is incorrect, expired, or already used. Use the newest email or request a new code.</string>
     <string name="err_otp_limit_hour">Too many attempts. Wait one hour before trying again.</string>
     <string name="err_otp_session_expired">Your session expired. Sign in again to continue verification.</string>
     <string name="err_otp_network">We could not check your code. Check your connection and try again.</string>
+
+    <!-- Security / MFA Check (reference/web/src/pages/auth/SecurityCheckPage.jsx) -->
+    <string name="security_eyebrow">SERVIX · ACCOUNT SECURITY</string>
+    <string name="security_disabled_on_web">Please sign in on www.servix.name.ng to complete this security step</string>
+    <string name="security_preparing">Preparing your secure check…</string>
+    <string name="security_checking_progress">Checking your progress securely.</string>
+    <string name="security_expired_title">Let’s start again</string>
+    <string name="security_start_again">Start again</string>
+    <string name="security_try_loading_again">Try loading again</string>
+    <string name="security_title_email">Check your inbox</string>
+    <string name="security_title_enroll">Choose your security method</string>
+    <string name="security_title_factor">One more check. Then you’re in.</string>
+    <string name="security_title_recovery">Keep a way back in</string>
+    <string name="security_title_reset">Choose a new password</string>
+    <string name="security_title_complete">Your checks are complete</string>
 
     <!-- Forgot Password -->
     <string name="forgot_title">Reset your password</string>
@@ -111,4 +126,137 @@
     <string name="signing_out">Signing out…</string>
     <string name="verify_email_banner_title">Verify your email to finish setting up your account.</string>
     <string name="verify_email_cta">Verify email</string>
+
+    <!-- Stage 2: Catalogue (HomePage.jsx, ProfessionalsPage.jsx, ProfessionalProfilePage.jsx, ServiceDetailPage.jsx) -->
+    <string name="home_greeting_user">Welcome back, %1$s.</string>
+    <string name="home_greeting_guest">Welcome</string>
+    <string name="home_search_placeholder">What service are you looking for?</string>
+    <string name="home_popular_label">Popular:</string>
+    <string name="home_next_booking_eyebrow">YOUR NEXT BOOKING</string>
+    <string name="home_categories_eyebrow">POPULAR SERVICES</string>
+    <string name="home_categories_title">Find the service you need</string>
+    <string name="home_categories_desc">Browse the most requested categories on Servix.</string>
+    <string name="home_top_pros_eyebrow">FEATURED PROFESSIONALS</string>
+    <string name="home_top_pros_title">Top-rated professionals</string>
+    <string name="home_top_pros_desc">Example profiles showing how professionals present their work on Servix.</string>
+    <string name="home_browse_all_pros">Browse all professionals</string>
+    <string name="home_demo_profiles_note">Profiles shown are demonstration content illustrating the Servix experience.</string>
+    <string name="home_stats_live_note">Live figures from the pre-launch Servix catalogue.</string>
+    <string name="home_how_eyebrow">HOW SERVIX WORKS</string>
+    <string name="home_how_title">From search to done, in four steps</string>
+
+    <!-- Search & Filters -->
+    <string name="search_pros_eyebrow">PROFESSIONALS</string>
+    <string name="search_pros_title">Find the right professional</string>
+    <string name="search_pros_desc">A directory of skilled professionals across every Servix category. Profiles shown are demonstration content for the pre-launch platform.</string>
+    <string name="search_pros_placeholder">Search by name, title or skill…</string>
+    <string name="search_services_eyebrow">SERVICES</string>
+    <string name="search_services_title">Browse professional services</string>
+    <string name="search_services_placeholder">Search services…</string>
+    <string name="filters_button">Filters</string>
+    <string name="filters_clear_all">Clear all</string>
+    <string name="filters_clear">Clear filters</string>
+    <string name="filters_show_results">Show results</string>
+    <string name="empty_pros_title">No professionals found</string>
+    <string name="empty_services_title">No services found</string>
+    <string name="empty_search_message">Try adjusting your search or clearing some filters.</string>
+    <string name="error_load_pros">We couldn\'t load the professionals. Please try again.</string>
+    <string name="error_load_services">We couldn\'t load the services. Please try again.</string>
+
+    <!-- Cards & Profile & Service Detail -->
+    <string name="verified_badge">Verified</string>
+    <string name="starting_at_price">Starting at %1$s</string>
+    <string name="from_price">From %1$s</string>
+    <string name="view_profile">View profile</string>
+    <string name="free_in_window">Free in your window</string>
+    <string name="request_booking">Request Booking</string>
+    <string name="save_professional">Save professional</string>
+    <string name="saved_professional">Saved</string>
+    <string name="sign_in_to_save">Sign in to save</string>
+    <string name="sign_in_to_book">Sign in to book this service.</string>
+    <string name="no_payment_taken_yet">No payment is taken at this stage.</string>
+    <string name="servix_protection_title">Servix protection.</string>
+    <string name="servix_protection_body">Clear scope, agreed pricing and structured communication on every booking.</string>
+    <string name="demo_reviews_note">Demonstration reviews illustrating the review system.</string>
+    <string name="error_load_profile">We couldn\'t load this profile. Please try again.</string>
+    <string name="error_load_service_detail">We couldn\'t load this service. Please try again.</string>
+    <string name="pro_not_found_title">Professional not found</string>
+    <string name="pro_not_found_message">This profile does not exist or may have been removed.</string>
+    <string name="service_not_found_title">Service not found</string>
+    <string name="service_not_found_message">This service does not exist or may have been removed.</string>
+
+    <!-- Stage 3: Bookings, Booking Sheet & Payment -->
+    <string name="booking_sheet_title">Book this service</string>
+    <string name="booking_sheet_price_line">%1$s %2$s — the price is locked when you book. Payment is held securely and only released after you confirm completion.</string>
+    <string name="booking_sheet_choose_time">Choose a time</string>
+    <string name="booking_sheet_select_slot">Select a slot…</string>
+    <string name="booking_sheet_no_slots">No open slots in the next two weeks.</string>
+    <string name="booking_sheet_notes_label">Notes for the professional (optional)</string>
+    <string name="booking_sheet_book_and_pay">Book &amp; Pay %1$s</string>
+    <string name="booking_sheet_redirecting">Redirecting to payment…</string>
+
+    <!-- Booking Status Labels -->
+    <string name="status_pending_payment">Awaiting payment</string>
+    <string name="status_requested">Requested</string>
+    <string name="status_accepted">Accepted</string>
+    <string name="status_in_progress">In progress</string>
+    <string name="status_delivered">Delivered</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="status_declined">Declined</string>
+    <string name="status_disputed">Disputed</string>
+    <string name="status_refunded">Refunded</string>
+
+    <!-- Bookings List -->
+    <string name="bookings_eyebrow">YOUR ACCOUNT</string>
+    <string name="bookings_title">My Bookings</string>
+    <string name="bookings_tab_active">Active</string>
+    <string name="bookings_tab_past">Past</string>
+    <string name="bookings_sign_in_message">Sign in to see your bookings.</string>
+    <string name="bookings_empty_title">No bookings yet</string>
+    <string name="bookings_empty_message">When you book a service, it appears here.</string>
+    <string name="bookings_empty_active_title">No active bookings</string>
+    <string name="bookings_empty_active_message">You don\'t have any active bookings right now.</string>
+    <string name="bookings_empty_past_title">No past bookings</string>
+    <string name="bookings_empty_past_message">Completed, cancelled, declined and refunded bookings appear here.</string>
+    <string name="bookings_explore_services">Explore Services</string>
+    <string name="bookings_error_load">We couldn\'t load your bookings.</string>
+
+    <!-- Booking Detail & Actions -->
+    <string name="booking_not_found_title">Booking not found</string>
+    <string name="booking_not_found_message">This booking doesn\'t exist or isn\'t yours.</string>
+    <string name="booking_error_load">We couldn\'t load this booking.</string>
+    <string name="booking_payment_pending_title">Payment pending.</string>
+    <string name="booking_payment_pending_body">Complete the secure checkout to send this request. This page updates automatically once payment is confirmed by our payment provider.</string>
+    <string name="booking_payment_received_banner">Payment received — request sent to %1$s</string>
+    <string name="booking_payment_confirming_banner">We\'re still confirming your payment</string>
+    <string name="booking_refresh">Refresh</string>
+    <string name="booking_delivered_notice_title">Confirm within 3 days.</string>
+    <string name="booking_delivered_notice_body">If you don’t confirm, the booking completes automatically and payment is released.</string>
+    <string name="booking_disputed_notice_title">Dispute open.</string>
+    <string name="booking_disputed_notice_body">Funds are held while the Servix team reviews: “%1$s”.</string>
+    <string name="booking_pay_cta">Pay %1$s</string>
+    <string name="booking_cancel_cta">Cancel Booking</string>
+    <string name="booking_confirm_cta">Confirm Completion</string>
+    <string name="booking_dispute_cta">Report a Problem</string>
+    <string name="booking_review_cta">Leave a Review</string>
+    <string name="booking_reviewed_badge">Reviewed — thank you</string>
+    <string name="booking_rebook_cta">Book again</string>
+    <string name="booking_rebook_preparing">Preparing…</string>
+
+    <!-- Modals -->
+    <string name="modal_cancel_title">Cancel this booking?</string>
+    <string name="modal_cancel_policy">Refunds follow the Servix policy: full refund before the professional starts work. The refund amount is determined by the platform, not entered manually.</string>
+    <string name="modal_cancel_reason_label">Reason (optional)</string>
+    <string name="modal_keep_booking">Keep Booking</string>
+    <string name="modal_confirm_title">Confirm completion?</string>
+    <string name="modal_confirm_body">Payment is held securely and only released after you confirm completion.</string>
+    <string name="modal_dispute_title">Report a problem</string>
+    <string name="modal_dispute_body">Opening a dispute freezes payment until the Servix team reviews it.</string>
+    <string name="modal_dispute_reason_label">What went wrong?</string>
+    <string name="modal_dispute_open_cta">Open Dispute</string>
+    <string name="modal_review_title">Review this service</string>
+    <string name="modal_review_rating_label">Rating</string>
+    <string name="modal_review_text_label">Your review (optional)</string>
+    <string name="modal_review_publish_cta">Publish Review</string>
 </resources>

@@ -38,21 +38,23 @@ class ServixNetworkModule(
     private val authHeaderInterceptor = Interceptor { chain ->
         val original = chain.request()
         val path = original.url.encodedPath
-        val isPublicAuthRoute = path.endsWith("/auth/login") ||
+        val isPublicOrSecurityAuthRoute = path.endsWith("/auth/login") ||
             path.endsWith("/auth/register") ||
             path.endsWith("/auth/refresh") ||
             path.endsWith("/auth/forgot-password") ||
-            path.endsWith("/auth/verification-method")
+            path.endsWith("/auth/verification-method") ||
+            path.contains("/auth/security/")
 
         val token = tokenStore.getAccessToken()
         val builder = original.newBuilder()
+            .header("X-Servix-Client", "ng.name.servix.app")
 
-        // Fastify rejects empty POST bodies if Content-Type: application/json is set
+        // Fastify rejects empty POST bodies if Content-Type: application/json is set (authApi.js:46-48)
         if (original.body != null && original.body!!.contentLength() == 0L) {
             builder.removeHeader("Content-Type")
         }
 
-        if (!token.isNullOrBlank() && !isPublicAuthRoute) {
+        if (!token.isNullOrBlank() && !isPublicOrSecurityAuthRoute) {
             builder.header("Authorization", "Bearer $token")
         }
 
@@ -62,11 +64,12 @@ class ServixNetworkModule(
     private val tokenAuthenticator = object : Authenticator {
         override fun authenticate(route: Route?, response: Response): Request? {
             val path = response.request.url.encodedPath
-            // Do not attempt refresh on login/register/refresh/logout endpoints or if we already retried
+            // Do not attempt refresh on login/register/refresh/logout/security endpoints or if we already retried
             if (path.endsWith("/auth/login") ||
                 path.endsWith("/auth/register") ||
                 path.endsWith("/auth/refresh") ||
                 path.endsWith("/auth/logout") ||
+                path.contains("/auth/security/") ||
                 responseCount(response) >= 2
             ) {
                 return null
@@ -98,7 +101,7 @@ class ServixNetworkModule(
     }
 
     /**
-     * Single-flight synchronous token refresh using the httpOnly refresh cookie.
+     * Single-flight synchronous token refresh using the httpOnly refresh cookie (POST /auth/refresh).
      * Returns AuthSessionResponse on 200, or null if refresh failed.
      * Only clears session and fires [onSessionExpired] when the server explicitly rejects the session (401/403),
      * preserving offline state during airplane mode / transient network failures.
@@ -112,6 +115,7 @@ class ServixNetworkModule(
                 .url("$baseUrl/auth/refresh")
                 .post(emptyBody)
                 .header("Accept", "application/json")
+                .header("X-Servix-Client", "ng.name.servix.app")
                 .build()
 
             return try {

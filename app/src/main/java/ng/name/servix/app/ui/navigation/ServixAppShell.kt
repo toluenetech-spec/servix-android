@@ -1,11 +1,8 @@
 package ng.name.servix.app.ui.navigation
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -31,7 +27,6 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,32 +39,51 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.UserDto
+import ng.name.servix.app.data.repository.BookingRepository
+import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.SessionState
-import ng.name.servix.app.ui.auth.AuthUiState
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.auth.ForgotPasswordScreen
 import ng.name.servix.app.ui.auth.LoginScreen
+import ng.name.servix.app.ui.auth.PostAuthDestination
 import ng.name.servix.app.ui.auth.RegisterScreen
+import ng.name.servix.app.ui.auth.SecurityCheckScreen
 import ng.name.servix.app.ui.auth.VerifyEmailScreen
 import ng.name.servix.app.ui.auth.WelcomeScreen
+import ng.name.servix.app.ui.bookings.BookingDetailScreen
+import ng.name.servix.app.ui.bookings.BookingDetailViewModel
+import ng.name.servix.app.ui.bookings.BookingsScreen
+import ng.name.servix.app.ui.bookings.BookingsViewModel
+import ng.name.servix.app.ui.catalogue.HomeScreen
+import ng.name.servix.app.ui.catalogue.HomeViewModel
+import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
+import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
+import ng.name.servix.app.ui.catalogue.SearchScreen
+import ng.name.servix.app.ui.catalogue.SearchViewModel
+import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
+import ng.name.servix.app.ui.catalogue.ServiceDetailViewModel
 import ng.name.servix.app.ui.components.OfflineBanner
 import ng.name.servix.app.ui.components.ProfessionalToolsWebCard
 import ng.name.servix.app.ui.components.ServixBadge
@@ -80,7 +94,6 @@ import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
-import ng.name.servix.app.ui.theme.Coral
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
@@ -138,6 +151,8 @@ private val BOTTOM_TABS = listOf(
 @Composable
 fun ServixAppShell(
     authViewModel: AuthViewModel,
+    catalogueRepository: CatalogueRepository,
+    bookingRepository: BookingRepository,
     isOnline: Boolean,
 ) {
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
@@ -146,15 +161,36 @@ fun ServixAppShell(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
 
+    // Pending destination to return to when a guest signs in from the Booking Sheet
+    var pendingPostAuthRoute by remember { mutableStateOf<ServixRoute?>(null) }
+
+    val homeViewModel: HomeViewModel = viewModel(
+        factory = HomeViewModel.factory(catalogueRepository)
+    )
+    val searchViewModel: SearchViewModel = viewModel(
+        factory = SearchViewModel.factory(catalogueRepository)
+    )
+    val bookingsViewModel: BookingsViewModel = viewModel(
+        factory = BookingsViewModel.factory(bookingRepository)
+    )
+
+    fun navigateAfterAuthComplete() {
+        val target = pendingPostAuthRoute ?: ServixRoute.Home
+        pendingPostAuthRoute = null
+        navController.navigate(target) {
+            popUpTo(0) { inclusive = true }
+        }
+    }
+
     val isAuthDestination = currentDest?.let { dest ->
         dest.hasRoute(ServixRoute.Welcome::class) ||
             dest.hasRoute(ServixRoute.Login::class) ||
             dest.hasRoute(ServixRoute.Register::class) ||
             dest.hasRoute(ServixRoute.VerifyEmail::class) ||
+            dest.hasRoute(ServixRoute.SecurityCheck::class) ||
             dest.hasRoute(ServixRoute.ForgotPassword::class)
     } ?: false
 
-    // When session initializes, route unauthenticated users to Welcome and authenticated users to Home
     if (sessionState is SessionState.Initializing) {
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
@@ -176,9 +212,9 @@ fun ServixAppShell(
         return
     }
 
-    val startRoute: ServixRoute = when (sessionState) {
-        is SessionState.Authenticated -> ServixRoute.Home
-        else -> ServixRoute.Welcome
+    val startRoute: ServixRoute = when (val state = sessionState) {
+        is SessionState.Authenticated -> if (!state.user.emailVerified) ServixRoute.VerifyEmail else ServixRoute.Home
+        else -> ServixRoute.Home
     }
 
     Scaffold(
@@ -197,11 +233,25 @@ fun ServixAppShell(
                         tonalElevation = 0.dp,
                     ) {
                         BOTTOM_TABS.forEach { tab ->
-                            val selected = currentDest?.hasRoute(tab.route::class) == true
+                            val selected = when (tab.route) {
+                                is ServixRoute.Search -> {
+                                    currentDest?.hasRoute(ServixRoute.Search::class) == true ||
+                                        currentDest?.hasRoute(ServixRoute.ProfessionalProfile::class) == true ||
+                                        currentDest?.hasRoute(ServixRoute.ServiceDetail::class) == true
+                                }
+                                is ServixRoute.Bookings -> {
+                                    currentDest?.hasRoute(ServixRoute.Bookings::class) == true ||
+                                        currentDest?.hasRoute(ServixRoute.BookingDetail::class) == true
+                                }
+                                else -> currentDest?.hasRoute(tab.route::class) == true
+                            }
                             val label = stringResource(tab.labelRes)
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
+                                    if (tab.route is ServixRoute.Search && currentDest?.hasRoute(ServixRoute.Search::class) != true) {
+                                        searchViewModel.ensureInitialized()
+                                    }
                                     navController.navigate(tab.route) {
                                         popUpTo(navController.graph.findStartDestination().id) {
                                             saveState = true
@@ -263,10 +313,19 @@ fun ServixAppShell(
                     onEmailChange = authViewModel::updateLoginEmail,
                     onPasswordChange = authViewModel::updateLoginPassword,
                     onSubmit = {
-                        authViewModel.submitLogin { needsVerification ->
-                            val target = if (needsVerification) ServixRoute.VerifyEmail else ServixRoute.Home
-                            navController.navigate(target) {
-                                popUpTo(0) { inclusive = true }
+                        authViewModel.submitLogin { dest ->
+                            when (dest) {
+                                PostAuthDestination.SECURITY_CHECK -> {
+                                    navController.navigate(ServixRoute.SecurityCheck) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                                PostAuthDestination.VERIFY_EMAIL -> {
+                                    navController.navigate(ServixRoute.VerifyEmail) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                                PostAuthDestination.HOME -> navigateAfterAuthComplete()
                             }
                         }
                     },
@@ -281,7 +340,7 @@ fun ServixAppShell(
                     },
                     onBackClick = {
                         if (!navController.popBackStack()) {
-                            navController.navigate(ServixRoute.Welcome) {
+                            navController.navigate(ServixRoute.Home) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
@@ -297,9 +356,19 @@ fun ServixAppShell(
                     onPasswordChange = authViewModel::updateRegisterPassword,
                     onConfirmPasswordChange = authViewModel::updateRegisterConfirmPassword,
                     onSubmit = {
-                        authViewModel.submitRegister {
-                            navController.navigate(ServixRoute.VerifyEmail) {
-                                popUpTo(0) { inclusive = true }
+                        authViewModel.submitRegister { dest ->
+                            when (dest) {
+                                PostAuthDestination.SECURITY_CHECK -> {
+                                    navController.navigate(ServixRoute.SecurityCheck) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                                PostAuthDestination.VERIFY_EMAIL -> {
+                                    navController.navigate(ServixRoute.VerifyEmail) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                                PostAuthDestination.HOME -> navigateAfterAuthComplete()
                             }
                         }
                     },
@@ -310,7 +379,7 @@ fun ServixAppShell(
                     },
                     onBackClick = {
                         if (!navController.popBackStack()) {
-                            navController.navigate(ServixRoute.Welcome) {
+                            navController.navigate(ServixRoute.Home) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
@@ -322,21 +391,53 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 VerifyEmailScreen(
                     userEmail = user?.email.orEmpty(),
-                    isAlreadyVerified = user?.isEmailVerified == true,
+                    isAlreadyVerified = user?.emailVerified == true,
                     uiState = authUiState,
                     onLoadMethod = authViewModel::loadVerificationMethod,
                     onOtpCodeChange = authViewModel::updateOtpCode,
                     onSubmitOtp = authViewModel::submitOtpCode,
                     onResend = authViewModel::resendVerificationEmail,
-                    onCheckVerifiedStatus = authViewModel::checkEmailVerifiedStatus,
-                    onContinueToHome = {
-                        navController.navigate(ServixRoute.Home) {
-                            popUpTo(0) { inclusive = true }
+                    onCheckVerifiedStatus = {
+                        authViewModel.checkEmailVerifiedStatus {
+                            navigateAfterAuthComplete()
                         }
                     },
+                    onContinueToHome = {
+                        navigateAfterAuthComplete()
+                    },
                     onSignOut = {
+                        pendingPostAuthRoute = null
                         authViewModel.logout {
-                            navController.navigate(ServixRoute.Welcome) {
+                            navController.navigate(ServixRoute.Home) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+                )
+            }
+
+            composable<ServixRoute.SecurityCheck> {
+                SecurityCheckScreen(
+                    uiState = authUiState,
+                    onLoadSecurityCheck = authViewModel::loadSecurityCheck,
+                    onCodeChange = authViewModel::updateSecurityCode,
+                    onSubmitCode = authViewModel::submitSecurityCode,
+                    onResendEmailCode = authViewModel::resendSecurityEmailCode,
+                    onBeginTotpSetup = authViewModel::beginSecurityTotpSetup,
+                    onClearTotpSetup = authViewModel::clearSecurityTotpSetup,
+                    onToggleUseRecovery = authViewModel::toggleSecurityUseRecovery,
+                    onSavedRecoveryChange = authViewModel::updateSecuritySavedRecovery,
+                    onFinishSecurity = {
+                        authViewModel.finishSecurityFlow {
+                            navigateAfterAuthComplete()
+                        }
+                    },
+                    onNewPasswordChange = authViewModel::updateSecurityNewPassword,
+                    onConfirmPasswordChange = authViewModel::updateSecurityConfirmPassword,
+                    onSubmitResetPassword = authViewModel::submitSecurityResetPassword,
+                    onCancelAndReturnLogin = {
+                        authViewModel.cancelSecurityFlow {
+                            navController.navigate(ServixRoute.Login) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
@@ -348,7 +449,15 @@ fun ServixAppShell(
                 ForgotPasswordScreen(
                     uiState = authUiState,
                     onEmailChange = authViewModel::updateForgotEmail,
-                    onSubmit = authViewModel::submitForgotPassword,
+                    onSubmit = {
+                        authViewModel.submitForgotPassword(
+                            onSecurityCheck = {
+                                navController.navigate(ServixRoute.SecurityCheck) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    },
                     onBackToSignIn = {
                         if (!navController.popBackStack()) {
                             navController.navigate(ServixRoute.Login) {
@@ -361,41 +470,302 @@ fun ServixAppShell(
 
             composable<ServixRoute.Home> {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                Stage1HomeTab(
+                val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(user?.id, isOnline) {
+                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
+                }
+
+                HomeScreen(
                     user = user,
-                    onSignInClick = { navController.navigate(ServixRoute.Login) },
-                    onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
-                    onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
-                    onExploreSearchClick = {
+                    uiState = homeUiState,
+                    onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
+                    onSearchSubmit = { query, categorySlug ->
+                        searchViewModel.applyExternalNavigation(query = query, categorySlug = categorySlug)
                         navController.navigate(ServixRoute.Search) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                    onSignOutClick = {
-                        authViewModel.logout {
-                            navController.navigate(ServixRoute.Welcome) {
-                                popUpTo(0) { inclusive = true }
+                    onOpenProfessional = { slug ->
+                        navController.navigate(ServixRoute.ProfessionalProfile(slug = slug))
+                    },
+                    onOpenBookingsTab = {
+                        val nextId = homeUiState.nextBooking?.id
+                        if (!nextId.isNullOrBlank()) {
+                            navController.navigate(ServixRoute.BookingDetail(id = nextId))
+                        } else {
+                            navController.navigate(ServixRoute.Bookings) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
-                    }
+                    },
+                    onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
+                    onSignInClick = { navController.navigate(ServixRoute.Login) },
+                    onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                 )
             }
 
             composable<ServixRoute.Search> {
-                Stage1TabPlaceholder(
-                    eyebrow = "CATALOGUE",
-                    title = "Find the right professional",
-                    description = "Browse verified developers, designers, photographers, marketers, writers and consultants across Nigeria.",
+                val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(Unit) {
+                    searchViewModel.ensureInitialized()
+                }
+
+                SearchScreen(
+                    uiState = searchUiState,
+                    categoryNameFor = searchViewModel::categoryNameFor,
+                    onQueryChange = searchViewModel::updateQuery,
+                    onQuerySubmit = searchViewModel::submitQueryImmediate,
+                    onModeChange = searchViewModel::setMode,
+                    onCategorySelect = searchViewModel::setCategory,
+                    onLocationChange = searchViewModel::setLocation,
+                    onRatingSelect = searchViewModel::setRatingFilter,
+                    onPriceSelect = searchViewModel::setPriceFilter,
+                    onAvailabilitySelect = searchViewModel::setAvailabilityFilter,
+                    onSortSelect = searchViewModel::setSort,
+                    onClearFilters = searchViewModel::clearFilters,
+                    onRefresh = searchViewModel::refresh,
+                    onLoadNextPage = searchViewModel::loadNextPage,
+                    onOpenProfessional = { slug ->
+                        navController.navigate(ServixRoute.ProfessionalProfile(slug = slug))
+                    },
+                    onOpenService = { slug ->
+                        navController.navigate(ServixRoute.ServiceDetail(slug = slug))
+                    },
+                )
+            }
+
+            composable<ServixRoute.ProfessionalProfile> { backStackEntry ->
+                val route = backStackEntry.toRoute<ServixRoute.ProfessionalProfile>()
+                val user = (sessionState as? SessionState.Authenticated)?.user
+                val profileViewModel: ProfessionalProfileViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = ProfessionalProfileViewModel.factory(catalogueRepository),
+                )
+                val profileUiState by profileViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(route.slug, user?.id) {
+                    profileViewModel.loadProfile(
+                        slug = route.slug,
+                        isAuthenticated = user != null,
+                        forceRefresh = false,
+                    )
+                }
+
+                ProfessionalProfileScreen(
+                    user = user,
+                    uiState = profileUiState,
+                    categoryNameFor = profileViewModel::categoryNameFor,
+                    onBackClick = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(ServixRoute.Search)
+                        }
+                    },
+                    onRetry = {
+                        profileViewModel.loadProfile(
+                            slug = route.slug,
+                            isAuthenticated = user != null,
+                            forceRefresh = true,
+                        )
+                    },
+                    onBrowseProfessionalsClick = {
+                        navController.navigate(ServixRoute.Search) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onToggleSave = profileViewModel::toggleSaveProfessional,
+                    onSignInClick = { navController.navigate(ServixRoute.Login) },
+                    onOpenService = { serviceSlug ->
+                        navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug))
+                    },
+                )
+            }
+
+            composable<ServixRoute.ServiceDetail> { backStackEntry ->
+                val route = backStackEntry.toRoute<ServixRoute.ServiceDetail>()
+                val user = (sessionState as? SessionState.Authenticated)?.user
+                val serviceViewModel: ServiceDetailViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = ServiceDetailViewModel.factory(catalogueRepository, bookingRepository),
+                )
+                val serviceUiState by serviceViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(route.slug, route.rebookedFrom, route.initialNotes) {
+                    serviceViewModel.loadService(
+                        slug = route.slug,
+                        rebookedFrom = route.rebookedFrom,
+                        initialNotes = route.initialNotes,
+                        forceRefresh = false,
+                    )
+                }
+
+                ServiceDetailScreen(
+                    user = user,
+                    uiState = serviceUiState,
+                    openBookingSheetInitially = route.openBookingSheet,
+                    categoryNameFor = serviceViewModel::categoryNameFor,
+                    onSelectSlot = serviceViewModel::selectSlot,
+                    onNotesChange = serviceViewModel::updateBookingNotes,
+                    onSubmitBookAndPay = serviceViewModel::submitBookAndPay,
+                    onBackClick = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(ServixRoute.Search)
+                        }
+                    },
+                    onRetry = {
+                        serviceViewModel.loadService(
+                            slug = route.slug,
+                            rebookedFrom = route.rebookedFrom,
+                            initialNotes = route.initialNotes,
+                            forceRefresh = true,
+                        )
+                    },
+                    onBrowseServicesClick = {
+                        navController.navigate(ServixRoute.Search) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenProfessional = { proSlug ->
+                        navController.navigate(ServixRoute.ProfessionalProfile(slug = proSlug))
+                    },
+                    onSignInToBookClick = {
+                        pendingPostAuthRoute = ServixRoute.ServiceDetail(
+                            slug = route.slug,
+                            rebookedFrom = serviceUiState.rebookedFrom,
+                            initialNotes = serviceUiState.bookingNotes,
+                            openBookingSheet = true,
+                        )
+                        navController.navigate(ServixRoute.Login)
+                    },
+                    onCreateAccountToBookClick = {
+                        pendingPostAuthRoute = ServixRoute.ServiceDetail(
+                            slug = route.slug,
+                            rebookedFrom = serviceUiState.rebookedFrom,
+                            initialNotes = serviceUiState.bookingNotes,
+                            openBookingSheet = true,
+                        )
+                        navController.navigate(ServixRoute.Register)
+                    },
+                    onNavigateToBookingAfterPay = { bookingId ->
+                        bookingsViewModel.loadBookings(forceRefresh = true)
+                        homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
+                        navController.navigate(
+                            ServixRoute.BookingDetail(
+                                id = bookingId,
+                                pollingAfterPay = true,
+                            )
+                        )
+                    },
                 )
             }
 
             composable<ServixRoute.Bookings> {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                Stage1BookingsPlaceholder(
+                val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(user?.id) {
+                    if (user != null) {
+                        bookingsViewModel.loadBookings(forceRefresh = false)
+                    }
+                }
+
+                BookingsScreen(
                     user = user,
+                    uiState = bookingsUiState,
+                    onTabSelect = bookingsViewModel::selectTab,
+                    onRefresh = { bookingsViewModel.loadBookings(forceRefresh = true) },
+                    onExploreServicesClick = {
+                        searchViewModel.setMode(ng.name.servix.app.ui.catalogue.SearchMode.SERVICES)
+                        navController.navigate(ServixRoute.Search) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
+                    onOpenBooking = { bookingId ->
+                        navController.navigate(ServixRoute.BookingDetail(id = bookingId))
+                    },
+                )
+            }
+
+            composable<ServixRoute.BookingDetail> { backStackEntry ->
+                val route = backStackEntry.toRoute<ServixRoute.BookingDetail>()
+                val user = (sessionState as? SessionState.Authenticated)?.user
+                val detailViewModel: BookingDetailViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = BookingDetailViewModel.factory(bookingRepository),
+                )
+                val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(route.id) {
+                    detailViewModel.loadBooking(
+                        id = route.id,
+                        startPollingIfPending = route.pollingAfterPay,
+                        forceRefresh = false,
+                    )
+                }
+
+                // Keep Bookings list & Home nextBooking synced when detail status changes
+                LaunchedEffect(detailUiState.booking?.status, detailUiState.booking?.hasReview) {
+                    if (detailUiState.booking != null) {
+                        bookingsViewModel.loadBookings(forceRefresh = true)
+                        homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
+                    }
+                }
+
+                BookingDetailScreen(
+                    uiState = detailUiState,
+                    pollingAfterPay = route.pollingAfterPay,
+                    onResumeCheck = detailViewModel::onScreenResumed,
+                    onBackClick = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(ServixRoute.Bookings)
+                        }
+                    },
+                    onRetry = {
+                        detailViewModel.loadBooking(
+                            id = route.id,
+                            startPollingIfPending = route.pollingAfterPay,
+                            forceRefresh = true,
+                        )
+                    },
+                    onRefreshPaymentStatus = {
+                        detailViewModel.startPaymentPolling(route.id)
+                    },
+                    onPayClick = { onOpenUrl ->
+                        detailViewModel.initiatePayNow(onOpenUrl)
+                    },
+                    onOpenModal = detailViewModel::openModal,
+                    onCloseModal = detailViewModel::closeModal,
+                    onSubmitCancel = detailViewModel::submitCancel,
+                    onSubmitConfirmCompletion = detailViewModel::submitConfirmCompletion,
+                    onSubmitDispute = detailViewModel::submitDispute,
+                    onSubmitReview = detailViewModel::submitReview,
+                    onStartBookAgain = detailViewModel::startBookAgain,
+                    onContinueRebook = { serviceSlug, rebookedFromId, initialNotes ->
+                        navController.navigate(
+                            ServixRoute.ServiceDetail(
+                                slug = serviceSlug,
+                                rebookedFrom = rebookedFromId,
+                                initialNotes = initialNotes.takeIf { it.isNotBlank() },
+                                openBookingSheet = true,
+                            )
+                        )
+                    },
+                    onOpenProfessional = { proSlug ->
+                        navController.navigate(ServixRoute.ProfessionalProfile(slug = proSlug))
+                    },
+                    onOpenService = { serviceSlug ->
+                        navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug))
+                    },
                 )
             }
 
@@ -416,257 +786,12 @@ fun ServixAppShell(
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
                     onSignOutClick = {
                         authViewModel.logout {
-                            navController.navigate(ServixRoute.Welcome) {
+                            navController.navigate(ServixRoute.Home) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
                     }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Stage1HomeTab(
-    user: UserDto?,
-    onSignInClick: () -> Unit,
-    onCreateAccountClick: () -> Unit,
-    onVerifyEmailClick: () -> Unit,
-    onExploreSearchClick: () -> Unit,
-    onSignOutClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ServixLogoMark()
-            if (user != null) {
-                ServixBadge(
-                    text = user.role.uppercase(),
-                    containerColor = SoftSand,
-                    contentColor = DeepForest,
-                )
-            }
-        }
-
-        if (user != null) {
-            Text(
-                text = "Welcome back, ${user.firstName}.",
-                style = MaterialTheme.typography.headlineMedium,
-                color = DeepForest,
-                modifier = Modifier.testTag("home_greeting_text"),
-            )
-
-            if (!user.isEmailVerified) {
-                ServixCard(
-                    containerColor = SoftSand,
-                    contentPadding = PaddingValues(16.dp),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = stringResource(R.string.verify_email_banner_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Charcoal,
-                        )
-                        ServixPrimaryButton(
-                            text = stringResource(R.string.verify_email_cta),
-                            onClick = onVerifyEmailClick,
-                            testTag = "home_verify_email_button",
-                        )
-                    }
-                }
-            }
-
-            ProfessionalToolsWebCard(role = user.role)
-        }
-
-        // Hero section matching HomePage.jsx
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = DeepForest,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.hero_eyebrow).uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = WarmIvory.copy(alpha = 0.75f),
-                )
-                Text(
-                    text = stringResource(R.string.tagline),
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = WarmIvory,
-                )
-                Text(
-                    text = stringResource(R.string.hero_lead),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = WarmIvory.copy(alpha = 0.88f),
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                ServixSecondaryButton(
-                    text = "Explore Services",
-                    onClick = onExploreSearchClick,
-                    testTag = "home_explore_services_button",
-                )
-            }
-        }
-
-        if (user == null) {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Sign in to book and track services",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Charcoal,
-                    )
-                    Text(
-                        text = stringResource(R.string.escrow_copy),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MutedGray,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ServixPrimaryButton(
-                            text = stringResource(R.string.sign_in),
-                            onClick = onSignInClick,
-                            modifier = Modifier.weight(1f),
-                            testTag = "home_sign_in_button",
-                        )
-                        ServixSecondaryButton(
-                            text = stringResource(R.string.create_account),
-                            onClick = onCreateAccountClick,
-                            modifier = Modifier.weight(1f),
-                            testTag = "home_create_account_button",
-                        )
-                    }
-                }
-            }
-        } else {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = user.fullName.ifBlank { user.email },
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Charcoal,
-                            )
-                            Text(
-                                text = user.email,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedGray,
-                            )
-                        }
-                        ServixBadge(
-                            text = if (user.isEmailVerified) "Verified" else "Pending verification",
-                            containerColor = if (user.isEmailVerified) ForestGreen.copy(alpha = 0.14f) else Coral.copy(alpha = 0.15f),
-                            contentColor = if (user.isEmailVerified) DeepForest else Charcoal,
-                        )
-                    }
-                    HorizontalDivider(color = SoftSand)
-                    ServixSecondaryButton(
-                        text = stringResource(R.string.sign_out),
-                        onClick = onSignOutClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "home_sign_out_button",
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Stage1TabPlaceholder(
-    eyebrow: String,
-    title: String,
-    description: String,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = eyebrow,
-            style = MaterialTheme.typography.labelSmall,
-            color = ForestGreen,
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = DeepForest,
-        )
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Stage1BookingsPlaceholder(
-    user: UserDto?,
-    onSignInClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = "YOUR ACCOUNT",
-            style = MaterialTheme.typography.labelSmall,
-            color = ForestGreen,
-        )
-        Text(
-            text = "My Bookings",
-            style = MaterialTheme.typography.headlineMedium,
-            color = DeepForest,
-        )
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = if (user == null) "Sign in to see your bookings." else "No bookings loaded yet.",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Charcoal,
-                )
-                Text(
-                    text = stringResource(R.string.escrow_copy),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-                if (user == null) {
-                    ServixPrimaryButton(
-                        text = stringResource(R.string.sign_in),
-                        onClick = onSignInClick,
-                        testTag = "bookings_sign_in_button",
-                    )
-                }
             }
         }
     }
@@ -813,7 +938,7 @@ private fun Stage1AccountTab(
                         )
                     }
 
-                    if (!user.isEmailVerified) {
+                    if (!user.emailVerified) {
                         HorizontalDivider(color = SoftSand)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -846,7 +971,6 @@ private fun Stage1AccountTab(
             )
         }
 
-        // Legal & About card
         ServixCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(

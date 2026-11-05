@@ -299,6 +299,7 @@ fun ServixTextField(
 fun ServixCard(
     modifier: Modifier = Modifier,
     containerColor: Color = PureWhite,
+    borderColor: Color = BorderSand,
     contentPadding: PaddingValues = PaddingValues(20.dp),
     content: @Composable () -> Unit,
 ) {
@@ -306,7 +307,7 @@ fun ServixCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = BorderStroke(1.dp, BorderSand),
+        border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Box(modifier = Modifier.padding(contentPadding)) {

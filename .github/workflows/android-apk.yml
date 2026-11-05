@@ -1,0 +1,78 @@
+name: Build test APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Restore test signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: servix-debug-keystore-v1
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Name the APK
+        id: apk
+        shell: bash
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+          NAME="servix-${VERSION}-build${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.name }}
+
+      - name: Publish GitHub pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build-${{ github.run_number }}
+          name: Servix test build ${{ github.run_number }} (v${{ steps.apk.outputs.version }})
+          prerelease: true
+          files: ${{ steps.apk.outputs.name }}
+          body: |
+            Test build of the Servix Android app from commit ${{ github.sha }}.
+
+            Install: download the .apk on your phone, open it, allow "Install unknown apps" if asked.
+            If Android says "App not installed" over an older copy, uninstall the old one first.
+
+            Talks to the live API at https://api.servix.name.ng (Paystack TEST mode — no real money).
+            Debug-signed test build, not a Play Store release.

@@ -36,6 +36,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     ServixAppShell(
                         authViewModel = authViewModel,
+                        catalogueRepository = container.catalogueRepository,
+                        bookingRepository = container.bookingRepository,
                         isOnline = isOnline,
                     )
                 }

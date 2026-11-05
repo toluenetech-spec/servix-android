@@ -5,15 +5,25 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import ng.name.servix.app.data.local.TokenStore
 import ng.name.servix.app.data.model.ForgotPasswordRequest
+import ng.name.servix.app.data.model.ForgotPasswordResponse
 import ng.name.servix.app.data.model.LoginRequest
 import ng.name.servix.app.data.model.RegisterRequest
 import ng.name.servix.app.data.model.ResendVerificationResponse
+import ng.name.servix.app.data.model.SecurityCodeRequest
+import ng.name.servix.app.data.model.SecurityConfigResponse
+import ng.name.servix.app.data.model.SecurityFinishRequest
+import ng.name.servix.app.data.model.SecurityFlowState
+import ng.name.servix.app.data.model.SecurityResetPasswordRequest
+import ng.name.servix.app.data.model.SecurityTotpSetupResponse
 import ng.name.servix.app.data.model.ServixApiException
 import ng.name.servix.app.data.model.UserDto
 import ng.name.servix.app.data.model.VerifyEmailCodeRequest
-import ng.name.servix.app.data.model.VerifyEmailTokenRequest
 import ng.name.servix.app.data.network.ApiErrorParser
 import ng.name.servix.app.data.network.PersistentCookieJar
 import ng.name.servix.app.data.network.ServixApiService
@@ -23,6 +33,11 @@ sealed interface SessionState {
     data object Initializing : SessionState
     data object Unauthenticated : SessionState
     data class Authenticated(val user: UserDto) : SessionState
+}
+
+sealed interface AuthOutcome {
+    data class Session(val user: UserDto) : AuthOutcome
+    data class SecurityRequired(val security: SecurityFlowState) : AuthOutcome
 }
 
 class AuthRepository(
@@ -56,14 +71,6 @@ class AuthRepository(
         _sessionState.value = SessionState.Unauthenticated
     }
 
-    /**
-     * Restores the user's session on app launch:
-     * 1. If we have a saved accessToken or refresh cookie, call GET /me (which automatically triggers
-     *    POST /auth/refresh via the OkHttp Authenticator on 401).
-     * 2. If we only have a refresh cookie and no access token, call executeSyncRefresh() first.
-     * 3. If offline (airplane mode) and we have a cached user + token, keep the user signed in locally
-     *    without crashing.
-     */
     suspend fun restoreSession(): Result<UserDto?> = withContext(Dispatchers.IO) {
         val existingToken = tokenStore.getAccessToken()
         val cachedUser = tokenStore.getCachedUser()
@@ -74,7 +81,6 @@ class AuthRepository(
             return@withContext Result.success(null)
         }
 
-        // Optimistically expose cached user if available while verifying with server
         if (cachedUser != null && !existingToken.isNullOrBlank()) {
             _sessionState.value = SessionState.Authenticated(cachedUser)
         }
@@ -97,7 +103,6 @@ class AuthRepository(
         } catch (t: Throwable) {
             val ex = ApiErrorParser.toServixException(t)
             if (ex.isNetworkError && cachedUser != null) {
-                // Airplane mode / offline: preserve cached user session gracefully
                 _sessionState.value = SessionState.Authenticated(cachedUser)
                 Result.success(cachedUser)
             } else if (ex.status == 401 || ex.status == 403) {
@@ -116,7 +121,7 @@ class AuthRepository(
         }
     }
 
-    suspend fun register(fullName: String, email: String, password: String): Result<UserDto> =
+    suspend fun register(fullName: String, email: String, password: String): Result<AuthOutcome> =
         withContext(Dispatchers.IO) {
             try {
                 val response = api.register(
@@ -126,24 +131,26 @@ class AuthRepository(
                         password = password,
                     )
                 )
+                tokenStore.setAccessToken(response.accessToken)
+                if (response.security != null) {
+                    _sessionState.value = SessionState.Unauthenticated
+                    return@withContext Result.success(AuthOutcome.SecurityRequired(response.security))
+                }
                 val user = response.user
                     ?: throw ServixApiException(
-                        status = 400,
-                        code = "SECURITY_REQUIRED",
-                        message = "Additional security verification is required on www.servix.name.ng.",
+                        status = 500,
+                        code = "INVALID_RESPONSE",
+                        message = "We could not finish creating your account.",
                     )
-                if (!response.accessToken.isNullOrBlank()) {
-                    tokenStore.setAccessToken(response.accessToken)
-                }
                 tokenStore.setCachedUser(user)
                 _sessionState.value = SessionState.Authenticated(user)
-                Result.success(user)
+                Result.success(AuthOutcome.Session(user))
             } catch (t: Throwable) {
                 Result.failure(ApiErrorParser.toServixException(t))
             }
         }
 
-    suspend fun login(email: String, password: String): Result<UserDto> =
+    suspend fun login(email: String, password: String): Result<AuthOutcome> =
         withContext(Dispatchers.IO) {
             try {
                 val response = api.login(
@@ -152,18 +159,20 @@ class AuthRepository(
                         password = password,
                     )
                 )
+                tokenStore.setAccessToken(response.accessToken)
+                if (response.security != null) {
+                    _sessionState.value = SessionState.Unauthenticated
+                    return@withContext Result.success(AuthOutcome.SecurityRequired(response.security))
+                }
                 val user = response.user
                     ?: throw ServixApiException(
-                        status = 400,
-                        code = "SECURITY_REQUIRED",
-                        message = "Additional security verification is required on www.servix.name.ng.",
+                        status = 500,
+                        code = "INVALID_RESPONSE",
+                        message = "Sign in is temporarily unavailable. Please try again.",
                     )
-                if (!response.accessToken.isNullOrBlank()) {
-                    tokenStore.setAccessToken(response.accessToken)
-                }
                 tokenStore.setCachedUser(user)
                 _sessionState.value = SessionState.Authenticated(user)
-                Result.success(user)
+                Result.success(AuthOutcome.Session(user))
             } catch (t: Throwable) {
                 Result.failure(ApiErrorParser.toServixException(t))
             }
@@ -172,8 +181,10 @@ class AuthRepository(
     suspend fun getVerificationMethod(): Result<String> = withContext(Dispatchers.IO) {
         try {
             val response = api.getVerificationMethod()
-            val method = if (response.method == "link") "link" else "otp"
-            Result.success(method)
+            if (response.method != "otp" && response.method != "link") {
+                throw ServixApiException(500, "UNKNOWN_METHOD", "Unknown verification method.")
+            }
+            Result.success(response.method)
         } catch (t: Throwable) {
             val ex = ApiErrorParser.toServixException(t)
             if (ex.status == 404) {
@@ -195,23 +206,11 @@ class AuthRepository(
         }
     }
 
-    suspend fun verifyEmailToken(token: String): Result<UserDto> = withContext(Dispatchers.IO) {
-        try {
-            val response = api.verifyEmailToken(VerifyEmailTokenRequest(token = token.trim()))
-            tokenStore.setCachedUser(response.user)
-            _sessionState.value = SessionState.Authenticated(response.user)
-            Result.success(response.user)
-        } catch (t: Throwable) {
-            Result.failure(ApiErrorParser.toServixException(t))
-        }
-    }
-
     suspend fun resendVerification(): Result<ResendVerificationResponse> =
         withContext(Dispatchers.IO) {
             try {
                 val res = api.resendVerification()
                 if (res.alreadyVerified) {
-                    // Refresh /me so user.emailVerified is up-to-date
                     runCatching { api.getMe() }.getOrNull()?.user?.let {
                         tokenStore.setCachedUser(it)
                         _sessionState.value = SessionState.Authenticated(it)
@@ -223,10 +222,10 @@ class AuthRepository(
             }
         }
 
-    suspend fun forgotPassword(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun forgotPassword(email: String): Result<ForgotPasswordResponse> = withContext(Dispatchers.IO) {
         try {
-            api.forgotPassword(ForgotPasswordRequest(email = email.trim().lowercase()))
-            Result.success(Unit)
+            val response = api.forgotPassword(ForgotPasswordRequest(email = email.trim().lowercase()))
+            Result.success(response)
         } catch (t: Throwable) {
             Result.failure(ApiErrorParser.toServixException(t))
         }
@@ -238,6 +237,120 @@ class AuthRepository(
             tokenStore.setCachedUser(me)
             _sessionState.value = SessionState.Authenticated(me)
             Result.success(me)
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    /* -------- Security / MFA routes (security.ts / securityFlow.ts) -------- */
+
+    suspend fun getSecurityConfig(): Result<SecurityConfigResponse> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.getSecurityConfig())
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityStatus(): Result<SecurityFlowState> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityStatus())
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityEmailVerify(code: String): Result<SecurityFlowState> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityEmailVerify(SecurityCodeRequest(code = code.trim())))
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityEmailResend(): Result<SecurityFlowState> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityEmailResend())
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityTotpSetup(): Result<SecurityTotpSetupResponse> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityTotpSetup())
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityTotpEnroll(code: String): Result<SecurityFlowState> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityTotpEnroll(SecurityCodeRequest(code = code.trim())))
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityTotpVerify(code: String): Result<SecurityFlowState> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityTotpVerify(SecurityCodeRequest(code = code.trim())))
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    /**
+     * Calls POST /auth/security/recovery/codes -> { recoveryCodes: [...] }.
+     */
+    suspend fun securityRecoveryCodes(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.securityRecoveryCodes()
+            Result.success(response.recoveryCodes)
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityRecoveryVerify(code: String): Result<SecurityFlowState> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.securityRecoveryVerify(SecurityCodeRequest(code = code.trim())))
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityFinish(savedRecovery: Boolean? = null): Result<UserDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.securityFinish(SecurityFinishRequest(savedRecovery = savedRecovery))
+            val user = response.user
+                ?: throw ServixApiException(500, "INVALID_RESPONSE", "Could not finish security check.")
+            if (!response.accessToken.isNullOrBlank()) {
+                tokenStore.setAccessToken(response.accessToken)
+            }
+            tokenStore.setCachedUser(user)
+            _sessionState.value = SessionState.Authenticated(user)
+            Result.success(user)
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityResetPassword(password: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            api.securityResetPassword(SecurityResetPasswordRequest(password = password))
+            tokenStore.clear()
+            _sessionState.value = SessionState.Unauthenticated
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    suspend fun securityCancel(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            api.securityCancel()
+            Result.success(Unit)
         } catch (t: Throwable) {
             Result.failure(ApiErrorParser.toServixException(t))
         }

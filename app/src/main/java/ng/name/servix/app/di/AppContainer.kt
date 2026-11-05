@@ -5,6 +5,8 @@ import ng.name.servix.app.data.local.TokenStore
 import ng.name.servix.app.data.network.PersistentCookieJar
 import ng.name.servix.app.data.network.ServixNetworkModule
 import ng.name.servix.app.data.repository.AuthRepository
+import ng.name.servix.app.data.repository.BookingRepository
+import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.util.ConnectivityObserver
 
 class AppContainer(context: Context) {
@@ -32,6 +34,14 @@ class AppContainer(context: Context) {
     ).also {
         authRepository.attachNetworkModule(it)
     }
+
+    val catalogueRepository: CatalogueRepository = CatalogueRepository(
+        apiProvider = { networkModule.apiService }
+    )
+
+    val bookingRepository: BookingRepository = BookingRepository(
+        apiProvider = { networkModule.apiService }
+    )
 
     companion object {
         @Volatile
