@@ -410,13 +410,6 @@ fun ServiceDetailScreen(
 
         // Category, Title, Rating, Location, Duration (ServiceDetailPage.jsx:225-246)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (categoryName.isNotBlank()) {
-                Text(
-                    text = categoryName.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ForestGreen,
-                )
-            }
             Text(
                 text = service.title,
                 style = MaterialTheme.typography.headlineMedium,

@@ -423,7 +423,7 @@ fun DashboardScreen(
                 DashboardActionCard(
                     title = stringResource(R.string.dashboard_card_payments_eyebrow),
                     subtitle = stringResource(R.string.dashboard_card_payments_body),
-                    badgeText = if (paymentCount > 0) "$paymentCount" else uiState.payments?.mode?.uppercase(),
+                    badgeText = if (paymentCount > 0) "$paymentCount" else uiState.payments?.mode?.replaceFirstChar { it.uppercase() },
                     icon = {
                         Icon(
                             imageVector = Icons.Outlined.Payments,
@@ -800,7 +800,7 @@ private fun AccountPaymentsSheetContent(
             )
             payments?.mode?.takeIf { it.isNotBlank() }?.let { mode ->
                 ServixBadge(
-                    text = mode.uppercase(),
+                    text = mode.replaceFirstChar { it.uppercase() },
                     containerColor = SoftSand,
                     contentColor = DeepForest,
                 )
@@ -889,7 +889,7 @@ private fun AccountPaymentsSheetContent(
                                     color = Charcoal,
                                 )
                                 ServixBadge(
-                                    text = rec.status.uppercase(),
+                                    text = rec.status.replaceFirstChar { it.uppercase() },
                                     containerColor = if (rec.status == "succeeded" || rec.status == "paid") {
                                         ForestGreen.copy(alpha = 0.14f)
                                     } else {

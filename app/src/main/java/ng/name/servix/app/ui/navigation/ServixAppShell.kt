@@ -1017,7 +1017,7 @@ private fun Stage1AccountTab(
                             )
                         }
                         ServixBadge(
-                            text = user.role.uppercase(),
+                            text = user.role.replaceFirstChar { it.uppercase() },
                             containerColor = SoftSand,
                             contentColor = DeepForest,
                         )

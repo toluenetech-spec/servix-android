@@ -479,7 +479,7 @@ fun ServiceCardItem(
             ) {
                 if (categoryName.isNotBlank()) {
                     Text(
-                        text = categoryName.uppercase(),
+                        text = categoryName,
                         style = MaterialTheme.typography.labelSmall,
                         color = ForestGreen,
                     )
