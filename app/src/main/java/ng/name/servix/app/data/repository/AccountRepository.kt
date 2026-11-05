@@ -73,6 +73,8 @@ class AccountRepository(
         ApiErrorParser.json.decodeFromJsonElement<AccountPaymentsResponse>(raw)
     }
 
+    suspend fun getDevice() = safeCall { api.getAccountDevice() }
+
     private suspend fun <T> safeCall(block: suspend () -> T): Result<T> =
         withContext(Dispatchers.IO) {
             try {

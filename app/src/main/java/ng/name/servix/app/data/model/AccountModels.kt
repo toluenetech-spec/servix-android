@@ -109,3 +109,14 @@ data class PaymentBookingBriefDto(
     val reference: String = "",
     val serviceTitle: String = "",
 )
+
+// GET /account/device: reference/api-routes/account.ts (API 0.9.4).
+@kotlinx.serialization.Serializable
+data class AccountDeviceDto(
+    val ip: String? = null,
+    val device: String? = null,
+    val os: String? = null,
+    val client: String? = null,
+    val userAgent: String? = null,
+    val seenAt: String? = null,
+)

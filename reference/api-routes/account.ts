@@ -10,6 +10,7 @@ import { ApiError } from '../lib/errors.js';
 import { parseBody } from '../lib/query.js';
 import { accountOverview, ONBOARDING_ACTION } from '../lib/accountOverview.js';
 import { audit } from '../lib/audit.js';
+import { describeDevice, clientAddress } from '../lib/deviceInfo.js';
 export async function accountRoutes(app: FastifyInstance) {
   app.patch('/account/profile', { preHandler: requireAuth, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
     reply.header('Cache-Control', 'no-store');
@@ -36,6 +37,15 @@ export async function accountRoutes(app: FastifyInstance) {
     ]);
     return { method: security?.method ?? null, recoveryCodesRemaining, passkeys };
   });
+  app.get('/account/device', { preHandler: requireAuth }, async (req, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    const userAgent = typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'].slice(0, 300) : '';
+    const device = describeDevice(userAgent);
+    return { ip: clientAddress(req.headers, req.ip), device: device.label, os: device.os,
+             client: device.browser, userAgent, seenAt: new Date().toISOString() };
+  });
+  // describeDevice: "ServixAndroid/<v> (Android <release>; <model>)" → label "Servix app on Android (<model>)",
+  // os "Android", client "Servix app". ip may be null if unparseable.
   app.get('/account/payments', { preHandler: requireAuth }, async (req, reply) => {
     reply.header('Cache-Control', 'no-store'); await accountOverview(req.auth!.sub);
     const records = await prisma.payment.findMany({ where: { booking: { customerId: req.auth!.sub } }, orderBy: { createdAt: 'desc' }, take: 100, include: { booking: { select: { id: true, reference: true, serviceTitle: true } } } });

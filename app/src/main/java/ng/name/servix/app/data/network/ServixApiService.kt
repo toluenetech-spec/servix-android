@@ -50,6 +50,10 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ServixApiService {
+    // reference/api-routes/account.ts: device summary for the current request.
+    @GET("account/device")
+    suspend fun getAccountDevice(): ng.name.servix.app.data.model.AccountDeviceDto
+
     /* -------- Stage 1: Auth & Session -------- */
 
     @POST("auth/register")
