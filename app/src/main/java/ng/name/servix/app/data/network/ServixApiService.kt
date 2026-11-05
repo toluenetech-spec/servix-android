@@ -50,7 +50,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ServixApiService {
-    // reference/api-routes/account.ts: device summary for the current request.
+    // reference/api-routes/account.ts:40-46: device summary for the current request.
     @GET("account/device")
     suspend fun getAccountDevice(): ng.name.servix.app.data.model.AccountDeviceDto
 

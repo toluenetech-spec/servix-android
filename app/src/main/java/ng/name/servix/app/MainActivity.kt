@@ -11,6 +11,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.Coil
+import coil.ImageLoader
+import okhttp3.OkHttpClient
+import ng.name.servix.app.data.network.servixUserAgentInterceptor
 import ng.name.servix.app.di.AppContainer
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.navigation.ServixAppShell
@@ -21,6 +25,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = AppContainer.getInstance(applicationContext)
+        // Images use their own client: never attach account tokens to third-party URLs.
+        Coil.setImageLoader(ImageLoader.Builder(applicationContext)
+            .okHttpClient(OkHttpClient.Builder().addInterceptor(servixUserAgentInterceptor).build())
+            .build())
 
         setContent {
             ServixTheme {

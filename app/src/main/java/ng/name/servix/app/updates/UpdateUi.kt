@@ -11,6 +11,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +39,7 @@ class UpdateUiState(private val context: Context, private val scope: CoroutineSc
     var progress by mutableStateOf<Int?>(null); private set
     var error by mutableStateOf<String?>(null); private set
     private var file: File? = null
+    private var waitingForInstallPermission = false
     val enabled get() = BuildConfig.SELF_UPDATE_CHANNEL == "github"
     fun check(force: Boolean = false) {
         if (!enabled) return
@@ -44,6 +49,17 @@ class UpdateUiState(private val context: Context, private val scope: CoroutineSc
             if (result?.version != previousVersion) file = null
             available = result
             available?.let { if (updates.shouldShow(it.version)) showDialog = true }
+        }
+    }
+    fun onResume() {
+        if (!waitingForInstallPermission) return
+        waitingForInstallPermission = false
+        val apk = file ?: return
+        if (context.packageManager.canRequestPackageInstalls()) {
+            try { updates.install(apk); error = null }
+            catch (e: Exception) { Log.w("ServixUpdate", "Could not open installer", e); error = "Unable to open the installer. Open the download page instead." }
+        } else {
+            error = "Allow installs from Servix, then tap Update again."
         }
     }
     fun dismiss() { showDialog = false }
@@ -61,8 +77,9 @@ class UpdateUiState(private val context: Context, private val scope: CoroutineSc
                 }
                 file = apk
                 downloading = false
+                waitingForInstallPermission = !context.packageManager.canRequestPackageInstalls()
                 updates.install(apk)
-                if (!context.packageManager.canRequestPackageInstalls()) error = "Allow installs from Servix, then tap Update again."
+                if (waitingForInstallPermission) error = "Allow installs from Servix to continue."
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 downloading = false
@@ -79,6 +96,12 @@ fun rememberUpdateUiState(): UpdateUiState {
     val scope = rememberCoroutineScope()
     val state = remember(context, scope) { UpdateUiState(context, scope) }
     LaunchedEffect(state) { state.check() }
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner, state) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) state.onResume() }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
     if (state.showDialog) {
         AlertDialog(
             onDismissRequest = state::dismiss,

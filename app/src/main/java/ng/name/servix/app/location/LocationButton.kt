@@ -86,15 +86,15 @@ fun LocationButton(onCityChosen: (String) -> Unit = {}) {
         message = null
         scope.launch {
             try {
-                val fix = acquireFix(context)
-                if (fix == null) {
-                    message = "Location unavailable. Please try again or enter a city."
-                } else {
-                    val city = nearestCity(fix.latitude, fix.longitude)?.name
-                    if (city == null) {
+                // Only the city name survives this expression; coordinates are never stored.
+                val city = acquireFix(context)?.let { nearestCity(it.latitude, it.longitude)?.name ?: "" }
+                when (city) {
+                    null -> message = "Location unavailable. Please try again or enter a city."
+                    "" -> {
                         context.applicationContext.cityStore.edit { it.remove(cityKey) }
                         message = "Your location isn't covered yet"
-                    } else {
+                    }
+                    else -> {
                         context.applicationContext.cityStore.edit { it[cityKey] = city }
                         onCityChosen(city)
                         message = "Near $city"

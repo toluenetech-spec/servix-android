@@ -15,6 +15,8 @@ class OfflineFeaturesTest {
     @Test fun findsNearestCityAndRejectsOutsideCoverage() {
         assertEquals("Ibadan", nearestCity(7.3775, 3.9470)?.name)
         assertEquals("Lagos", nearestCity(6.4550, 3.3841)?.name)
+        assertEquals("Maiduguri", nearestCity(12.72, 13.151)?.name) // 98.8 km
+        assertNull(nearestCity(12.75, 13.151)) // 102.2 km
         assertNull(nearestCity(0.0, 0.0))
         assertNull(nearestCity(Double.NaN, 3.0))
         assertTrue(nigerianCities.size >= 40)

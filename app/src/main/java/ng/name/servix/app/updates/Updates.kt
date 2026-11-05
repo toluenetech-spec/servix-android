@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
-import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.FileProvider
@@ -23,6 +22,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.data.network.ApiErrorParser
+import ng.name.servix.app.data.network.servixUserAgent
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -30,7 +30,6 @@ private val Context.updateStore by preferencesDataStore(name = "updates")
 private val checked = longPreferencesKey("last_check")
 private val cached = stringPreferencesKey("release_json")
 private val shown = stringPreferencesKey("dialog_version")
-private val appUserAgent = "ServixAndroid/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE}; ${Build.MANUFACTURER} ${Build.MODEL})"
 
 @Serializable
 data class ReleaseAsset(val name: String, val browser_download_url: String, val size: Long = 0)
@@ -72,7 +71,7 @@ class Updates(private val context: Context) {
             if (raw == null) context.updateStore.edit { it[checked] = now; it.remove(cached) }
             val json = raw ?: withContext(Dispatchers.IO) {
                 val request = Request.Builder().url("https://api.github.com/repos/toluenetech-spec/servix-android/releases?per_page=5")
-                    .header("Accept", "application/vnd.github+json").header("User-Agent", appUserAgent).build()
+                    .header("Accept", "application/vnd.github+json").header("User-Agent", servixUserAgent).build()
                 client.newCall(request).execute().use { response ->
                     check(response.isSuccessful) { "GitHub HTTP ${response.code}" }
                     response.body?.string() ?: error("Empty GitHub response")
@@ -97,7 +96,7 @@ class Updates(private val context: Context) {
         if (file.exists()) file.delete()
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(update.asset.browser_download_url))
-            .addRequestHeader("User-Agent", appUserAgent)
+            .addRequestHeader("User-Agent", servixUserAgent)
             .setTitle("Servix v${update.version}")
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, file.name)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)

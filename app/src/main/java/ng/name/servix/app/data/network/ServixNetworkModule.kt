@@ -1,7 +1,6 @@
 package ng.name.servix.app.data.network
 
 import android.content.Context
-import android.os.Build
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.data.local.TokenStore
@@ -28,15 +27,10 @@ class ServixNetworkModule(
 ) {
     private val refreshLock = Any()
 
-    private val userAgent = "ServixAndroid/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE}; ${Build.MANUFACTURER} ${Build.MODEL})"
-    private val userAgentInterceptor = Interceptor { chain ->
-        chain.proceed(chain.request().newBuilder().header("User-Agent", userAgent).removeHeader("Origin").build())
-    }
-
     // Dedicated OkHttp client for calling POST /auth/refresh without triggering the Authenticator recursively
     private val refreshClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
-        .addInterceptor(userAgentInterceptor)
+        .addInterceptor(servixUserAgentInterceptor)
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
@@ -157,7 +151,7 @@ class ServixNetworkModule(
 
     val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
-        .addInterceptor(userAgentInterceptor)
+        .addInterceptor(servixUserAgentInterceptor)
         .addInterceptor(authHeaderInterceptor)
         .authenticator(tokenAuthenticator)
         .apply {

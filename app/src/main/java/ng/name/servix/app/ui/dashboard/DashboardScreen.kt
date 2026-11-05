@@ -106,7 +106,7 @@ data class DashboardUiState(
     val completedCount: Int
         get() = bookings.count { it.status == "completed" }
 
-    // Computed from GET /account/insights -> monthly[].spent (reference/api-routes/account.ts:103-116)
+    // Computed from GET /account/insights -> monthly[].spent (reference/api-routes/account.ts:113-126)
     val totalSpentNaira: Long
         get() = insights?.monthly?.sumOf { it.spent }?.roundToLong() ?: 0L
 
