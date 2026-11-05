@@ -20,11 +20,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
@@ -61,6 +63,7 @@ import androidx.navigation.toRoute
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.UserDto
+import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.SessionState
@@ -80,6 +83,7 @@ import ng.name.servix.app.ui.catalogue.HomeScreen
 import ng.name.servix.app.ui.catalogue.HomeViewModel
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
+import ng.name.servix.app.ui.catalogue.SearchMode
 import ng.name.servix.app.ui.catalogue.SearchScreen
 import ng.name.servix.app.ui.catalogue.SearchViewModel
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
@@ -92,6 +96,8 @@ import ng.name.servix.app.ui.components.ServixLogoMark
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
+import ng.name.servix.app.ui.dashboard.DashboardScreen
+import ng.name.servix.app.ui.dashboard.DashboardViewModel
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DeepForest
@@ -110,7 +116,45 @@ private data class BottomTabItem(
     val testTag: String,
 )
 
-private val BOTTOM_TABS = listOf(
+private val AUTHENTICATED_BOTTOM_TABS = listOf(
+    BottomTabItem(
+        route = ServixRoute.Dashboard,
+        labelRes = R.string.nav_dashboard,
+        selectedIcon = Icons.Filled.Dashboard,
+        unselectedIcon = Icons.Outlined.Dashboard,
+        testTag = "nav_tab_dashboard",
+    ),
+    BottomTabItem(
+        route = ServixRoute.Home,
+        labelRes = R.string.nav_home,
+        selectedIcon = Icons.Filled.Home,
+        unselectedIcon = Icons.Outlined.Home,
+        testTag = "nav_tab_home",
+    ),
+    BottomTabItem(
+        route = ServixRoute.Search,
+        labelRes = R.string.nav_search,
+        selectedIcon = Icons.Filled.Search,
+        unselectedIcon = Icons.Outlined.Search,
+        testTag = "nav_tab_search",
+    ),
+    BottomTabItem(
+        route = ServixRoute.Bookings,
+        labelRes = R.string.nav_bookings,
+        selectedIcon = Icons.Filled.CalendarMonth,
+        unselectedIcon = Icons.Outlined.CalendarMonth,
+        testTag = "nav_tab_bookings",
+    ),
+    BottomTabItem(
+        route = ServixRoute.Account,
+        labelRes = R.string.nav_account,
+        selectedIcon = Icons.Filled.AccountCircle,
+        unselectedIcon = Icons.Outlined.AccountCircle,
+        testTag = "nav_tab_account",
+    ),
+)
+
+private val GUEST_BOTTOM_TABS = listOf(
     BottomTabItem(
         route = ServixRoute.Home,
         labelRes = R.string.nav_home,
@@ -153,6 +197,7 @@ fun ServixAppShell(
     authViewModel: AuthViewModel,
     catalogueRepository: CatalogueRepository,
     bookingRepository: BookingRepository,
+    accountRepository: AccountRepository,
     isOnline: Boolean,
 ) {
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
@@ -164,6 +209,9 @@ fun ServixAppShell(
     // Pending destination to return to when a guest signs in from the Booking Sheet
     var pendingPostAuthRoute by remember { mutableStateOf<ServixRoute?>(null) }
 
+    val dashboardViewModel: DashboardViewModel = viewModel(
+        factory = DashboardViewModel.factory(accountRepository, bookingRepository)
+    )
     val homeViewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(catalogueRepository)
     )
@@ -175,7 +223,7 @@ fun ServixAppShell(
     )
 
     fun navigateAfterAuthComplete() {
-        val target = pendingPostAuthRoute ?: ServixRoute.Home
+        val target = pendingPostAuthRoute ?: ServixRoute.Dashboard
         pendingPostAuthRoute = null
         navController.navigate(target) {
             popUpTo(0) { inclusive = true }
@@ -212,10 +260,13 @@ fun ServixAppShell(
         return
     }
 
-    val startRoute: ServixRoute = when (val state = sessionState) {
-        is SessionState.Authenticated -> if (!state.user.emailVerified) ServixRoute.VerifyEmail else ServixRoute.Home
-        else -> ServixRoute.Home
+    val isAuthenticated = sessionState is SessionState.Authenticated
+    val startRoute: ServixRoute = if (isAuthenticated) {
+        ServixRoute.Dashboard
+    } else {
+        ServixRoute.Welcome
     }
+    val visibleBottomTabs = if (isAuthenticated) AUTHENTICATED_BOTTOM_TABS else GUEST_BOTTOM_TABS
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -232,7 +283,7 @@ fun ServixAppShell(
                         contentColor = Charcoal,
                         tonalElevation = 0.dp,
                     ) {
-                        BOTTOM_TABS.forEach { tab ->
+                        visibleBottomTabs.forEach { tab ->
                             val selected = when (tab.route) {
                                 is ServixRoute.Search -> {
                                     currentDest?.hasRoute(ServixRoute.Search::class) == true ||
@@ -320,12 +371,8 @@ fun ServixAppShell(
                                         popUpTo(0) { inclusive = true }
                                     }
                                 }
-                                PostAuthDestination.VERIFY_EMAIL -> {
-                                    navController.navigate(ServixRoute.VerifyEmail) {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                }
-                                PostAuthDestination.HOME -> navigateAfterAuthComplete()
+                                PostAuthDestination.VERIFY_EMAIL,
+                                PostAuthDestination.DASHBOARD -> navigateAfterAuthComplete()
                             }
                         }
                     },
@@ -340,7 +387,7 @@ fun ServixAppShell(
                     },
                     onBackClick = {
                         if (!navController.popBackStack()) {
-                            navController.navigate(ServixRoute.Home) {
+                            navController.navigate(ServixRoute.Welcome) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
@@ -355,6 +402,7 @@ fun ServixAppShell(
                     onEmailChange = authViewModel::updateRegisterEmail,
                     onPasswordChange = authViewModel::updateRegisterPassword,
                     onConfirmPasswordChange = authViewModel::updateRegisterConfirmPassword,
+                    onTermsAcceptedChange = authViewModel::updateRegisterTermsAccepted,
                     onSubmit = {
                         authViewModel.submitRegister { dest ->
                             when (dest) {
@@ -363,12 +411,8 @@ fun ServixAppShell(
                                         popUpTo(0) { inclusive = true }
                                     }
                                 }
-                                PostAuthDestination.VERIFY_EMAIL -> {
-                                    navController.navigate(ServixRoute.VerifyEmail) {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                }
-                                PostAuthDestination.HOME -> navigateAfterAuthComplete()
+                                PostAuthDestination.VERIFY_EMAIL,
+                                PostAuthDestination.DASHBOARD -> navigateAfterAuthComplete()
                             }
                         }
                     },
@@ -379,7 +423,7 @@ fun ServixAppShell(
                     },
                     onBackClick = {
                         if (!navController.popBackStack()) {
-                            navController.navigate(ServixRoute.Home) {
+                            navController.navigate(ServixRoute.Welcome) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
@@ -408,7 +452,7 @@ fun ServixAppShell(
                     onSignOut = {
                         pendingPostAuthRoute = null
                         authViewModel.logout {
-                            navController.navigate(ServixRoute.Home) {
+                            navController.navigate(ServixRoute.Welcome) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }
@@ -465,6 +509,52 @@ fun ServixAppShell(
                             }
                         }
                     }
+                )
+            }
+
+            composable<ServixRoute.Dashboard> {
+                val user = (sessionState as? SessionState.Authenticated)?.user
+                val dashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(user?.id, isOnline) {
+                    dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = false)
+                }
+
+                DashboardScreen(
+                    user = user,
+                    uiState = dashboardUiState,
+                    onRefresh = {
+                        dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = true)
+                    },
+                    onFindProfessionalClick = {
+                        searchViewModel.setMode(SearchMode.PROFESSIONALS)
+                        navController.navigate(ServixRoute.Search) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onExploreServicesClick = {
+                        searchViewModel.setMode(SearchMode.SERVICES)
+                        navController.navigate(ServixRoute.Search) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onVerifyEmailClick = {
+                        navController.navigate(ServixRoute.VerifyEmail)
+                    },
+                    onOpenBookingsTab = {
+                        navController.navigate(ServixRoute.Bookings) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onOpenBookingDetail = { bookingId ->
+                        navController.navigate(ServixRoute.BookingDetail(id = bookingId))
+                    },
                 )
             }
 
@@ -786,7 +876,7 @@ fun ServixAppShell(
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
                     onSignOutClick = {
                         authViewModel.logout {
-                            navController.navigate(ServixRoute.Home) {
+                            navController.navigate(ServixRoute.Welcome) {
                                 popUpTo(0) { inclusive = true }
                             }
                         }

@@ -258,4 +258,18 @@ interface ServixApiService {
     suspend fun getRebookDraft(
         @Path("id") id: String,
     ): RebookDraftDto
+
+    /* -------- Dashboard & Account (reference/api-routes/account.ts) -------- */
+
+    @GET("account/overview")
+    suspend fun getAccountOverviewRaw(): kotlinx.serialization.json.JsonElement
+
+    @GET("account/insights")
+    suspend fun getAccountInsightsRaw(): kotlinx.serialization.json.JsonElement
+
+    @GET("account/security-summary")
+    suspend fun getAccountSecuritySummaryRaw(): kotlinx.serialization.json.JsonElement
+
+    @GET("account/payments")
+    suspend fun getAccountPaymentsRaw(): kotlinx.serialization.json.JsonElement
 }

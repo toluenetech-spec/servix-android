@@ -93,7 +93,7 @@ fun WelcomeScreen(
             .fillMaxSize()
             .background(WarmIvory)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
+            .padding(horizontal = 24.dp, vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -105,63 +105,21 @@ fun WelcomeScreen(
         ) {
             ServixLogoMark()
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ServixBadge(
-                text = stringResource(R.string.hero_eyebrow).uppercase(),
-                containerColor = SoftSand,
-                contentColor = DeepForest,
-            )
+            Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = stringResource(R.string.tagline),
+                text = stringResource(R.string.welcome_headline),
                 style = MaterialTheme.typography.displaySmall,
                 color = DeepForest,
                 modifier = Modifier.testTag("welcome_hero_title"),
             )
 
             Text(
-                text = stringResource(R.string.hero_lead),
+                text = stringResource(R.string.welcome_subtext),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MutedGray,
+                modifier = Modifier.testTag("welcome_subtext"),
             )
-
-            ServixCard(
-                containerColor = PureWhite,
-                contentPadding = PaddingValues(18.dp),
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = SoftSand,
-                        modifier = Modifier.size(38.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Shield,
-                                contentDescription = "Escrow protection",
-                                tint = DeepForest,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "Servix payment protection",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Charcoal,
-                        )
-                        Text(
-                            text = stringResource(R.string.escrow_copy),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedGray,
-                        )
-                    }
-                }
-            }
         }
 
         Column(
@@ -170,30 +128,33 @@ fun WelcomeScreen(
                 .widthIn(max = 520.dp)
                 .padding(top = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             ServixPrimaryButton(
-                text = stringResource(R.string.sign_in),
-                onClick = onSignInClick,
-                modifier = Modifier.fillMaxWidth(),
-                testTag = "welcome_sign_in_button",
-            )
-            ServixSecondaryButton(
-                text = stringResource(R.string.create_account),
+                text = stringResource(R.string.welcome_create_account),
                 onClick = onCreateAccountClick,
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "welcome_create_account_button",
+            )
+            ServixSecondaryButton(
+                text = stringResource(R.string.welcome_sign_in),
+                onClick = onSignInClick,
+                modifier = Modifier.fillMaxWidth(),
+                testTag = "welcome_sign_in_button",
             )
             if (onBrowseFirstClick != null) {
                 TextButton(
                     onClick = onBrowseFirstClick,
                     modifier = Modifier
-                        .fillMaxWidth()
                         .heightIn(min = 48.dp)
                         .testTag("welcome_browse_button"),
                 ) {
                     Text(
-                        text = stringResource(R.string.continue_browsing),
-                        style = MaterialTheme.typography.labelLarge,
+                        text = stringResource(R.string.welcome_browse_first),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            textDecoration = TextDecoration.Underline,
+                        ),
                         color = ForestGreen,
                     )
                 }
@@ -393,6 +354,7 @@ fun RegisterScreen(
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
+    onTermsAcceptedChange: (Boolean) -> Unit = {},
     onSubmit: () -> Unit,
     onSignInClick: () -> Unit,
     onBackClick: () -> Unit,
@@ -483,17 +445,87 @@ fun RegisterScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         focusManager.clearFocus()
-                        onSubmit()
+                        if (uiState.registerTermsAccepted) {
+                            onSubmit()
+                        }
                     }
                 ),
                 testTag = "register_confirm_password_input",
             )
 
-            Text(
-                text = stringResource(R.string.register_terms_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedGray,
-            )
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = SoftSand.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, BorderSand),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Checkbox(
+                        checked = uiState.registerTermsAccepted,
+                        onCheckedChange = onTermsAcceptedChange,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = DeepForest,
+                            uncheckedColor = MutedGray,
+                            checkmarkColor = PureWhite,
+                        ),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .testTag("register_terms_checkbox"),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.register_terms_checkbox_full),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Charcoal,
+                            modifier = Modifier
+                                .clickable { onTermsAcceptedChange(!uiState.registerTermsAccepted) }
+                                .testTag("register_terms_label"),
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.register_terms_link),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    textDecoration = TextDecoration.Underline,
+                                ),
+                                color = DeepForest,
+                                modifier = Modifier
+                                    .clickable {
+                                        CustomTabLauncher.launchUrl(context, "https://www.servix.name.ng/terms")
+                                    }
+                                    .padding(vertical = 4.dp)
+                                    .testTag("register_terms_link"),
+                            )
+                            Text(
+                                text = stringResource(R.string.register_privacy_link),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    textDecoration = TextDecoration.Underline,
+                                ),
+                                color = DeepForest,
+                                modifier = Modifier
+                                    .clickable {
+                                        CustomTabLauncher.launchUrl(context, "https://www.servix.name.ng/privacy")
+                                    }
+                                    .padding(vertical = 4.dp)
+                                    .testTag("register_privacy_link"),
+                            )
+                        }
+                    }
+                }
+            }
 
             if (!uiState.registerGeneralError.isNullOrBlank()) {
                 Surface(
@@ -517,6 +549,7 @@ fun RegisterScreen(
                     focusManager.clearFocus()
                     onSubmit()
                 },
+                enabled = uiState.registerTermsAccepted && !uiState.registerSubmitting,
                 loading = uiState.registerSubmitting,
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "register_submit_button",

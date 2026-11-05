@@ -11,6 +11,7 @@
     <string name="open_servix_web">Open www.servix.name.ng</string>
 
     <!-- Navigation tabs -->
+    <string name="nav_dashboard">Dashboard</string>
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
     <string name="nav_bookings">Bookings</string>
@@ -25,9 +26,14 @@
     <string name="close">Close</string>
 
     <!-- Welcome & Auth -->
-    <string name="sign_in">Sign In</string>
-    <string name="create_account">Create Account</string>
-    <string name="continue_browsing">Browse catalogue first</string>
+    <string name="welcome_headline">Hire trusted Nigerian professionals.</string>
+    <string name="welcome_subtext">Book verified services with upfront pricing and escrow payment protection.</string>
+    <string name="welcome_create_account">Create account</string>
+    <string name="welcome_sign_in">Sign in</string>
+    <string name="welcome_browse_first">Browse first</string>
+    <string name="sign_in">Sign in</string>
+    <string name="create_account">Create account</string>
+    <string name="continue_browsing">Browse first</string>
     <string name="login_title">Welcome back</string>
     <string name="login_subtitle">Sign in to manage your bookings and services.</string>
     <string name="field_email">Email</string>
@@ -46,6 +52,12 @@
     <string name="register_title">Create your account</string>
     <string name="register_subtitle">Book verified professionals with locked pricing and escrow protection.</string>
     <string name="register_terms_note">By selecting Create Account, you agree to the Terms of Service and acknowledge the Privacy Policy. You must be 18 or over.</string>
+    <string name="register_terms_checkbox_full">I agree to the Terms of Service and acknowledge the Privacy Policy.</string>
+    <string name="register_terms_prefix">I agree to the </string>
+    <string name="register_terms_link">Terms of Service</string>
+    <string name="register_terms_middle"> and acknowledge the </string>
+    <string name="register_privacy_link">Privacy Policy</string>
+    <string name="register_terms_suffix">.</string>
     <string name="register_pro_apply_prompt">Want to offer your services on Servix? Apply at www.servix.name.ng</string>
     <string name="show_password">Show password</string>
     <string name="hide_password">Hide password</string>
@@ -259,4 +271,40 @@
     <string name="modal_review_rating_label">Rating</string>
     <string name="modal_review_text_label">Your review (optional)</string>
     <string name="modal_review_publish_cta">Publish Review</string>
+
+    <!-- Dashboard (reference/web/src/pages/DashboardPage.jsx) -->
+    <string name="dashboard_eyebrow">Your Servix dashboard</string>
+    <string name="dashboard_welcome_back">Welcome back, %1$s.</string>
+    <string name="dashboard_subtitle_customer">Find the right help. Keep track of every booking.</string>
+    <string name="dashboard_find_professional">Find a professional</string>
+    <string name="dashboard_verify_email_notice">Verify your email to finish setting up your account.</string>
+    <string name="dashboard_verify_email_cta">Verify email</string>
+    <string name="dashboard_stat_bookings">Bookings</string>
+    <string name="dashboard_stat_in_progress">In progress</string>
+    <string name="dashboard_stat_completed">Completed</string>
+    <string name="dashboard_stat_spent">Spent</string>
+    <string name="dashboard_stat_from_bookings">From your loaded bookings</string>
+    <string name="dashboard_stat_from_insights">Captured payments (12 mo)</string>
+    <string name="dashboard_card_bookings_eyebrow">My bookings</string>
+    <string name="dashboard_card_bookings_title">Your services, organised.</string>
+    <string name="dashboard_card_bookings_body">Track requests, review progress and find your booking details.</string>
+    <string name="dashboard_card_bookings_cta">View bookings →</string>
+    <string name="dashboard_card_ai_eyebrow">Servix AI</string>
+    <string name="dashboard_card_ai_title">Ask Servix anything.</string>
+    <string name="dashboard_card_ai_body">Describe what you need, get budget guidance from real listings, and understand every step of a booking.</string>
+    <string name="dashboard_card_ai_cta">Open Servix AI →</string>
+    <string name="dashboard_card_security_eyebrow">Account security</string>
+    <string name="dashboard_card_security_title">Stay connected. Stay protected.</string>
+    <string name="dashboard_card_security_cta">Manage sign-in →</string>
+    <string name="dashboard_card_payments_eyebrow">Payments</string>
+    <string name="dashboard_card_payments_title">Know where every payment stands.</string>
+    <string name="dashboard_card_payments_body">Check payment references, refund records and booking details.</string>
+    <string name="dashboard_card_payments_cta">View financial records →</string>
+    <string name="dashboard_recent_bookings_title">Recent bookings</string>
+    <string name="dashboard_view_all">View all →</string>
+    <string name="dashboard_empty_bookings_title">Your first booking starts here.</string>
+    <string name="dashboard_empty_bookings_body">Explore services and choose a professional when you’re ready.</string>
+    <string name="dashboard_empty_bookings_cta">Explore services</string>
+    <string name="dashboard_error_load">We couldn’t load your dashboard. Please try again.</string>
+    <string name="dashboard_help_footer">Need a hand? Contact support. Never share your password or verification codes.</string>
 </resources>

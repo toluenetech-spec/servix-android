@@ -13,8 +13,8 @@ android {
         applicationId = "ng.name.servix.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.3.1"
         buildConfigField("String", "API_BASE_URL", "\"https://api.servix.name.ng/api/v1/\"")
         buildConfigField("String", "WEB_BASE_URL", "\"https://www.servix.name.ng\"")
     }
@@ -51,6 +51,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")

@@ -333,6 +333,7 @@ fun ServixBadge(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = contentColor,
+            maxLines = 1,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
         )
     }

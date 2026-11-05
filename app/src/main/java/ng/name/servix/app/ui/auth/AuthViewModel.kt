@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ng.name.servix.app.data.local.TermsAcceptanceStore
 import ng.name.servix.app.data.model.SecurityFlowState
 import ng.name.servix.app.data.model.SecurityTotpSetupResponse
 import ng.name.servix.app.data.model.ServixApiException
@@ -18,7 +19,7 @@ import ng.name.servix.app.data.repository.AuthRepository
 import ng.name.servix.app.data.repository.SessionState
 
 enum class PostAuthDestination {
-    HOME,
+    DASHBOARD,
     VERIFY_EMAIL,
     SECURITY_CHECK,
 }
@@ -43,6 +44,7 @@ data class AuthUiState(
     val registerEmail: String = "",
     val registerPassword: String = "",
     val registerConfirmPassword: String = "",
+    val registerTermsAccepted: Boolean = false,
     val registerNameError: String? = null,
     val registerEmailError: String? = null,
     val registerPasswordError: String? = null,
@@ -112,6 +114,7 @@ data class AuthUiState(
 
 class AuthViewModel(
     private val authRepository: AuthRepository,
+    private val termsAcceptanceStore: TermsAcceptanceStore? = null,
 ) : ViewModel() {
     val sessionState: StateFlow<SessionState> = authRepository.sessionState
 
@@ -183,7 +186,7 @@ class AuthViewModel(
                             val dest = if (!outcome.user.emailVerified) {
                                 PostAuthDestination.VERIFY_EMAIL
                             } else {
-                                PostAuthDestination.HOME
+                                PostAuthDestination.DASHBOARD
                             }
                             onRoute(dest)
                         }
@@ -250,9 +253,13 @@ class AuthViewModel(
         _uiState.update { it.copy(registerConfirmPassword = value, registerConfirmError = null, registerGeneralError = null) }
     }
 
+    fun updateRegisterTermsAccepted(accepted: Boolean) {
+        _uiState.update { it.copy(registerTermsAccepted = accepted, registerGeneralError = null) }
+    }
+
     fun submitRegister(onRoute: (PostAuthDestination) -> Unit) {
         val current = _uiState.value
-        if (current.registerSubmitting) return
+        if (current.registerSubmitting || !current.registerTermsAccepted) return
 
         val name = current.registerFullName.trim()
         val email = current.registerEmail.trim().lowercase()
@@ -293,6 +300,7 @@ class AuthViewModel(
         }
 
         viewModelScope.launch {
+            termsAcceptanceStore?.recordTermsAccepted()
             val result = authRepository.register(fullName = name, email = email, password = password)
             result.fold(
                 onSuccess = { outcome ->
@@ -331,7 +339,7 @@ class AuthViewModel(
                             val dest = if (!outcome.user.emailVerified) {
                                 PostAuthDestination.VERIFY_EMAIL
                             } else {
-                                PostAuthDestination.HOME
+                                PostAuthDestination.DASHBOARD
                             }
                             onRoute(dest)
                         }
@@ -925,11 +933,14 @@ class AuthViewModel(
         private val EMAIL_REGEX = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
         private val SIX_DIGIT_REGEX = Regex("^\\d{6}$")
 
-        fun factory(authRepository: AuthRepository): ViewModelProvider.Factory =
+        fun factory(
+            authRepository: AuthRepository,
+            termsAcceptanceStore: TermsAcceptanceStore? = null,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return AuthViewModel(authRepository) as T
+                    return AuthViewModel(authRepository, termsAcceptanceStore) as T
                 }
             }
     }

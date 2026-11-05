@@ -25,7 +25,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             ServixTheme {
                 val authViewModel: AuthViewModel = viewModel(
-                    factory = AuthViewModel.factory(container.authRepository)
+                    factory = AuthViewModel.factory(
+                        authRepository = container.authRepository,
+                        termsAcceptanceStore = container.termsAcceptanceStore,
+                    )
                 )
                 val isOnline by container.connectivityObserver.isOnline
                     .collectAsStateWithLifecycle(initialValue = true)
@@ -38,6 +41,7 @@ class MainActivity : ComponentActivity() {
                         authViewModel = authViewModel,
                         catalogueRepository = container.catalogueRepository,
                         bookingRepository = container.bookingRepository,
+                        accountRepository = container.accountRepository,
                         isOnline = isOnline,
                     )
                 }

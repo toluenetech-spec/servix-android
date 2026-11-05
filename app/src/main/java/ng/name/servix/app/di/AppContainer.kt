@@ -1,9 +1,11 @@
 package ng.name.servix.app.di
 
 import android.content.Context
+import ng.name.servix.app.data.local.TermsAcceptanceStore
 import ng.name.servix.app.data.local.TokenStore
 import ng.name.servix.app.data.network.PersistentCookieJar
 import ng.name.servix.app.data.network.ServixNetworkModule
+import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.AuthRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
@@ -14,6 +16,7 @@ class AppContainer(context: Context) {
 
     val connectivityObserver = ConnectivityObserver(appContext)
     val tokenStore = TokenStore(appContext)
+    val termsAcceptanceStore = TermsAcceptanceStore(appContext)
     val cookieJar = PersistentCookieJar(appContext)
 
     val authRepository: AuthRepository = AuthRepository(
@@ -40,6 +43,10 @@ class AppContainer(context: Context) {
     )
 
     val bookingRepository: BookingRepository = BookingRepository(
+        apiProvider = { networkModule.apiService }
+    )
+
+    val accountRepository: AccountRepository = AccountRepository(
         apiProvider = { networkModule.apiService }
     )
 
