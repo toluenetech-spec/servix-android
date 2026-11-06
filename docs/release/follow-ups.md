@@ -1,0 +1,7 @@
+# Release follow-ups (tracked, not blocking Play internal testing)
+
+| # | Item | Why it matters | Suggested fix |
+| --- | --- | --- | --- |
+| 1 | **R8 cannot parse Kotlin 2.4 metadata** (`WARNING: R8: An error occurred when parsing kotlin metadata … newer version of kotlin than … this version of R8`) | AGP 8.13 ships an R8 that knows Kotlin up to 2.3. Today these are warnings only: the release build is green, the dex checks confirm `$$serializer` and `ServixApiService` survive, and the smoke tests pass. But R8's Kotlin-metadata-driven optimisations (and any future `-keepkotlinmetadata` behaviour) are effectively disabled, so shrinking is slightly less aggressive and a future AGP bump could turn the warning into an error. | Either pin Kotlin to the 2.3.x line (R8 in AGP 8.13 understands it) **or** move to AGP 9.x, which bundles a newer R8. Deliberately **not changed in Block 3** — Block 2 was accepted with 2.4.10 and changing Kotlin now would re-open toolchain verification. |
+| 2 | Compose BOM pinned to 2026.05.01 | The newest stable BOM (2026.09.00) requires `compileSdk 37`; we build with `compileSdk 36` to keep the Play targetSdk story simple. | When `compileSdk 37` is acceptable (targetSdk can stay 36), bump the BOM in one line. |
+| 3 | `material-icons-extended` pinned at 1.7.8 | It is no longer part of the Compose BOM. | Migrate to the icon subset we actually use, or keep the pin. |

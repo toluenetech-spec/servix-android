@@ -23,11 +23,27 @@ android {
     // Stable test signing: the CI restores one keystore from repository secrets so every APK
     // carries the same certificate and in-app updates keep working. Without the secrets we fall
     // back to the throwaway debug key (updates over an older install will then need an uninstall).
+    // Play upload key (Block 3): a SEPARATE keystore from the test key. Play App Signing keeps the
+    // real app-signing key; this only signs the .aab we hand to Google. CI decodes
+    // UPLOAD_KEYSTORE_BASE64 into a file and exports the two env vars below.
+    val uploadKeyStorePath = System.getenv("SERVIX_UPLOAD_KEYSTORE")
+    val uploadKeyStorePassword = System.getenv("SERVIX_UPLOAD_KEYSTORE_PASSWORD")
+    val hasUploadKeyStore = !uploadKeyStorePath.isNullOrBlank() && !uploadKeyStorePassword.isNullOrBlank()
+
     val testKeyStorePath = System.getenv("SERVIX_TEST_KEYSTORE")
     val testKeyStorePassword = System.getenv("SERVIX_TEST_KEYSTORE_PASSWORD")
     val hasTestKeyStore = !testKeyStorePath.isNullOrBlank() && !testKeyStorePassword.isNullOrBlank()
 
     signingConfigs {
+        if (hasUploadKeyStore) {
+            create("playUpload") {
+                storeFile = file(uploadKeyStorePath!!)
+                storePassword = uploadKeyStorePassword
+                keyAlias = "servix-upload"
+                keyPassword = uploadKeyStorePassword
+                storeType = "PKCS12"
+            }
+        }
         if (hasTestKeyStore) {
             create("testRelease") {
                 storeFile = file(testKeyStorePath!!)
@@ -53,9 +69,12 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (hasTestKeyStore) {
-                // Block 4 switches this to the separate upload key for the .aab.
-                signingConfig = signingConfigs.getByName("testRelease")
+            // Play upload key when its secrets exist; otherwise the shared test key so CI stays
+            // green until the owner adds UPLOAD_KEYSTORE_BASE64 / UPLOAD_KEYSTORE_PASSWORD.
+            signingConfig = when {
+                hasUploadKeyStore -> signingConfigs.getByName("playUpload")
+                hasTestKeyStore -> signingConfigs.getByName("testRelease")
+                else -> null
             }
         }
     }
