@@ -139,7 +139,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p docs/ci
-          grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:" gradle-build.log 2>/dev/null | head -60 > docs/ci/last-failure.txt || true
+          grep -vE "kotlin metadata" gradle-build.log 2>/dev/null | grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:|What went wrong|> Task .*FAILED" | head -40 > docs/ci/last-failure.txt || true
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
           git add docs/ci/last-failure.txt

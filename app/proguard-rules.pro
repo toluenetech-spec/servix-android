@@ -56,6 +56,10 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 -dontwarn org.slf4j.**
+-dontwarn org.graalvm.**
+-dontwarn sun.misc.**
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn kotlinx.serialization.internal.**
 
 # --- Coil ----------------------------------------------------------------
 -dontwarn coil.**
