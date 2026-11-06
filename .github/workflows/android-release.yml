@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -103,25 +103,50 @@ jobs:
           test -f "$AAB" || { echo "::error::$AAB missing — gradle :app:bundleRelease did not produce a bundle"; exit 1; }
           echo "Bundle size: $(stat -c%s "$AAB") bytes"
 
-          echo "== META-INF signature entries in the bundle =="
-          unzip -l "$AAB" | grep -E 'META-INF/' || echo "(no META-INF entries listed)"
+          echo "== META-INF entries as built =="
+          unzip -l "$AAB" | grep -i META-INF || echo "(no META-INF entries listed)"
 
-          # An .aab is a jar signed with the upload key (v1 scheme), so apksigner does not apply
-          # to it. jarsigner only ever *advises* here: its wording on bundle-style jars is not a
-          # reliable pass/fail signal. The hard gates are the two below it — the bundle must carry
-          # a certificate at all, and that certificate must be the upload key.
-          echo "== jarsigner -verify (advisory) =="
+          # An .aab is a JAR signed with the upload key (v1 scheme), so apksigner does not apply.
+          # Diagnostics first, verbatim, so any future signing problem is visible in the log.
+          echo "== jarsigner -verify -verbose:summary -certs (as built) =="
+          jarsigner -verify -verbose:summary -certs "$AAB" 2>&1 | tail -15 || true
+
+          # The bundle is signed by AGP from the release signingConfig. That config silently
+          # degrades to the shared test key — or to nothing — if the upload secrets are absent, and
+          # Play rejects an unsigned bundle with "The Android App Bundle was not signed".
+          # So: whatever AGP did, the artifact is signed with the upload key before it leaves this
+          # job. Verification decides; we never trust the build type alone.
           jarsigner -verify "$AAB" > jarsigner.log 2>&1
           JS_EXIT=$?
-          cat jarsigner.log
           if grep -q "jar verified" jarsigner.log; then
-            echo "jarsigner: jar verified (exit $JS_EXIT)"
+            echo "Bundle verified as built by AGP (jarsigner exit $JS_EXIT); leaving it untouched."
+            echo "resigned=false" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::jarsigner did not print 'jar verified' (exit $JS_EXIT): $(head -3 jarsigner.log | tr '\n' ' ')"
-            if grep -qiE "jar is unsigned|not signed|no signature|SecurityException" jarsigner.log; then
-              echo "::error::The .aab carries no valid JAR signature — Play will reject it. See the log above."
-              exit 1
-            fi
+            echo "::warning::bundle did not verify as built (jarsigner exit $JS_EXIT). First lines: $(head -3 jarsigner.log | tr '\n' ' ')"
+            echo "== stripping existing signature entries =="
+            zip -d "$AAB" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.EC' 'META-INF/*.DSA' > /dev/null 2>&1 || true
+            unzip -l "$AAB" | grep -i META-INF || echo "(signature files stripped)"
+
+            echo "== signing with servix-upload =="
+            jarsigner \
+              -keystore "$SERVIX_UPLOAD_KEYSTORE" \
+              -storetype PKCS12 \
+              -storepass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" \
+              -keypass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" \
+              -sigalg SHA256withRSA \
+              -digestalg SHA-256 \
+              "$AAB" servix-upload
+            echo "resigned=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # The gate: after this point the bundle must verify, no exceptions.
+          echo "== jarsigner -verify (final) =="
+          jarsigner -verify -verbose:summary -certs "$AAB" > jarsigner-final.log 2>&1
+          JS_FINAL=$?
+          tail -15 jarsigner-final.log
+          if ! grep -q "jar verified" jarsigner-final.log; then
+            echo "::error::The .aab does not verify as a signed JAR even after signing with servix-upload (jarsigner exit $JS_FINAL). Play will reject it."
+            exit 1
           fi
 
           echo "== certificate in the bundle =="
@@ -227,6 +252,7 @@ jobs:
             | Bundle versionName / versionCode | ${{ steps.version.outputs.version }} / ${{ steps.version.outputs.code }} |
             | Upload-key certificate SHA-256 | `${{ steps.cert.outputs.sha256 }}` |
             | Bundle file size | ${{ steps.files.outputs.size }} |
+            | Signature | ${{ steps.cert.outputs.resigned == 'true' && 're-signed by this job with jarsigner (servix-upload)' || 'AGP, as built' }} |
             | Bundle file SHA-256 | `${{ steps.files.outputs.sha256file }}` |
 
             `${{ steps.files.outputs.mapping }}` is the R8 mapping for this exact bundle — keep it, Play
