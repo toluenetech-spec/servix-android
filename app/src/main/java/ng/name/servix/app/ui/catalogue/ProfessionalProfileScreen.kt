@@ -18,14 +18,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.OpenInNew
@@ -76,6 +78,7 @@ import ng.name.servix.app.ui.components.ErrorStateCard
 import ng.name.servix.app.ui.components.ServixBadge
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixPrimaryButton
+import ng.name.servix.app.ui.components.ServixTopBar
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
 import ng.name.servix.app.ui.theme.BorderSand
@@ -228,7 +231,7 @@ private enum class ProfileTab(val label: String) {
     REVIEWS("Reviews"),
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ProfessionalProfileScreen(
     user: UserDto?,
@@ -247,355 +250,95 @@ fun ProfessionalProfileScreen(
     var bookingSheetOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        // Top navigation & Breadcrumb (ProfessionalProfilePage.jsx:99-105)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+    val pro = uiState.professional
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = if (pro == null) 24.dp else 108.dp),
         ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .size(48.dp)
-                    .testTag("profile_back_button"),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = DeepForest,
-                )
-            }
-            Text(
-                text = buildString {
-                    append("Professionals")
-                    uiState.professional?.name?.takeIf { it.isNotBlank() }?.let {
-                        append(" / $it")
-                    }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedGray,
-            )
-        }
+            item(key = "top_bar") { ServixTopBar(back = onBackClick) }
 
-        if (uiState.loading) {
-            ProfileLoadingSkeleton()
-            return@Column
-        }
+            when {
+                uiState.loading -> item(key = "loading") { ProfileLoadingSkeleton() }
 
-        if (uiState.notFound) {
-            EmptyStateCard(
-                title = stringResource(R.string.pro_not_found_title),
-                message = stringResource(R.string.pro_not_found_message),
-                actionLabel = stringResource(R.string.home_browse_all_pros),
-                onActionClick = onBrowseProfessionalsClick,
-            )
-            return@Column
-        }
-
-        if (uiState.error != null || uiState.professional == null) {
-            ErrorStateCard(
-                message = uiState.error ?: stringResource(R.string.error_load_profile),
-                onRetry = onRetry,
-            )
-            return@Column
-        }
-
-        val pro = uiState.professional
-        val availableTabs = remember(pro.trust) {
-            if (pro.trust != null) {
-                listOf(
-                    ProfileTab.ABOUT,
-                    ProfileTab.TRUST,
-                    ProfileTab.SERVICES,
-                    ProfileTab.PORTFOLIO,
-                    ProfileTab.REVIEWS,
-                )
-            } else {
-                listOf(
-                    ProfileTab.ABOUT,
-                    ProfileTab.SERVICES,
-                    ProfileTab.PORTFOLIO,
-                    ProfileTab.REVIEWS,
-                )
-            }
-        }
-
-        // Profile Header Card (ProfessionalProfilePage.jsx:108-147)
-        ServixCard(contentPadding = PaddingValues(20.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    ServixAvatarImage(
-                        rawImageUrl = pro.image,
-                        name = pro.name,
-                        size = 84.dp,
-                        shape = CircleShape,
+                uiState.notFound -> item(key = "missing") {
+                    EmptyStateCard(
+                        title = stringResource(R.string.pro_not_found_title),
+                        message = stringResource(R.string.pro_not_found_message),
+                        actionLabel = stringResource(R.string.home_browse_all_pros),
+                        onActionClick = onBrowseProfessionalsClick,
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                }
+
+                pro == null -> item(key = "error") {
+                    ErrorStateCard(
+                        message = uiState.error ?: stringResource(R.string.error_load_profile),
+                        onRetry = onRetry,
+                    )
+                }
+
+                else -> {
+                    item(key = "header") {
+                        ProfileHeader(
+                            pro = pro,
+                            availability = uiState.availability,
+                        )
+                    }
+                    item(key = "stats") { ProfileStatsStrip(pro = pro) }
+                    stickyHeader(key = "tabs") {
+                        ProfileTabStrip(
+                            tabs = listOf(
+                                ProfileTab.ABOUT,
+                                ProfileTab.SERVICES,
+                                ProfileTab.PORTFOLIO,
+                                ProfileTab.REVIEWS,
+                            ),
+                            selected = selectedTab,
+                            onSelect = { selectedTab = it },
+                        )
+                    }
+                    item(key = "content") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            Text(
-                                text = pro.name,
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = Charcoal,
-                                modifier = Modifier.testTag("profile_name_text"),
-                            )
-                            VerifiedBadgeChip(verified = pro.verified)
-                        }
-                        if (pro.plan in listOf("pro", "team", "enterprise")) {
-                            val planLabel = when (pro.plan) {
-                                "pro" -> "Servix Pro"
-                                "team" -> "Servix Team"
-                                else -> "Servix Enterprise"
+                            when (selectedTab) {
+                                ProfileTab.ABOUT -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    AboutTabSection(
+                                        pro = pro,
+                                        onOpenWebsite = { url -> CustomTabLauncher.launchUrl(context, url) },
+                                    )
+                                    pro.trust?.let { trust -> TrustTabSection(trust = trust) }
+                                }
+                                ProfileTab.SERVICES -> ServicesTabSection(
+                                    services = uiState.services,
+                                    categoryNameFor = categoryNameFor,
+                                    onOpenService = onOpenService,
+                                )
+                                ProfileTab.PORTFOLIO -> PortfolioTabSection(portfolio = pro.portfolio)
+                                ProfileTab.REVIEWS -> ReviewsTabSection(reviews = uiState.reviews)
+                                ProfileTab.TRUST -> pro.trust?.let { trust -> TrustTabSection(trust = trust) }
                             }
-                            ServixBadge(
-                                text = planLabel,
-                                containerColor = DeepForest,
-                                contentColor = WarmIvory,
-                            )
-                        }
-                        Text(
-                            text = pro.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MutedGray,
-                        )
-                    }
-                }
-
-                // Meta row: location, responseTime, memberSince
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (pro.location.isNotBlank()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.LocationOn,
-                                contentDescription = null,
-                                tint = MutedGray,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Text(
-                                text = pro.location,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedGray,
-                            )
                         }
                     }
-                    if (pro.responseTime.isNotBlank()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Schedule,
-                                contentDescription = null,
-                                tint = MutedGray,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Text(
-                                text = "Responds ${pro.responseTime.lowercase()}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedGray,
-                            )
-                        }
-                    }
-                    if (pro.memberSince.isNotBlank()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.CalendarMonth,
-                                contentDescription = null,
-                                tint = MutedGray,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Text(
-                                text = "Member since ${pro.memberSince}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedGray,
-                            )
-                        }
-                    }
-                }
-
-                // Availability status chip (ProfessionalProfilePage.jsx:141-145)
-                val availLabel = remember(uiState.availability, pro.availability) {
-                    val avail = uiState.availability
-                    when {
-                        avail?.availableToday == true -> "Free today"
-                        avail?.availableTomorrow == true -> "Free tomorrow"
-                        avail?.availableThisWeek == true -> "Free this week"
-                        !avail?.nextAvailableAt.isNullOrBlank() ->
-                            "Next: ${ServixFormatters.formatShortDayMonth(avail?.nextAvailableAt)}"
-                        pro.availability == "available" -> "Available now"
-                        else -> "Limited availability"
-                    }
-                }
-                ServixBadge(
-                    text = availLabel,
-                    containerColor = SoftSand,
-                    contentColor = DeepForest,
-                )
-
-                // Primary & Secondary CTAs: Request Booking + Save professional
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    ServixPrimaryButton(
-                        text = stringResource(R.string.request_booking),
-                        onClick = { bookingSheetOpen = true },
-                        modifier = Modifier.weight(1f),
-                        testTag = "profile_request_booking_button",
-                    )
-
-                    if (user == null) {
-                        ServixSecondaryButton(
-                            text = stringResource(R.string.sign_in_to_save),
-                            onClick = onSignInClick,
-                            modifier = Modifier.weight(1f),
-                            testTag = "profile_sign_in_to_save_button",
-                        )
-                    } else {
-                        val saved = uiState.isSaved == true
-                        ServixSecondaryButton(
-                            text = if (saved) {
-                                "✓ ${stringResource(R.string.saved_professional)}"
-                            } else {
-                                stringResource(R.string.save_professional)
-                            },
-                            enabled = !uiState.saveBusy && uiState.isSaved != null,
-                            onClick = onToggleSave,
-                            modifier = Modifier.weight(1f),
-                            testTag = "profile_save_button",
-                        )
-                    }
-                }
-
-                if (!uiState.saveError.isNullOrBlank()) {
-                    Text(
-                        text = uiState.saveError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = DangerRed,
-                    )
                 }
             }
         }
 
-        // 4-Stat Strip (ProfessionalProfilePage.jsx:149-166)
-        ServixCard(contentPadding = PaddingValues(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    ProfileStatCell(
-                        value = String.format(Locale.US, "%.1f", pro.rating),
-                        label = "Rating",
-                        modifier = Modifier.weight(1f),
-                    )
-                    ProfileStatCell(
-                        value = pro.reviewCount.toString(),
-                        label = "Reviews",
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                HorizontalDivider(color = SoftSand)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    val completedLabel = buildString {
-                        append("Completed projects")
-                        if (pro.verifiedProjects > 0) {
-                            append(" · ${pro.verifiedProjects} verified")
-                        }
-                    }
-                    ProfileStatCell(
-                        value = pro.completedProjects.toString(),
-                        label = completedLabel,
-                        modifier = Modifier.weight(1f),
-                    )
-                    ProfileStatCell(
-                        value = ServixFormatters.formatNaira(pro.startingPrice),
-                        label = "Starting price",
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
-
-        // Section Tabs (About, Trust & performance, Services, Portfolio, Reviews)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            availableTabs.forEach { tab ->
-                val isSelected = selectedTab == tab
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = if (isSelected) DeepForest else PureWhite,
-                    border = BorderStroke(1.dp, if (isSelected) DeepForest else BorderSand),
-                    modifier = Modifier
-                        .clickable { selectedTab = tab }
-                        .testTag("profile_tab_${tab.name.lowercase()}"),
-                ) {
-                    Text(
-                        text = tab.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (isSelected) WarmIvory else Charcoal,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    )
-                }
-            }
-        }
-
-        // Tab Content
-        when (selectedTab) {
-            ProfileTab.ABOUT -> {
-                AboutTabSection(
-                    pro = pro,
-                    onOpenWebsite = { url -> CustomTabLauncher.launchUrl(context, url) },
-                )
-            }
-            ProfileTab.TRUST -> {
-                pro.trust?.let { trust ->
-                    TrustTabSection(trust = trust)
-                }
-            }
-            ProfileTab.SERVICES -> {
-                ServicesTabSection(
-                    services = uiState.services,
-                    categoryNameFor = categoryNameFor,
-                    onOpenService = onOpenService,
-                )
-            }
-            ProfileTab.PORTFOLIO -> {
-                PortfolioTabSection(portfolio = pro.portfolio)
-            }
-            ProfileTab.REVIEWS -> {
-                ReviewsTabSection(reviews = uiState.reviews)
-            }
+        if (pro != null && !uiState.loading) {
+            ProfileBookBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                pro = pro,
+                user = user,
+                isSaved = uiState.isSaved,
+                saveBusy = uiState.saveBusy,
+                onBook = { bookingSheetOpen = true },
+                onToggleSave = onToggleSave,
+                onSignInClick = onSignInClick,
+            )
         }
     }
 
@@ -687,6 +430,214 @@ fun ProfessionalProfileScreen(
                     testTag = "profile_booking_sheet_close",
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileHeader(
+    pro: ProfessionalDetailDto,
+    availability: AvailabilitySummaryDto?,
+) {
+    val availLabel = when {
+        availability?.availableToday == true -> "Free today"
+        availability?.availableTomorrow == true -> "Free tomorrow"
+        availability?.availableThisWeek == true -> "Free this week"
+        !availability?.nextAvailableAt.isNullOrBlank() ->
+            "Next: ${ServixFormatters.formatShortDayMonth(availability?.nextAvailableAt)}"
+        pro.availability == "available" -> "Available now"
+        else -> "Limited availability"
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            ServixAvatarImage(
+                rawImageUrl = pro.image,
+                name = pro.name,
+                size = 72.dp,
+                shape = CircleShape,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = pro.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = DeepForest,
+                        modifier = Modifier.testTag("profile_name_text"),
+                    )
+                    VerifiedBadgeChip(verified = pro.verified, compact = true)
+                }
+                Text(
+                    text = pro.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MutedGray,
+                    maxLines = 2,
+                )
+                Text(
+                    text = listOfNotNull(
+                        pro.location.takeIf { it.isNotBlank() },
+                        pro.responseTime.takeIf { it.isNotBlank() }?.let { "Responds ${it.lowercase()}" },
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedGray,
+                )
+            }
+        }
+        ServixBadge(
+            text = availLabel,
+            containerColor = SoftSand,
+            contentColor = DeepForest,
+        )
+    }
+}
+
+/** Rating / reviews / completed projects as three compact stats (plan §5). */
+@Composable
+private fun ProfileStatsStrip(pro: ProfessionalDetailDto) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ProfileStatCompact(
+            value = String.format(Locale.US, "%.1f", pro.rating),
+            label = "Rating",
+            modifier = Modifier.weight(1f),
+        )
+        ProfileStatCompact(
+            value = pro.reviewCount.toString(),
+            label = "Reviews",
+            modifier = Modifier.weight(1f),
+        )
+        ProfileStatCompact(
+            value = pro.completedProjects.toString(),
+            label = "Projects",
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun ProfileStatCompact(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleMedium, color = DeepForest)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MutedGray)
+    }
+}
+
+/** Pill tabs that stick under the top bar while the profile content scrolls. */
+@Composable
+private fun ProfileTabStrip(
+    tabs: List<ProfileTab>,
+    selected: ProfileTab,
+    onSelect: (ProfileTab) -> Unit,
+) {
+    Surface(color = WarmIvory, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            tabs.forEach { tab ->
+                val isSelected = selected == tab
+                Surface(
+                    onClick = { onSelect(tab) },
+                    shape = CircleShape,
+                    color = if (isSelected) DeepForest else PureWhite,
+                    border = BorderStroke(1.dp, if (isSelected) DeepForest else BorderSand),
+                    modifier = Modifier.testTag("profile_tab_${tab.name.lowercase()}"),
+                ) {
+                    Text(
+                        text = tab.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isSelected) WarmIvory else Charcoal,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Sticky bottom action bar: Book (primary) + Save (icon), plan §5. */
+@Composable
+private fun ProfileBookBar(
+    modifier: Modifier = Modifier,
+    pro: ProfessionalDetailDto,
+    user: UserDto?,
+    isSaved: Boolean?,
+    saveBusy: Boolean,
+    onBook: () -> Unit,
+    onToggleSave: () -> Unit,
+    onSignInClick: () -> Unit,
+) {
+    Surface(
+        color = WarmIvory,
+        border = BorderStroke(1.dp, BorderSand),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "From ${ServixFormatters.formatNaira(pro.startingPrice)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = DeepForest,
+                )
+                Text(
+                    text = "Escrow protected",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MutedGray,
+                )
+            }
+            Surface(
+                onClick = { if (user == null) onSignInClick() else onToggleSave() },
+                shape = CircleShape,
+                color = SoftSand,
+                modifier = Modifier
+                    .size(52.dp)
+                    .testTag(if (user == null) "profile_sign_in_to_save_button" else "profile_save_button"),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (isSaved == true) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+                        contentDescription = stringResource(
+                            if (isSaved == true) R.string.saved_professional else R.string.save_professional
+                        ),
+                        tint = if (isSaved == true) ForestGreen else DeepForest,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+            ServixPrimaryButton(
+                text = stringResource(R.string.profile_book_cta),
+                onClick = onBook,
+                enabled = !saveBusy,
+                modifier = Modifier.weight(1.3f),
+                testTag = "profile_request_booking_button",
+            )
         }
     }
 }

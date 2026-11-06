@@ -1,5 +1,29 @@
 package ng.name.servix.app.ui.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.core.content.ContextCompat
+import ng.name.servix.app.data.model.OAuthReturn
+import ng.name.servix.app.notifications.NotificationPrefs
+import ng.name.servix.app.notifications.NotificationsWorker
+import ng.name.servix.app.ui.account.AccountHubScreen
+import ng.name.servix.app.ui.notifications.NotificationsScreen
+import ng.name.servix.app.ui.notifications.NotificationsViewModel
+import ng.name.servix.app.util.OAuthReturnBus
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import ng.name.servix.app.ui.motion.Motion
+import ng.name.servix.app.ui.motion.rememberSuccessTick
+import ng.name.servix.app.ui.motion.motionMs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +44,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +62,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,13 +83,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import ng.name.servix.app.location.storedCity
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.UserDto
+import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.ui.ai.AiScreen
+import ng.name.servix.app.ui.ai.AiViewModel
+import ng.name.servix.app.ui.account.DeviceCard
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.auth.ForgotPasswordScreen
 import ng.name.servix.app.ui.auth.LoginScreen
@@ -79,12 +107,10 @@ import ng.name.servix.app.ui.bookings.BookingDetailScreen
 import ng.name.servix.app.ui.bookings.BookingDetailViewModel
 import ng.name.servix.app.ui.bookings.BookingsScreen
 import ng.name.servix.app.ui.bookings.BookingsViewModel
-import ng.name.servix.app.ui.catalogue.HomeScreen
-import ng.name.servix.app.ui.catalogue.HomeViewModel
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
 import ng.name.servix.app.ui.catalogue.SearchMode
-import ng.name.servix.app.ui.catalogue.SearchScreen
+import ng.name.servix.app.ui.explore.ExploreScreen
 import ng.name.servix.app.ui.catalogue.SearchViewModel
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
 import ng.name.servix.app.ui.catalogue.ServiceDetailViewModel
@@ -96,8 +122,8 @@ import ng.name.servix.app.ui.components.ServixLogoMark
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
-import ng.name.servix.app.ui.dashboard.DashboardScreen
-import ng.name.servix.app.ui.dashboard.DashboardViewModel
+import ng.name.servix.app.ui.home.HomeTabScreen
+import ng.name.servix.app.ui.home.HomeViewModel
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DeepForest
@@ -106,6 +132,10 @@ import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
+import ng.name.servix.app.updates.UpdateCard
+import ng.name.servix.app.updates.UpdateUiState
+import ng.name.servix.app.updates.rememberUpdateUiState
+import ng.name.servix.app.util.AppLinkBus
 import ng.name.servix.app.util.CustomTabLauncher
 
 private data class BottomTabItem(
@@ -116,81 +146,48 @@ private data class BottomTabItem(
     val testTag: String,
 )
 
-private val AUTHENTICATED_BOTTOM_TABS = listOf(
-    BottomTabItem(
-        route = ServixRoute.Dashboard,
-        labelRes = R.string.nav_dashboard,
-        selectedIcon = Icons.Filled.Dashboard,
-        unselectedIcon = Icons.Outlined.Dashboard,
-        testTag = "nav_tab_dashboard",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Home,
-        labelRes = R.string.nav_home,
-        selectedIcon = Icons.Filled.Home,
-        unselectedIcon = Icons.Outlined.Home,
-        testTag = "nav_tab_home",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Search,
-        labelRes = R.string.nav_search,
-        selectedIcon = Icons.Filled.Search,
-        unselectedIcon = Icons.Outlined.Search,
-        testTag = "nav_tab_search",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Bookings,
-        labelRes = R.string.nav_bookings,
-        selectedIcon = Icons.Filled.CalendarMonth,
-        unselectedIcon = Icons.Outlined.CalendarMonth,
-        testTag = "nav_tab_bookings",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Account,
-        labelRes = R.string.nav_account,
-        selectedIcon = Icons.Filled.AccountCircle,
-        unselectedIcon = Icons.Outlined.AccountCircle,
-        testTag = "nav_tab_account",
-    ),
+private fun homeTab() = BottomTabItem(
+    route = ServixRoute.Home,
+    labelRes = R.string.nav_home,
+    selectedIcon = Icons.Filled.Home,
+    unselectedIcon = Icons.Outlined.Home,
+    testTag = "nav_tab_home",
 )
 
-private val GUEST_BOTTOM_TABS = listOf(
-    BottomTabItem(
-        route = ServixRoute.Home,
-        labelRes = R.string.nav_home,
-        selectedIcon = Icons.Filled.Home,
-        unselectedIcon = Icons.Outlined.Home,
-        testTag = "nav_tab_home",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Search,
-        labelRes = R.string.nav_search,
-        selectedIcon = Icons.Filled.Search,
-        unselectedIcon = Icons.Outlined.Search,
-        testTag = "nav_tab_search",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Bookings,
-        labelRes = R.string.nav_bookings,
-        selectedIcon = Icons.Filled.CalendarMonth,
-        unselectedIcon = Icons.Outlined.CalendarMonth,
-        testTag = "nav_tab_bookings",
-    ),
-    BottomTabItem(
-        route = ServixRoute.ServixAi,
-        labelRes = R.string.nav_ai,
-        selectedIcon = Icons.Filled.AutoAwesome,
-        unselectedIcon = Icons.Outlined.AutoAwesome,
-        testTag = "nav_tab_ai",
-    ),
-    BottomTabItem(
-        route = ServixRoute.Account,
-        labelRes = R.string.nav_account,
-        selectedIcon = Icons.Filled.AccountCircle,
-        unselectedIcon = Icons.Outlined.AccountCircle,
-        testTag = "nav_tab_account",
-    ),
+private fun exploreTab() = BottomTabItem(
+    route = ServixRoute.Search,
+    labelRes = R.string.nav_explore,
+    selectedIcon = Icons.Filled.Search,
+    unselectedIcon = Icons.Outlined.Search,
+    testTag = "nav_tab_search",
 )
+
+private fun bookingsTab() = BottomTabItem(
+    route = ServixRoute.Bookings,
+    labelRes = R.string.nav_bookings,
+    selectedIcon = Icons.Filled.CalendarMonth,
+    unselectedIcon = Icons.Outlined.CalendarMonth,
+    testTag = "nav_tab_bookings",
+)
+
+private fun aiTab() = BottomTabItem(
+    route = ServixRoute.ServixAi,
+    labelRes = R.string.nav_ai,
+    selectedIcon = Icons.Filled.AutoAwesome,
+    unselectedIcon = Icons.Outlined.AutoAwesome,
+    testTag = "nav_tab_ai",
+)
+
+private fun accountTab() = BottomTabItem(
+    route = ServixRoute.Account,
+    labelRes = R.string.nav_account,
+    selectedIcon = Icons.Filled.AccountCircle,
+    unselectedIcon = Icons.Outlined.AccountCircle,
+    testTag = "nav_tab_account",
+)
+
+/** Plan §2: exactly five tabs, identical for guests and signed-in customers — no sixth Dashboard. */
+private val BOTTOM_TABS = listOf(homeTab(), exploreTab(), bookingsTab(), aiTab(), accountTab())
 
 @Composable
 fun ServixAppShell(
@@ -198,8 +195,13 @@ fun ServixAppShell(
     catalogueRepository: CatalogueRepository,
     bookingRepository: BookingRepository,
     accountRepository: AccountRepository,
+    aiRepository: AiRepository,
     isOnline: Boolean,
 ) {
+    val context = LocalContext.current
+    val cityFlow = remember(context) { storedCity(context) }
+    val city by cityFlow.collectAsStateWithLifecycle(initialValue = null)
+    val updateState = rememberUpdateUiState()
     val sessionState by authViewModel.sessionState.collectAsStateWithLifecycle()
     val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
     val navController = rememberNavController()
@@ -209,11 +211,12 @@ fun ServixAppShell(
     // Pending destination to return to when a guest signs in from the Booking Sheet
     var pendingPostAuthRoute by remember { mutableStateOf<ServixRoute?>(null) }
 
-    val dashboardViewModel: DashboardViewModel = viewModel(
-        factory = DashboardViewModel.factory(accountRepository, bookingRepository)
-    )
+    val aiViewModel: AiViewModel = viewModel(factory = AiViewModel.factory(aiRepository, catalogueRepository))
+    val currentUserId = (sessionState as? SessionState.Authenticated)?.user?.id
+    LaunchedEffect(currentUserId) { aiViewModel.setUser(currentUserId) }
+
     val homeViewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.factory(catalogueRepository)
+        factory = HomeViewModel.factory(catalogueRepository, accountRepository, bookingRepository)
     )
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.factory(catalogueRepository)
@@ -223,10 +226,19 @@ fun ServixAppShell(
     )
 
     fun navigateAfterAuthComplete() {
-        val target = pendingPostAuthRoute ?: ServixRoute.Dashboard
+        val target = pendingPostAuthRoute ?: ServixRoute.Home
         pendingPostAuthRoute = null
         navController.navigate(target) {
             popUpTo(0) { inclusive = true }
+        }
+    }
+
+    fun openExplore(query: String?, categorySlug: String?) {
+        searchViewModel.applyExternalNavigation(query = query, categorySlug = categorySlug)
+        navController.navigate(ServixRoute.Search) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
     }
 
@@ -261,12 +273,98 @@ fun ServixAppShell(
     }
 
     val isAuthenticated = sessionState is SessionState.Authenticated
+    var unreadNotifications by remember { mutableStateOf(0) }
+    // One light tick when a sign-in (email, provider or security finish) lands.
+    val signInTick = rememberSuccessTick()
+    var lastAuthState by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(isAuthenticated) {
+        if (lastAuthState == false && isAuthenticated) signInTick()
+        lastAuthState = isAuthenticated
+    }
+
+    LaunchedEffect(isAuthenticated, currentDest) {
+        unreadNotifications = if (isAuthenticated) {
+            accountRepository.getUnreadNotificationCount().getOrNull()?.unread ?: 0
+        } else {
+            0
+        }
+    }
     val startRoute: ServixRoute = if (isAuthenticated) {
-        ServixRoute.Dashboard
+        ServixRoute.Home
     } else {
         ServixRoute.Welcome
     }
-    val visibleBottomTabs = if (isAuthenticated) AUTHENTICATED_BOTTOM_TABS else GUEST_BOTTOM_TABS
+
+    val shellContext = LocalContext.current
+    val notificationPrefs = remember { NotificationPrefs(shellContext) }
+    var showNotifRationale by remember { mutableStateOf(false) }
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        notificationPrefs.permissionAsked = true
+        showNotifRationale = false
+    }
+
+    LaunchedEffect(isAuthenticated) {
+        if (isAuthenticated) {
+            NotificationsWorker.schedule(shellContext)
+            val needsAsk = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(shellContext, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            if (needsAsk && !notificationPrefs.permissionAsked) showNotifRationale = true
+        } else {
+            NotificationsWorker.cancel(shellContext)
+            notificationPrefs.clear()
+        }
+    }
+
+    LaunchedEffect(Unit) { authViewModel.loadOAuthProviders() }
+
+    LaunchedEffect(Unit) {
+        OAuthReturnBus.returns.collect { result ->
+            authViewModel.handleOAuthReturn(result.ticket, result.error) { destination ->
+                val route = when (destination) {
+                    PostAuthDestination.SECURITY_CHECK -> ServixRoute.SecurityCheck
+                    PostAuthDestination.VERIFY_EMAIL -> ServixRoute.VerifyEmail
+                    else -> ServixRoute.Home
+                }
+                navController.navigate(route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        AppLinkBus.links.collect { target ->
+            when {
+                target.bookingId != null -> navController.navigate(ServixRoute.BookingDetail(target.bookingId!!))
+                target.notifications -> navController.navigate(ServixRoute.Notifications)
+            }
+        }
+    }
+
+    if (showNotifRationale) {
+        AlertDialog(
+            onDismissRequest = {
+                notificationPrefs.permissionAsked = true
+                showNotifRationale = false
+            },
+            title = { Text(stringResource(R.string.notifications_rationale_title)) },
+            text = { Text(stringResource(R.string.notifications_rationale_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.notifications_rationale_allow)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    notificationPrefs.permissionAsked = true
+                    showNotifRationale = false
+                }) { Text(stringResource(R.string.notifications_rationale_later)) }
+            },
+        )
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -279,11 +377,11 @@ fun ServixAppShell(
                 Column {
                     HorizontalDivider(color = BorderSand, thickness = 1.dp)
                     NavigationBar(
-                        containerColor = PureWhite,
+                        containerColor = WarmIvory,
                         contentColor = Charcoal,
                         tonalElevation = 0.dp,
                     ) {
-                        visibleBottomTabs.forEach { tab ->
+                        BOTTOM_TABS.forEach { tab ->
                             val selected = when (tab.route) {
                                 is ServixRoute.Search -> {
                                     currentDest?.hasRoute(ServixRoute.Search::class) == true ||
@@ -339,12 +437,29 @@ fun ServixAppShell(
             }
         }
     ) { innerPadding ->
+        val screenMs = motionMs(Motion.SCREEN_MS)
+        val tabMs = motionMs(Motion.TAB_MS)
+        val slideSpec = tween<androidx.compose.ui.unit.IntOffset>(screenMs, easing = FastOutSlowInEasing)
+        val fadeSpec = tween<Float>(screenMs, easing = FastOutSlowInEasing)
         NavHost(
             navController = navController,
             startDestination = startRoute,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
+            // Shared-axis X pushes: new screen slides in from the end, old one drifts back.
+            enterTransition = {
+                slideInHorizontally(slideSpec) { full -> full / 4 } + fadeIn(fadeSpec)
+            },
+            exitTransition = {
+                slideOutHorizontally(slideSpec) { full -> -full / 12 } + fadeOut(fadeSpec)
+            },
+            popEnterTransition = {
+                slideInHorizontally(slideSpec) { full -> -full / 12 } + fadeIn(fadeSpec)
+            },
+            popExitTransition = {
+                slideOutHorizontally(slideSpec) { full -> full / 4 } + fadeOut(fadeSpec)
+            },
         ) {
             composable<ServixRoute.Welcome> {
                 WelcomeScreen(
@@ -354,7 +469,11 @@ fun ServixAppShell(
                         navController.navigate(ServixRoute.Home) {
                             popUpTo(ServixRoute.Welcome) { inclusive = true }
                         }
-                    }
+                    },
+                    providers = authUiState.oauthProviders,
+                    onProviderClick = { provider ->
+                        CustomTabLauncher.launchUrl(shellContext, OAuthReturnBus.nativeStartUrl(provider))
+                    },
                 )
             }
 
@@ -384,6 +503,10 @@ fun ServixAppShell(
                         navController.navigate(ServixRoute.Register) {
                             popUpTo(ServixRoute.Login) { inclusive = true }
                         }
+                    },
+                    providers = authUiState.oauthProviders,
+                    onProviderClick = { provider ->
+                        CustomTabLauncher.launchUrl(shellContext, OAuthReturnBus.nativeStartUrl(provider))
                     },
                     onBackClick = {
                         if (!navController.popBackStack()) {
@@ -427,7 +550,11 @@ fun ServixAppShell(
                                 popUpTo(0) { inclusive = true }
                             }
                         }
-                    }
+                    },
+                    providers = authUiState.oauthProviders,
+                    onProviderClick = { provider ->
+                        CustomTabLauncher.launchUrl(shellContext, OAuthReturnBus.nativeStartUrl(provider))
+                    },
                 )
             }
 
@@ -512,38 +639,33 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Dashboard> {
+            composable<ServixRoute.Home>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                val dashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+                val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+                val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
 
                 LaunchedEffect(user?.id, isOnline) {
-                    dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = false)
+                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
                 }
 
-                DashboardScreen(
+                HomeTabScreen(
                     user = user,
-                    uiState = dashboardUiState,
-                    onRefresh = {
-                        dashboardViewModel.loadDashboard(userId = user?.id, forceRefresh = true)
+                    city = city,
+                    uiState = homeUiState,
+                    aiUsage = aiUiState.usage,
+                    onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
+                    onOpenSearch = { openExplore(query = null, categorySlug = null) },
+                    onOpenCategory = { slug -> openExplore(query = null, categorySlug = slug) },
+                    onOpenProfessional = { slug ->
+                        navController.navigate(ServixRoute.ProfessionalProfile(slug = slug))
                     },
-                    onFindProfessionalClick = {
-                        searchViewModel.setMode(SearchMode.PROFESSIONALS)
-                        navController.navigate(ServixRoute.Search) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onExploreServicesClick = {
-                        searchViewModel.setMode(SearchMode.SERVICES)
-                        navController.navigate(ServixRoute.Search) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onVerifyEmailClick = {
-                        navController.navigate(ServixRoute.VerifyEmail)
+                    onOpenBookingDetail = { bookingId ->
+                        navController.navigate(ServixRoute.BookingDetail(id = bookingId))
                     },
                     onOpenBookingsTab = {
                         navController.navigate(ServixRoute.Bookings) {
@@ -552,61 +674,40 @@ fun ServixAppShell(
                             restoreState = true
                         }
                     },
-                    onOpenBookingDetail = { bookingId ->
-                        navController.navigate(ServixRoute.BookingDetail(id = bookingId))
-                    },
-                )
-            }
-
-            composable<ServixRoute.Home> {
-                val user = (sessionState as? SessionState.Authenticated)?.user
-                val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
-
-                LaunchedEffect(user?.id, isOnline) {
-                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
-                }
-
-                HomeScreen(
-                    user = user,
-                    uiState = homeUiState,
-                    onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
-                    onSearchSubmit = { query, categorySlug ->
-                        searchViewModel.applyExternalNavigation(query = query, categorySlug = categorySlug)
-                        navController.navigate(ServixRoute.Search) {
+                    onOpenAi = {
+                        navController.navigate(ServixRoute.ServixAi) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                    onOpenProfessional = { slug ->
-                        navController.navigate(ServixRoute.ProfessionalProfile(slug = slug))
-                    },
-                    onOpenBookingsTab = {
-                        val nextId = homeUiState.nextBooking?.id
-                        if (!nextId.isNullOrBlank()) {
-                            navController.navigate(ServixRoute.BookingDetail(id = nextId))
-                        } else {
-                            navController.navigate(ServixRoute.Bookings) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                    unreadNotifications = unreadNotifications,
+                    onOpenNotifications = { navController.navigate(ServixRoute.Notifications) },
+                    onOpenAccount = {
+                        navController.navigate(ServixRoute.Account) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     },
-                    onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                 )
             }
 
-            composable<ServixRoute.Search> {
+            composable<ServixRoute.Search>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
                 val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
 
                 LaunchedEffect(Unit) {
                     searchViewModel.ensureInitialized()
                 }
 
-                SearchScreen(
+                ExploreScreen(
                     uiState = searchUiState,
                     categoryNameFor = searchViewModel::categoryNameFor,
                     onQueryChange = searchViewModel::updateQuery,
@@ -616,6 +717,7 @@ fun ServixAppShell(
                     onLocationChange = searchViewModel::setLocation,
                     onRatingSelect = searchViewModel::setRatingFilter,
                     onPriceSelect = searchViewModel::setPriceFilter,
+                    onPriceLimitChange = searchViewModel::setPriceLimit,
                     onAvailabilitySelect = searchViewModel::setAvailabilityFilter,
                     onSortSelect = searchViewModel::setSort,
                     onClearFilters = searchViewModel::clearFilters,
@@ -756,7 +858,12 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Bookings> {
+            composable<ServixRoute.Bookings>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -859,18 +966,58 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.ServixAi> {
+            composable<ServixRoute.ServixAi>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                Stage1AiPlaceholder(
+                val aiState by aiViewModel.state.collectAsStateWithLifecycle()
+                DisposableEffect(aiViewModel) { onDispose { aiViewModel.stopAll() } }
+                AiScreen(
                     user = user,
-                    onSignInClick = { navController.navigate(ServixRoute.Login) },
+                    state = aiState,
+                    viewModel = aiViewModel,
+                    onSignIn = {
+                        pendingPostAuthRoute = ServixRoute.ServixAi
+                        navController.navigate(ServixRoute.Login)
+                    },
                 )
             }
 
-            composable<ServixRoute.Account> {
+            composable<ServixRoute.Notifications> {
+                val notificationsViewModel = remember { NotificationsViewModel(accountRepository) }
+                val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+                NotificationsScreen(
+                    uiState = notificationsState,
+                    onBackClick = { navController.popBackStack() },
+                    onRefresh = { notificationsViewModel.load(refresh = true) },
+                    onMarkAllRead = notificationsViewModel::markAllRead,
+                    onItemClick = { item ->
+                        notificationsViewModel.markRead(item.id)
+                        val bookingId = Regex("/bookings/([^/?#]+)").find(item.link.orEmpty())?.groupValues?.get(1)
+                        if (!bookingId.isNullOrBlank()) {
+                            navController.navigate(ServixRoute.BookingDetail(bookingId))
+                        }
+                    },
+                )
+            }
+
+            composable<ServixRoute.Account>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                Stage1AccountTab(
+                AccountHubScreen(
                     user = user,
+                    accountRepository = accountRepository,
+                    updateState = updateState,
+                    city = city,
+                    unreadNotifications = unreadNotifications,
+                    onOpenNotifications = { navController.navigate(ServixRoute.Notifications) },
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
@@ -888,54 +1035,11 @@ fun ServixAppShell(
 }
 
 @Composable
-private fun Stage1AiPlaceholder(
-    user: UserDto?,
-    onSignInClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = "SERVIX AI",
-            style = MaterialTheme.typography.labelSmall,
-            color = ForestGreen,
-        )
-        Text(
-            text = if (user != null) "Good to see you, ${user.firstName}." else "Your AI helper",
-            style = MaterialTheme.typography.headlineMedium,
-            color = DeepForest,
-        )
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "Ask anything about professionals, prices or how Servix works, and get budget guidance from real Servix listings.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                )
-                Text(
-                    text = stringResource(R.string.ai_disclaimer),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedGray,
-                )
-                if (user == null) {
-                    ServixPrimaryButton(
-                        text = stringResource(R.string.sign_in),
-                        onClick = onSignInClick,
-                        testTag = "ai_sign_in_button",
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun Stage1AccountTab(
     user: UserDto?,
+    accountRepository: AccountRepository,
+    updateState: UpdateUiState,
+    city: String?,
     onSignInClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
     onVerifyEmailClick: () -> Unit,
@@ -1022,7 +1126,7 @@ private fun Stage1AccountTab(
                             )
                         }
                         ServixBadge(
-                            text = user.role.uppercase(),
+                            text = user.role.replaceFirstChar { it.uppercase() },
                             containerColor = SoftSand,
                             contentColor = DeepForest,
                         )
@@ -1060,6 +1164,12 @@ private fun Stage1AccountTab(
                 testTag = "account_sign_out_button",
             )
         }
+
+        UpdateCard(updateState)
+        if (updateState.enabled) {
+            ServixSecondaryButton(text = "Check for updates", onClick = { updateState.check(force = true) }, testTag = "check_updates")
+        }
+        DeviceCard(repository = accountRepository, userId = user?.id, city = city)
 
         ServixCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

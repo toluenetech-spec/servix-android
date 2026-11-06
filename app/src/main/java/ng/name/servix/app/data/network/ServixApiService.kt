@@ -12,7 +12,14 @@ import ng.name.servix.app.data.model.ForgotPasswordRequest
 import ng.name.servix.app.data.model.ForgotPasswordResponse
 import ng.name.servix.app.data.model.LoginRequest
 import ng.name.servix.app.data.model.MeResponse
+import ng.name.servix.app.data.model.MarkNotificationsReadRequest
+import ng.name.servix.app.data.model.MarkNotificationsReadResponse
+import ng.name.servix.app.data.model.NotificationListResponse
+import ng.name.servix.app.data.model.OAuthConfigResponse
+import ng.name.servix.app.data.model.OAuthNativeExchangeRequest
 import ng.name.servix.app.data.model.OkResponse
+import ng.name.servix.app.data.model.UpdateProfileRequest
+import ng.name.servix.app.data.model.UnreadCountResponse
 import ng.name.servix.app.data.model.PayBookingResponse
 import ng.name.servix.app.data.model.ProfessionalDetailDto
 import ng.name.servix.app.data.model.ProfessionalsPageResponse
@@ -45,11 +52,61 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ServixApiService {
+    // reference/api-routes/ai.ts:104-108,147-152,185-190; aiFeedback.ts:43-78.
+    @POST("ai/assistant")
+    suspend fun aiAssistant(@Body request: ng.name.servix.app.data.model.AiChatRequest): ng.name.servix.app.data.model.AiAnswer
+    @GET("ai/usage")
+    suspend fun aiUsage(): ng.name.servix.app.data.model.AiUsage
+    @POST("ai/pricing/guidance")
+    suspend fun aiPricing(@Body request: ng.name.servix.app.data.model.AiPricingRequest): ng.name.servix.app.data.model.AiPricingResponse
+    @POST("ai/feedback")
+    suspend fun aiFeedback(@Body request: ng.name.servix.app.data.model.AiFeedbackRequest): Response<Unit>
+
+    // reference/api-routes/account.ts:40-46: device summary for the current request.
+    @GET("auth/oauth/config")
+    suspend fun getOAuthConfig(): OAuthConfigResponse
+
+    @POST("auth/oauth/native/exchange")
+    suspend fun exchangeOAuthTicket(@Body body: OAuthNativeExchangeRequest): AuthSessionResponse
+
+    @GET("account/notifications")
+    suspend fun getNotifications(
+        @Query("before") before: String? = null,
+        @Query("unread") unread: String? = null,
+    ): NotificationListResponse
+
+    @GET("account/notifications/unread")
+    suspend fun getUnreadNotificationCount(): UnreadCountResponse
+
+    @POST("account/notifications/read")
+    suspend fun markNotificationsRead(@Body body: MarkNotificationsReadRequest): MarkNotificationsReadResponse
+
+    @POST("uploads")
+    suspend fun uploadMedia(
+        @Query("kind") kind: String,
+        @Query("fileName") fileName: String,
+        @Header("Content-Type") contentType: String,
+        @Body body: okhttp3.RequestBody,
+    ): ng.name.servix.app.data.model.UploadAck
+
+    @PATCH("account/profile")
+    suspend fun updateProfile(@Body body: UpdateProfileRequest): OkResponse
+
+    @GET("billing/plan")
+    suspend fun billingPlan(): kotlinx.serialization.json.JsonElement
+
+    @GET("me/entitlements")
+    suspend fun entitlements(): kotlinx.serialization.json.JsonElement
+
+    @GET("account/device")
+    suspend fun getAccountDevice(): ng.name.servix.app.data.model.AccountDeviceDto
+
     /* -------- Stage 1: Auth & Session -------- */
 
     @POST("auth/register")

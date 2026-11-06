@@ -7,29 +7,86 @@ plugins {
 
 android {
     namespace = "ng.name.servix.app"
-    compileSdk = 35
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "ng.name.servix.app"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.1"
+        targetSdk = 36
+        versionCode = 100
+        versionName = "1.0.0"
         buildConfigField("String", "API_BASE_URL", "\"https://api.servix.name.ng/api/v1/\"")
         buildConfigField("String", "WEB_BASE_URL", "\"https://www.servix.name.ng\"")
     }
 
+    // Stable test signing: the CI restores one keystore from repository secrets so every APK
+    // carries the same certificate and in-app updates keep working. Without the secrets we fall
+    // back to the throwaway debug key (updates over an older install will then need an uninstall).
+    // Play upload key (Block 3): a SEPARATE keystore from the test key. Play App Signing keeps the
+    // real app-signing key; this only signs the .aab we hand to Google. CI decodes
+    // UPLOAD_KEYSTORE_BASE64 into a file and exports the two env vars below.
+    val uploadKeyStorePath = System.getenv("SERVIX_UPLOAD_KEYSTORE")
+    val uploadKeyStorePassword = System.getenv("SERVIX_UPLOAD_KEYSTORE_PASSWORD")
+    val hasUploadKeyStore = !uploadKeyStorePath.isNullOrBlank() && !uploadKeyStorePassword.isNullOrBlank()
+
+    val testKeyStorePath = System.getenv("SERVIX_TEST_KEYSTORE")
+    val testKeyStorePassword = System.getenv("SERVIX_TEST_KEYSTORE_PASSWORD")
+    val hasTestKeyStore = !testKeyStorePath.isNullOrBlank() && !testKeyStorePassword.isNullOrBlank()
+
+    signingConfigs {
+        if (hasUploadKeyStore) {
+            create("playUpload") {
+                storeFile = file(uploadKeyStorePath!!)
+                storePassword = uploadKeyStorePassword
+                keyAlias = "servix-upload"
+                keyPassword = uploadKeyStorePassword
+                storeType = "PKCS12"
+            }
+        }
+        if (hasTestKeyStore) {
+            create("testRelease") {
+                storeFile = file(testKeyStorePath!!)
+                storePassword = testKeyStorePassword
+                keyAlias = "servix-test"
+                keyPassword = testKeyStorePassword
+                storeType = "PKCS12"
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            buildConfigField("String", "SELF_UPDATE_CHANNEL", "\"github\"")
+            if (hasTestKeyStore) {
+                signingConfig = signingConfigs.getByName("testRelease")
+            }
+        }
         release {
-            isMinifyEnabled = false
+            // Play builds never self-update: the in-app updater only runs on the "github" channel.
+            buildConfigField("String", "SELF_UPDATE_CHANNEL", "\"none\"")
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Play upload key when its secrets exist; otherwise the shared test key so CI stays
+            // green until the owner adds UPLOAD_KEYSTORE_BASE64 / UPLOAD_KEYSTORE_PASSWORD.
+            signingConfig = when {
+                hasUploadKeyStore -> signingConfigs.getByName("playUpload")
+                hasTestKeyStore -> signingConfigs.getByName("testRelease")
+                else -> null
+            }
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
     buildFeatures { compose = true; buildConfig = true }
     testOptions {
         unitTests {
@@ -39,9 +96,10 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
     implementation(composeBom)
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
@@ -49,8 +107,9 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -62,6 +121,10 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    testImplementation(platform("androidx.compose:compose-bom:2026.05.01"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")

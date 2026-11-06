@@ -6,6 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.foundation.layout.size
+import ng.name.servix.app.ui.components.ServixSegmentedControl
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import ng.name.servix.app.ui.a11y.heading
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -151,11 +157,6 @@ fun BookingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = stringResource(R.string.bookings_eyebrow),
-                style = MaterialTheme.typography.labelSmall,
-                color = ForestGreen,
-            )
-            Text(
                 text = stringResource(R.string.bookings_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = DeepForest,
@@ -189,39 +190,24 @@ fun BookingsScreen(
             item(key = "header") {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = stringResource(R.string.bookings_eyebrow),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ForestGreen,
-                    )
-                    Text(
                         text = stringResource(R.string.bookings_title),
                         style = MaterialTheme.typography.headlineMedium,
                         color = DeepForest,
+                        modifier = Modifier.heading(),
                     )
                 }
             }
 
-            // Active / Past Tabs
+            // Active / Past segmented control
             item(key = "tabs") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    BookingsTabPill(
-                        label = "${stringResource(R.string.bookings_tab_active)} (${activeList.size})",
-                        selected = uiState.selectedTab == BookingsListTab.ACTIVE,
-                        onClick = { onTabSelect(BookingsListTab.ACTIVE) },
-                        modifier = Modifier.weight(1f),
-                        testTag = "bookings_tab_active",
-                    )
-                    BookingsTabPill(
-                        label = "${stringResource(R.string.bookings_tab_past)} (${pastList.size})",
-                        selected = uiState.selectedTab == BookingsListTab.PAST,
-                        onClick = { onTabSelect(BookingsListTab.PAST) },
-                        modifier = Modifier.weight(1f),
-                        testTag = "bookings_tab_past",
-                    )
-                }
+                ServixSegmentedControl(
+                    options = listOf(
+                        BookingsListTab.ACTIVE.name to "${stringResource(R.string.bookings_tab_active)} (${activeList.size})",
+                        BookingsListTab.PAST.name to "${stringResource(R.string.bookings_tab_past)} (${pastList.size})",
+                    ),
+                    selectedId = uiState.selectedTab.name,
+                    onSelect = { id -> onTabSelect(BookingsListTab.valueOf(id)) },
+                )
             }
 
             if (uiState.loading && uiState.bookings.isEmpty()) {
@@ -281,15 +267,109 @@ fun BookingsScreen(
                 return@LazyColumn
             }
 
-            items(
-                items = displayedBookings,
-                key = { it.id },
-            ) { booking ->
-                BookingListItemCard(
-                    booking = booking,
-                    onClick = { onOpenBooking(booking.id) },
+            groupedBookings(displayedBookings).forEach { (group, bookingsInGroup) ->
+                item(key = "group_$group") {
+                    Text(
+                        text = group,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MutedGray,
+                        modifier = Modifier.testTag("bookings_group_${group.replace(" ", "_").lowercase()}"),
+                    )
+                }
+                items(bookingsInGroup, key = { it.id }) { booking ->
+                    BookingRow(
+                        booking = booking,
+                        onClick = { onOpenBooking(booking.id) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Today / This week / Later grouping for the Active tab, keyed off the scheduled slot. */
+internal fun groupedBookings(bookings: List<BookingDto>): List<Pair<String, List<BookingDto>>> {
+    val today = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Lagos"))
+    val weekEnd = today.plusDays(7)
+    val buckets = linkedMapOf<String, MutableList<BookingDto>>()
+    bookings.forEach { booking ->
+        val date = runCatching {
+            java.time.OffsetDateTime.parse(booking.scheduledAt).atZoneSameInstant(java.time.ZoneId.of("Africa/Lagos")).toLocalDate()
+        }.getOrNull() ?: runCatching {
+            java.time.LocalDate.parse(booking.scheduledAt.take(10))
+        }.getOrNull()
+        val group = when {
+            date == null -> "Later"
+            date.isBefore(today) -> "Today"
+            date == today -> "Today"
+            date.isBefore(weekEnd) -> "This week"
+            else -> "Later"
+        }
+        buckets.getOrPut(group) { mutableListOf() }.add(booking)
+    }
+    return listOf("Today", "This week", "Later").mapNotNull { key ->
+        buckets[key]?.takeIf { it.isNotEmpty() }?.let { key to it.toList() }
+    }
+}
+
+/** Compact list row: status chip, service, professional + slot, price, chevron. */
+@Composable
+fun BookingRow(
+    booking: BookingDto,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ServixCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .testTag("booking_row_${booking.reference}"),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    BookingStatusChip(status = booking.status)
+                    Text(
+                        text = ServixFormatters.formatNaira(booking.amount),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = DeepForest,
+                    )
+                }
+                Text(
+                    text = booking.serviceTitle,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = Charcoal,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = buildString {
+                        if (!booking.professionalName.isNullOrBlank()) {
+                            append(booking.professionalName)
+                            append(" · ")
+                        }
+                        append(ServixFormatters.formatDateTimeMedium(booking.scheduledAt))
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedGray,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MutedGray,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

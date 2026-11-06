@@ -68,6 +68,11 @@ data class AuthUiState(
     val forgotSubmitting: Boolean = false,
     val forgotSent: Boolean = false,
 
+    // Provider sign-in (Google / GitHub) via a Custom Tab hand-off
+    val oauthProviders: List<String> = emptyList(),
+    val oauthBusy: Boolean = false,
+    val oauthNotice: String? = null,
+
     // Security / MFA flow (GET /auth/security/config & POST /auth/security/<action>)
     val securityConfigEnabled: Boolean? = null,
     val securityFlow: SecurityFlowState? = null,
@@ -127,6 +132,85 @@ class AuthViewModel(
     init {
         viewModelScope.launch {
             authRepository.restoreSession()
+        }
+    }
+
+    // ---- Provider sign-in (GET /auth/oauth/config, POST /auth/oauth/native/exchange) ----
+
+    private var oauthProvidersLoaded = false
+
+    fun loadOAuthProviders() {
+        if (oauthProvidersLoaded) return
+        oauthProvidersLoaded = true
+        viewModelScope.launch {
+            authRepository.oauthProviders().onSuccess { providers ->
+                _uiState.update { it.copy(oauthProviders = providers) }
+            }
+        }
+    }
+
+    fun clearOAuthNotice() {
+        _uiState.update { it.copy(oauthNotice = null) }
+    }
+
+    /**
+     * Handles the Custom Tab return: `?ticket=` is exchanged for the normal security flow,
+     * `?error=cancelled` returns silently, and the other reasons surface the website's wording.
+     */
+    fun handleOAuthReturn(ticket: String?, error: String?, onRoute: (PostAuthDestination) -> Unit) {
+        _uiState.update { it.copy(oauthNotice = null) }
+        when {
+            error == "cancelled" -> Unit
+            error == "link_required" -> _uiState.update {
+                it.copy(oauthNotice = "Sign in using your existing method first, then explicitly connect this provider.")
+            }
+            !error.isNullOrBlank() -> _uiState.update {
+                it.copy(oauthNotice = "We could not finish that sign-in. Please try again.")
+            }
+            ticket.isNullOrBlank() -> Unit
+            else -> {
+                _uiState.update { it.copy(oauthBusy = true) }
+                viewModelScope.launch {
+                    authRepository.oauthExchange(ticket).fold(
+                        onSuccess = { outcome ->
+                            when (outcome) {
+                                is AuthOutcome.SecurityRequired -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            oauthBusy = false,
+                                            securityFlow = outcome.security,
+                                            securityError = null,
+                                            securityNotice = null,
+                                            securityCode = "",
+                                            securityTotpSetup = null,
+                                            securityRecoveryCodes = outcome.security.recoveryCodes.orEmpty(),
+                                            securitySavedRecovery = false,
+                                            securityUseRecovery = false,
+                                            securitySuccessMode = null,
+                                        )
+                                    }
+                                    onRoute(PostAuthDestination.SECURITY_CHECK)
+                                }
+                                is AuthOutcome.Session -> {
+                                    _uiState.update { it.copy(oauthBusy = false) }
+                                    onRoute(
+                                        if (!outcome.user.emailVerified) PostAuthDestination.VERIFY_EMAIL
+                                        else PostAuthDestination.DASHBOARD
+                                    )
+                                }
+                            }
+                        },
+                        onFailure = { err ->
+                            _uiState.update {
+                                it.copy(
+                                    oauthBusy = false,
+                                    oauthNotice = err.message ?: "We could not finish that sign-in. Please try again.",
+                                )
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 

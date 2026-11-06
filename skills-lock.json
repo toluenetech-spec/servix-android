@@ -1,0 +1,641 @@
+{
+  "version": 1,
+  "skills": {
+    "animate": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate/SKILL.md",
+      "computedHash": "f76ddd3d4446c3c56a143ea98650c370b3e8f88e6203d1e22082d2082bf1eed7"
+    },
+    "animate-expo": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animate-expo/SKILL.md",
+      "computedHash": "5de09593d564091f9db60aabede7bed760251e118548272050a247c653c417d2"
+    },
+    "animation-performance": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-performance/SKILL.md",
+      "computedHash": "333f6a387124d0eda927614671f8be3a00d1ddeb9f43cf8b7fa7032630414311"
+    },
+    "animation-vocabulary": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-vocabulary/SKILL.md",
+      "computedHash": "0058036865ecbb864fd0c4132efcc62425355d6e99c7e6ef6a936742d62a5dea"
+    },
+    "apple-design": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "0190417d092a0df447b000154e39733ea6d97efad6d3bec8a6ce3845aeb88914"
+    },
+    "applying-testing-strategies": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "fundamentals/strategies/applying-testing-strategies/SKILL.md",
+      "computedHash": "6b25f70cdf8028e70f6db4cdfd3e9ec198f57c4ae195369f35dfc250794c2634"
+    },
+    "ask-sonner": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ask-sonner/SKILL.md",
+      "computedHash": "8bd257b845985f4b35b603b510a126604176521094af79c4b7347ffeb8a8f7ab"
+    },
+    "asserting-bounds-and-dimensions": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/assertions/asserting-bounds-and-dimensions/SKILL.md",
+      "computedHash": "790ee3c4d6616d462e4e54ae685bc9508d0b17e489b7b23e7bc8c7df6d63abdc"
+    },
+    "asserting-node-state-and-text": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/assertions/asserting-node-state-and-text/SKILL.md",
+      "computedHash": "d1e3d011ec0fd37788d70afdcc3ff80797a3ecfcde27eaccb1b215ba6540ec08"
+    },
+    "auditing-compose-test-suite": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/audit/auditing-compose-test-suite/SKILL.md",
+      "computedHash": "259d55c957e376e5a6b48caaab0b29684fe144af72688b9b22ba314e1d126d42"
+    },
+    "banner-design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/banner-design/SKILL.md",
+      "computedHash": "1bb85d0bfec06e23578739a476c181b17c4db694c341da4e603e43183a4b42d3"
+    },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
+      "computedHash": "b344a85378eb5e5da192bceb0f9c0c15a4820a3ee8b5ad867e3a70ef3c691e3d"
+    },
+    "brand": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/brand/SKILL.md",
+      "computedHash": "5c99d65bec448b3dda25049f6437a1d8d8777a705a2c597fbe5516dfeeb0a487"
+    },
+    "break-ui": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/break-ui/SKILL.md",
+      "computedHash": "60ada67662925f4df5e3c6ff41cac3ab241b66f8898100a5ffcd7ba7196cb868"
+    },
+    "capturing-preview-screenshots-in-ci": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/preview/capturing-preview-screenshots-in-ci/SKILL.md",
+      "computedHash": "7f9b3a7a39965141a8fc6a9581487d54dc10a215e9ad92a4e4f98939c7f0365d"
+    },
+    "capturing-screenshots-and-screenrecord": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/capture/capturing-screenshots-and-screenrecord/SKILL.md",
+      "computedHash": "3e58b504c37c01e34ae66fc5b1dce90d02169cbca0372103f6644de8b936a7d3"
+    },
+    "choosing-test-rule-vs-runtest": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/setup/choosing-test-rule-vs-runtest/SKILL.md",
+      "computedHash": "b0dbbfff3a637191f1fb1034a6262e9325b33f2e0121f0eda61ea64d8fd0cdc1"
+    },
+    "choosing-what-to-test": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "fundamentals/concepts/choosing-what-to-test/SKILL.md",
+      "computedHash": "2867ddc26a98f2f5adbbb4dca0f84bfafaebe0c5c42cf57fa008265e247ac379"
+    },
+    "choreograph": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/choreograph/SKILL.md",
+      "computedHash": "4c0615e0cd41ffbca0c7912dba1f1dd1d84b8a3499a5c393be53df9d1b9dec16"
+    },
+    "clicking-and-scrolling": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/actions/clicking-and-scrolling/SKILL.md",
+      "computedHash": "c34a80073f98ff973fea25c8ef250dbe49f933de70f8859f990f6e6d49244d9f"
+    },
+    "composing-semantics-matchers": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/finders/composing-semantics-matchers/SKILL.md",
+      "computedHash": "1c93052f10272ee2cb0fdc49c110c2cd23b5250fe1dcf5be1ddc9890c84c3aad"
+    },
+    "configuring-junit4-on-android": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "jvm-tests/runner/configuring-junit4-on-android/SKILL.md",
+      "computedHash": "9c0f9c2c18bfa5d1e5cc31133318178b7885859f924e95c556dc5f40ec67124b"
+    },
+    "configuring-test-dependencies": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/setup/configuring-test-dependencies/SKILL.md",
+      "computedHash": "c65fa4e35e3a0d10f01c8c4eddc39a50b7058c5a735db252e814ae3a731130cf"
+    },
+    "connecting-over-wifi": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/devices/connecting-over-wifi/SKILL.md",
+      "computedHash": "668a9011d997412883adff2caab39f8a8fb37f6465bd20643135a0fa069c884d"
+    },
+    "connecting-to-devices": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/devices/connecting-to-devices/SKILL.md",
+      "computedHash": "b849cfb56f5238a112e2d34691261f47b2966bc2c8dd1f806d7bf32061514130"
+    },
+    "controlling-the-test-clock": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/synchronization/controlling-the-test-clock/SKILL.md",
+      "computedHash": "1172fd42fb7ce234d2d3ed31e49d16c887b41e8d020cba37e6147eb62d59a7ea"
+    },
+    "cross-app-tests-with-uiautomator": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "instrumentation/uiautomator/cross-app-tests-with-uiautomator/SKILL.md",
+      "computedHash": "135973249d5480e522293ed96cd9f94b1981fd61b79cc55193195479e36242fc"
+    },
+    "deploy-to-vercel": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/deploy-to-vercel/SKILL.md",
+      "computedHash": "a024eac409b1bb2e072a19e7e0d7f194ac5482c87fb1a2ad6f62d041b454040c"
+    },
+    "design": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design/SKILL.md",
+      "computedHash": "63b2e20bf06d4e9347ad1d3f3c8f72e3618db2f1f3de922992b72ca640b5a648"
+    },
+    "design-mobile-apps": {
+      "source": "designed-by-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/design-mobile-apps/SKILL.md",
+      "computedHash": "6d6ed68c53ac9f5564aea489ededb387b8cdf29ffa6f78f2a1fa449f86f19e16"
+    },
+    "design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design-system/SKILL.md",
+      "computedHash": "c50a1a77394e988b2593ed97f95ae28b5167eb8a826385b5996d67e398d15b6a"
+    },
+    "developing-with-compose-previews": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/preview/developing-with-compose-previews/SKILL.md",
+      "computedHash": "af94bfb9ad1dfc2727f3740d2c7ae348883a15e2ae2073e1442ab30dda9c5e47"
+    },
+    "diagnosing-superpowers": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/diagnosing-superpowers/SKILL.md",
+      "computedHash": "3bb0beb4fce3731bb541bce94a629a053598c4cf3a43e5af992202f2bac729f1"
+    },
+    "dispatching-parallel-agents": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/dispatching-parallel-agents/SKILL.md",
+      "computedHash": "b011107f17188e0b2898bb1856b5bac8b49537cc86e737c82126558a235bd62a"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "2483020b5bbaab030d6b3463bfba49c8d9c2cd8dea4d9fba836dbd471f1fb706"
+    },
+    "enabling-accessibility-checks": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/debug/enabling-accessibility-checks/SKILL.md",
+      "computedHash": "0a12b24506de15a598a5418120f54aede231d5585f58f2b892dd1ea30cdbe1e1"
+    },
+    "entering-text": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/actions/entering-text/SKILL.md",
+      "computedHash": "079fdf068d13b68298cde2163861348549b3d41a165fcac0143e26f0e6f665bd"
+    },
+    "executing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/executing-plans/SKILL.md",
+      "computedHash": "f695ccea105b04a4827dc3bcabb8ee88c4fc868ce853c00193ea30aaa352e1b5"
+    },
+    "extracting-logs-with-logcat": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/observability/extracting-logs-with-logcat/SKILL.md",
+      "computedHash": "d98ded5f566e8801d7abbca6a00e328a38a143b1b617bd3a4db73e7c320523b4"
+    },
+    "extracting-test-artifacts": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/transfer/extracting-test-artifacts/SKILL.md",
+      "computedHash": "c255edeadcb60674d0c71f1ac679fe8cdcc040e365db632ec027193427b2e464"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "computedHash": "465d087c41768e4f14ed640dd049036009f613feb55baaa5831b68b33178f9d2"
+    },
+    "finding-nodes-by-tag-text-content": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/finders/finding-nodes-by-tag-text-content/SKILL.md",
+      "computedHash": "5197becbc1de1a9e71ef5fe56c8f6df36928e614d990031210d672417a6b682a"
+    },
+    "finishing-a-development-branch": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/finishing-a-development-branch/SKILL.md",
+      "computedHash": "4f571e7befb8b0946d9d7770232c818812412e9ab1dfb811f847edfba1fc6275"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
+    },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "computedHash": "83a6c49c8c5497676262e125cf2d95c8d66a3df7c639f2a64b14151ae36b95e6"
+    },
+    "improve-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/improve-animations/SKILL.md",
+      "computedHash": "f6652a3bb94950baa33c684cc0966c838eb65cf22ebb5769a4f51ea205c254fe"
+    },
+    "injecting-input-and-state": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/control/injecting-input-and-state/SKILL.md",
+      "computedHash": "1dd9e54a840882ad93e5d584e80821c4778b1d31948c5d8a953fbd2ad38e1a37"
+    },
+    "injecting-mouse-and-keyboard": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/actions/injecting-mouse-and-keyboard/SKILL.md",
+      "computedHash": "756e1b358b9054b566933174185abe64d343cf1c4c558de08cb01dcc0c4764ac"
+    },
+    "injecting-touch-gestures": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/actions/injecting-touch-gestures/SKILL.md",
+      "computedHash": "aa7a9ac38edca0479a0f798a940340945478996bc0167cdafb67870da6fc46fa"
+    },
+    "installing-and-managing-apps": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/apps/installing-and-managing-apps/SKILL.md",
+      "computedHash": "fdb984720727ef044be029ac02c77795db19af09be63de5d9596161d3294487c"
+    },
+    "launching-activities-with-activityscenario": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "instrumentation/scenarios/launching-activities-with-activityscenario/SKILL.md",
+      "computedHash": "585ecf7adca997422d165d9bbc94f2ef24789a8118a53f3071a0b32a77a8e4d0"
+    },
+    "launching-fragments-with-fragmentscenario": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "instrumentation/scenarios/launching-fragments-with-fragmentscenario/SKILL.md",
+      "computedHash": "923da31e733965db5a9f49355efaffcb3535054c759f56e9cda25884e871b475"
+    },
+    "migrating-from-android-test-classes": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "platform/legacy/migrating-from-android-test-classes/SKILL.md",
+      "computedHash": "b4af51276ea973bf84791f27b17e9133a69e3628498af7a5d1e150f90e18fc34"
+    },
+    "mobile-native": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mobile-native/SKILL.md",
+      "computedHash": "f221cea36642168df6d3d6d7f236237cbf1ae669138ff7df07775674223d49ad"
+    },
+    "mocking-with-mockito": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "jvm-tests/mocking/mocking-with-mockito/SKILL.md",
+      "computedHash": "86a4da611c2f98dcfb206be90eb71f895f6855ac281563e5f7a59b7baacaad74"
+    },
+    "mocking-with-mockk": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "jvm-tests/mocking/mocking-with-mockk/SKILL.md",
+      "computedHash": "127c0ee22dea5537d7f1eb42f7a47e573d7f2cb805bd6a2789596864f3cbe642"
+    },
+    "modern-jetpack-compose": {
+      "source": "anhvt52/jetpack-compose-skills",
+      "sourceType": "github",
+      "skillPath": "modern-jetpack-compose/SKILL.md",
+      "computedHash": "7ab67c0306af2cf3b53301e965da013b0a171a7eb38cbd84a5bc182d07bc0255"
+    },
+    "organizing-test-source-sets": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "fundamentals/strategies/organizing-test-source-sets/SKILL.md",
+      "computedHash": "b7b19c0cabf13f896bfa7991d25106da29ebcbc03b359f60080b586cada7463a"
+    },
+    "pick-ui-library": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pick-ui-library/SKILL.md",
+      "computedHash": "5d2a77bf0ecafbda85aa95fb49999b6d77945d9066ec83d970b62e5b388cd686"
+    },
+    "picking-test-doubles": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "fundamentals/doubles/picking-test-doubles/SKILL.md",
+      "computedHash": "fbf123c19bbdf30b51ef3d9915cfe27ee5143bc62a0b4b98327687e290001dac"
+    },
+    "printing-the-semantics-tree": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/debug/printing-the-semantics-tree/SKILL.md",
+      "computedHash": "a8ce1966945f80b9a92490f2a306b585a173092ea888336dcbb3fee709489029"
+    },
+    "prototype": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/prototype/SKILL.md",
+      "computedHash": "77be567d8c946608fdd15e61b62ab383cdf289a194dce2479828b7eda860d3ba"
+    },
+    "receiving-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/receiving-code-review/SKILL.md",
+      "computedHash": "59361179fc9225173e0c145ffd9bafbf9fdbf8b43ce3dc308497a0b4f83a6063"
+    },
+    "remove-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remove-animations/SKILL.md",
+      "computedHash": "5d738305c722c25e054a9e3b67e68d4429617d9fbae4bc8861b73cc25c8ba84c"
+    },
+    "requesting-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/requesting-code-review/SKILL.md",
+      "computedHash": "b095ac8c980339436b41de9989328f3f288f2e2a70452df28452bbeb6531d604"
+    },
+    "review-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-animations/SKILL.md",
+      "computedHash": "b1aca2c16876b8f00e2a1eb161714e63ec41099269d5f95c2f307230749b9dcd"
+    },
+    "running-instrumented-tests-via-adb": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/tests/running-instrumented-tests-via-adb/SKILL.md",
+      "computedHash": "fa76d6d2ef7f03d1c115c33a879b67d90777523bc8da35068ae5f194b7633a35"
+    },
+    "running-instrumented-tests-with-androidjunit4": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "instrumentation/runner/running-instrumented-tests-with-androidjunit4/SKILL.md",
+      "computedHash": "929753aad8fe46aea05786fa5b59f8597b2c8f3e6e15fecaa200d62d3bd41b03"
+    },
+    "running-tests-on-gradle-managed-devices": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "instrumentation/managed-devices/running-tests-on-gradle-managed-devices/SKILL.md",
+      "computedHash": "8f966f6b7aebef826df13dda9b1e80b60aa766be48be67b062b9b4f7e3a38da5"
+    },
+    "scripting-adb-for-ci": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/automation/scripting-adb-for-ci/SKILL.md",
+      "computedHash": "4ffe9ed01c8f92841c63a6429bfd87adb9b958c949b2cb8ea6d60155159aa58c"
+    },
+    "setting-up-host-vs-device-tests": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/setup/setting-up-host-vs-device-tests/SKILL.md",
+      "computedHash": "702fd7b269587cecb77950a0a691efe647610894cf11838984ad39c4b47cc25c"
+    },
+    "slides": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/slides/SKILL.md",
+      "computedHash": "9c012d14e94b734b324f859d64da3b47762b8cdee47515ce83bce4366222f885"
+    },
+    "structuring-a-compose-test": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/patterns/structuring-a-compose-test/SKILL.md",
+      "computedHash": "d16868b6c241a38d40bdffe2c1f3cd2fa0e00da684c2479c45231d208625dabb"
+    },
+    "subagent-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/subagent-driven-development/SKILL.md",
+      "computedHash": "8b425d9ea00698e83a5d41c1d23f19bdc60ce2006b1234e419ba868e266000c3"
+    },
+    "synchronizing-with-idle": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/synchronization/synchronizing-with-idle/SKILL.md",
+      "computedHash": "1bd6a5df4abe214e7a74cdc998a2d9d4fc0975fca77e714b3f6db7a20cc3ffab"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
+      "computedHash": "b7b6e98c3bffe371893bdb69845ec61124a65b6a96313dc8d6a2bce4437b13eb"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/test-driven-development/SKILL.md",
+      "computedHash": "3cfe4ebb6fa7288f668d87880d279c8e48f7a92b63415e296857060f5ce22e05"
+    },
+    "testing-animations-deterministically": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/synchronization/testing-animations-deterministically/SKILL.md",
+      "computedHash": "c56bbf236a45bff1ef735905097d47c6d67cca9df073cdf416ffc1bb71f67915"
+    },
+    "testing-coroutines-with-runtest": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "jvm-tests/coroutines/testing-coroutines-with-runtest/SKILL.md",
+      "computedHash": "0c9b6c9f5cdefcdbea78b5a1ea2b0aa1884fe744046d630b989c55b6b7fba469"
+    },
+    "testing-flows-with-turbine": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "jvm-tests/coroutines/testing-flows-with-turbine/SKILL.md",
+      "computedHash": "ab8951b851bb195ed6bd4bcba5ad209d28ef865a34fed72d3a92480a0ee1b46b"
+    },
+    "testing-lazy-lists": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/patterns/testing-lazy-lists/SKILL.md",
+      "computedHash": "b9034f8d929770fd8943221b633b0faecda9a06ea0da9173f4fc7f264fcb2cf1"
+    },
+    "testing-state-restoration": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/patterns/testing-state-restoration/SKILL.md",
+      "computedHash": "178fcd74be9cf22f20cf6eb9f57fae4c9024e7ebc2e0e696f705429e854e966c"
+    },
+    "testing-with-espresso-interop": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/interop/testing-with-espresso-interop/SKILL.md",
+      "computedHash": "ca320f0cce6c08b2ef0813c20706fa8fa1bc1603dd27218d7489919129370833"
+    },
+    "traversing-the-semantics-tree": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/finders/traversing-the-semantics-tree/SKILL.md",
+      "computedHash": "9e7fb18a87f43426a9aa5eb6413b3e1a255857eff5ce076de1ade628e9f9789e"
+    },
+    "ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-styling/SKILL.md",
+      "computedHash": "39ad392c96adab936d8d057b66d1d632dd9c3d2b2397ec11bfe0e2a7c1fc975a"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "f9f7f8eb0ff50334c509c51b761f362db712ba99972748b1fc3a1dbc65873e80"
+    },
+    "understanding-adb-architecture": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "adb/architecture/understanding-adb-architecture/SKILL.md",
+      "computedHash": "bd04db0f11fcab5f833cfa8e9016bef0c62aa554bcdcb409878c1fc84a3f7a97"
+    },
+    "understanding-the-testing-pyramid": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "fundamentals/concepts/understanding-the-testing-pyramid/SKILL.md",
+      "computedHash": "d227940c306437f983cdd831c1b12eccaa614e6c79e674633dd01799de34c5b4"
+    },
+    "using-git-worktrees": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/using-git-worktrees/SKILL.md",
+      "computedHash": "48c8a1040e378e0cb7208107294e3afa9067b9370c3f33b49a443eb6b7528b0d"
+    },
+    "using-robolectric-correctly": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "jvm-tests/robolectric/using-robolectric-correctly/SKILL.md",
+      "computedHash": "b1460aece26a14c59b5203b29ca809552f614ec634b968eb4e05786a1dd32675"
+    },
+    "using-superpowers": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/using-superpowers/SKILL.md",
+      "computedHash": "ef8670c2a2d8e2f6ed52d6f3219759903300ca13afc5ec2e25826a735112562b"
+    },
+    "validating-compose-stability": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "compose/stability/validating-compose-stability/SKILL.md",
+      "computedHash": "76dbd83645f717dc22105120b5e03a7997597ecb1e83e6505c04d62e34773535"
+    },
+    "vercel-cli-with-tokens": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vercel-cli-with-tokens/SKILL.md",
+      "computedHash": "a2f596ac516fe8986386f9562f4c94604af9fb6a0fc417d263cbe6dc05117b72"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "f98931159fa9c7fed043bcd18a891a46dcf89ababa38df13a4c5b7b30dc0ce07"
+    },
+    "vercel-optimize": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vercel-optimize/SKILL.md",
+      "computedHash": "9d4ace02972b9b1c462f097c7322eb32c9f04bba6f2fb5cf482086d402eeec33"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "2e9088a7333666d8c2833b8ff58bd51b955501c42b4c7244f72b4cbf22dafcc4"
+    },
+    "vercel-react-view-transitions": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-view-transitions/SKILL.md",
+      "computedHash": "6c9169eb561dcdea32408e2525a2eb5375d709dd8dbb3412b895e6c58a8dc22e"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/verification-before-completion/SKILL.md",
+      "computedHash": "b529822bdac4b197b180fe12225cff86b930b65910435103c10622df7f041651"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    },
+    "write-swift": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/write-swift/SKILL.md",
+      "computedHash": "f20bb9cf51dbee1900b264820a12f1d3d378dc4d23ac758e7ba9e644c49a2459"
+    },
+    "writing-espresso-tests": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "instrumentation/espresso/writing-espresso-tests/SKILL.md",
+      "computedHash": "479896ca0b3d1a114b1bfbeec456efeb4a917f545023ea9d21ab5bf7d6713798"
+    },
+    "writing-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/writing-guidelines/SKILL.md",
+      "computedHash": "e90462d4f801d823603b12c345ad0ff91a7489415274432681d21c7129123c26"
+    },
+    "writing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/writing-plans/SKILL.md",
+      "computedHash": "c2647b5bf067be353a893e5a39a632cbbeb7ad81e61fa5ae227ece5490029073"
+    },
+    "writing-skills": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/writing-skills/SKILL.md",
+      "computedHash": "5dfeb4768effae27e94cc7ce27420f461a09fbca4c6e3846cf7acb1765d5d3d7"
+    },
+    "writing-tests-with-kotlin-test": {
+      "source": "skydoves/android-testing-skills",
+      "sourceType": "github",
+      "skillPath": "kotlin/kotlin-test/writing-tests-with-kotlin-test/SKILL.md",
+      "computedHash": "ad750f15c325255b0b116932b252f466fedba13ebd5f643a8dc85e56c3839217"
+    }
+  }
+}

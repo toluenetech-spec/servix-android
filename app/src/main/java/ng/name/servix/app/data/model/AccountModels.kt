@@ -4,7 +4,7 @@ import kotlin.math.roundToLong
 import kotlinx.serialization.Serializable
 
 /**
- * Bound to GET /account/overview (reference/api-routes/account.ts:117-120 &
+ * Bound to GET /account/overview (reference/api-routes/account.ts:127-130 &
  * reference/web/src/pages/DashboardPage.jsx:41,57-75).
  */
 @Serializable
@@ -19,7 +19,7 @@ data class AccountOverviewDto(
 )
 
 /**
- * Bound to GET /account/insights (reference/api-routes/account.ts:103-116):
+ * Bound to GET /account/insights (reference/api-routes/account.ts:113-126):
  * {
  *   statusCounts: Record<string, number>,
  *   monthly: Array<{ month: string, spent: number, refunded: number }>,
@@ -58,7 +58,7 @@ data class UpcomingBookingBriefDto(
 )
 
 /**
- * Bound to GET /account/security-summary (reference/api-routes/account.ts:29-38):
+ * Bound to GET /account/security-summary (reference/api-routes/account.ts:30-39):
  * { method: "totp" | "passkey" | null, recoveryCodesRemaining: number, passkeys: number }
  */
 @Serializable
@@ -69,7 +69,7 @@ data class SecuritySummaryDto(
 )
 
 /**
- * Bound to GET /account/payments (reference/api-routes/account.ts:39-43):
+ * Bound to GET /account/payments (reference/api-routes/account.ts:49-53):
  * {
  *   mode: "test" | "live",
  *   records: Array<{
@@ -108,4 +108,30 @@ data class PaymentBookingBriefDto(
     val id: String = "",
     val reference: String = "",
     val serviceTitle: String = "",
+)
+
+// GET /account/device: reference/api-routes/account.ts:40-46 (API 0.9.4).
+@kotlinx.serialization.Serializable
+data class AccountDeviceDto(
+    val ip: String? = null,
+    val device: String? = null,
+    val os: String? = null,
+    val client: String? = null,
+    val userAgent: String? = null,
+    val seenAt: String? = null,
+)
+
+/** PATCH /account/profile (api account.ts:14-31): at least one field, fullName 2-200 chars. */
+@Serializable
+data class UpdateProfileRequest(
+    val fullName: String? = null,
+    val avatarUrl: String? = null,
+)
+
+/** POST /uploads?kind=avatar&fileName=… (api/src/routes/uploads.ts:67-91) -> { url, key, … }. */
+@Serializable
+data class UploadAck(
+    val url: String = "",
+    val key: String = "",
+    val kind: String = "",
 )

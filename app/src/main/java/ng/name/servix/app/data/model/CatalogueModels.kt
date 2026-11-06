@@ -417,7 +417,7 @@ data class CountViewRequest(
 )
 
 /**
- * Bound to GET /account/saved and POST /account/saved (reference/api-routes/account.ts:112-151):
+ * Bound to GET /account/saved and POST /account/saved (reference/api-routes/account.ts:76-110):
  */
 @Serializable
 data class SavedProfessionalItemDto(

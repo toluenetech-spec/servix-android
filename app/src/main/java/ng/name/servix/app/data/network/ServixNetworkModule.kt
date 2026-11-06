@@ -30,6 +30,7 @@ class ServixNetworkModule(
     // Dedicated OkHttp client for calling POST /auth/refresh without triggering the Authenticator recursively
     private val refreshClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
+        .addInterceptor(servixUserAgentInterceptor)
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
@@ -150,6 +151,7 @@ class ServixNetworkModule(
 
     val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
+        .addInterceptor(servixUserAgentInterceptor)
         .addInterceptor(authHeaderInterceptor)
         .authenticator(tokenAuthenticator)
         .apply {
@@ -174,6 +176,16 @@ class ServixNetworkModule(
         .addConverterFactory(ApiErrorParser.json.asConverterFactory("application/json".toMediaType()))
         .build()
         .create(ServixApiService::class.java)
+
+    // AI tasks may take up to the backend's 60-second limit (web client: 75 seconds).
+    val aiHttpClient: OkHttpClient = okHttpClient.newBuilder()
+        .readTimeout(75, TimeUnit.SECONDS).callTimeout(75, TimeUnit.SECONDS).build()
+
+    val aiApiService: ServixApiService = Retrofit.Builder()
+        .baseUrl(BuildConfig.API_BASE_URL)
+        .client(aiHttpClient)
+        .addConverterFactory(ApiErrorParser.json.asConverterFactory("application/json".toMediaType()))
+        .build().create(ServixApiService::class.java)
 
     private fun responseCount(response: Response): Int {
         var count = 1

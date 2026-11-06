@@ -32,8 +32,8 @@ import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.ui.auth.AuthUiState
 import ng.name.servix.app.ui.auth.RegisterScreen
 import ng.name.servix.app.ui.auth.WelcomeScreen
-import ng.name.servix.app.ui.dashboard.DashboardScreen
-import ng.name.servix.app.ui.dashboard.DashboardUiState
+import ng.name.servix.app.ui.home.HomeTabScreen
+import ng.name.servix.app.ui.home.HomeUiState
 import ng.name.servix.app.ui.theme.ServixTheme
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -345,27 +345,19 @@ class V031VerificationTest {
         println("V031PARSED GET /account/payments -> $payments")
         println("V031PARSED GET /bookings -> count=${bookings.size}")
 
-        // 5. Render DashboardScreen with the live data
+        // 5. Render the Home tab (pass 2 merged the dashboard into it) with the live data
         val dashboardActivity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
         dashboardActivity.setContent {
             ServixTheme {
-                DashboardScreen(
+                HomeTabScreen(
                     user = customer,
-                    uiState = DashboardUiState(
+                    city = "Lagos",
+                    uiState = HomeUiState(
                         loading = false,
                         overview = overview,
                         bookings = bookings,
-                        insights = insights,
-                        securitySummary = securitySummary,
-                        payments = payments,
                         loadedForUserId = customer.id,
                     ),
-                    onRefresh = {},
-                    onFindProfessionalClick = {},
-                    onExploreServicesClick = {},
-                    onVerifyEmailClick = {},
-                    onOpenBookingsTab = {},
-                    onOpenBookingDetail = {},
                 )
             }
         }

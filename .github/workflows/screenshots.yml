@@ -1,0 +1,102 @@
+name: Screenshot renders
+
+on:
+  push:
+    branches: [main, 'arena/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[shots]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Render screen screenshots (Robolectric, offline fixtures)
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --tests "ng.name.servix.app.screenshots.*" --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
+
+      - name: Surface Gradle errors
+        if: failure()
+        run: |
+          mkdir -p docs/ci
+          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log > docs/ci/last-failure.txt || true
+          grep -E "^e: " gradle-screenshots.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          git add docs/ci/last-failure.txt
+          git commit -m "chore: CI failure log [shots]" || true
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
+          exit 0
+
+      - name: Upload renders artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen-renders
+          path: app/build/reports/screenshots/screens/*.png
+          if-no-files-found: ignore
+
+      - name: Publish renders for review (sentinel-gated)
+        if: success()
+        run: |
+          if [ ! -f docs/screenshots/COMMIT_RENDERS ]; then
+            echo "docs/screenshots/COMMIT_RENDERS is absent: renders stay in the artifact only."
+            exit 0
+          fi
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          rm -rf docs/screenshots
+          mkdir -p docs/screenshots
+          cp app/build/reports/screenshots/screens/*.png docs/screenshots/
+          git add -A docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Renders are byte-identical to the committed set; nothing to publish."
+            exit 0
+          fi
+          git commit -m "chore: screen renders for ${GITHUB_SHA::7} [shots]"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload gradle log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-screenshots-log
+          path: gradle-screenshots.log
+          if-no-files-found: ignore
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-test-report
+          path: app/build/reports/tests/testDebugUnitTest/**
+          if-no-files-found: ignore

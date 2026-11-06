@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -45,6 +46,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import ng.name.servix.app.ui.motion.rememberSuccessTick
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -54,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import ng.name.servix.app.ui.a11y.heading
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -526,6 +530,12 @@ fun BookingDetailScreen(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    var moreSheetOpen by remember { mutableStateOf(false) }
+    // One light tick on a successful action (Book & Pay, Confirm completion, Review submitted).
+    val successTick = rememberSuccessTick()
+    LaunchedEffect(uiState.actionSuccessMessage) {
+        if (!uiState.actionSuccessMessage.isNullOrBlank()) successTick()
+    }
 
     DisposableEffect(lifecycleOwner, pollingAfterPay) {
         val observer = LifecycleEventObserver { _, event ->
@@ -539,11 +549,12 @@ fun BookingDetailScreen(
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 104.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Top back row
@@ -602,17 +613,46 @@ fun BookingDetailScreen(
         // Header: Eyebrow + Service Title (BookingDetailPage.jsx:112-113)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "BOOKING ${booking.reference}",
-                style = MaterialTheme.typography.labelSmall,
-                color = ForestGreen,
+                text = "Booking ${booking.reference}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MutedGray,
                 modifier = Modifier.testTag("booking_detail_reference"),
             )
             Text(
                 text = booking.serviceTitle,
                 style = MaterialTheme.typography.headlineMedium,
                 color = DeepForest,
-                modifier = Modifier.testTag("booking_detail_title"),
+                modifier = Modifier.testTag("booking_detail_title").heading(),
             )
+        }
+
+        // Status header: one plain sentence of what happens next in this state.
+        val nextStep = bookingNextStepSentence(booking.status)
+        ServixCard(
+            modifier = Modifier.testTag("booking_status_header"),
+            containerColor = SoftSand,
+            borderColor = BorderSand,
+            contentPadding = PaddingValues(18.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    BookingStatusChip(status = booking.status)
+                    Text(
+                        text = ServixFormatters.formatNaira(booking.amount),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = DeepForest,
+                    )
+                }
+                Text(
+                    text = nextStep,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Charcoal,
+                    modifier = Modifier.testTag("booking_next_step"),
+                )
+            }
         }
 
         // Payment received banner (when status transitions from pending_payment -> requested)
@@ -991,98 +1031,65 @@ fun BookingDetailScreen(
                     }
                 }
 
-                // CUSTOMER ACTIONS — shown ONLY in permitted states
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                // Actions moved to the sticky bottom action bar + "More" sheet below.
+            }
+        }
+    }
+
+    val barBooking = uiState.booking
+    if (!uiState.loading && barBooking != null) {
+        val barActions = bookingActionsFor(
+            booking = barBooking,
+            busy = uiState.actionBusy,
+            rebookLoading = uiState.rebookLoading,
+            payLabel = stringResource(R.string.booking_pay_cta, ServixFormatters.formatNaira(barBooking.amount)),
+            cancelLabel = if (barBooking.status == "pending_payment") stringResource(R.string.cancel) else stringResource(R.string.booking_cancel_cta),
+            onPay = { onPayClick { url -> CustomTabLauncher.launchUrl(context, url) } },
+            onOpenModal = onOpenModal,
+            onStartBookAgain = onStartBookAgain,
+        )
+        BookingActionBar(
+            actions = barActions,
+            onMore = { moreSheetOpen = true },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+        if (moreSheetOpen) {
+            val moreSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { moreSheetOpen = false },
+                sheetState = moreSheetState,
+                containerColor = WarmIvory,
+                contentColor = Charcoal,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // Pay: pending_payment -> POST /bookings/:id/pay
-                    if (booking.status == "pending_payment") {
-                        ServixPrimaryButton(
-                            text = stringResource(
-                                R.string.booking_pay_cta,
-                                ServixFormatters.formatNaira(booking.amount),
-                            ),
+                    Text(
+                        text = "More actions",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = DeepForest,
+                    )
+                    barActions.filter { it.secondary }.forEach { action ->
+                        ServixSecondaryButton(
+                            text = action.label,
                             onClick = {
-                                onPayClick { url ->
-                                    CustomTabLauncher.launchUrl(context, url)
-                                }
+                                moreSheetOpen = false
+                                action.onClick()
                             },
-                            enabled = !uiState.actionBusy,
-                            loading = uiState.actionBusy,
-                            testTag = "booking_action_pay",
-                        )
-                    }
-
-                    // Confirm completion: delivered -> POST /bookings/:id/confirm
-                    if (booking.status == "delivered") {
-                        ServixPrimaryButton(
-                            text = stringResource(R.string.booking_confirm_cta),
-                            onClick = { onOpenModal(BookingActionModal.CONFIRM_COMPLETION) },
-                            enabled = !uiState.actionBusy,
-                            testTag = "booking_action_confirm",
-                        )
-                    }
-
-                    // Cancel: pending_payment, requested, accepted -> POST /bookings/:id/cancel
-                    if (booking.status in setOf("pending_payment", "requested", "accepted")) {
-                        val cancelLabel = if (booking.status == "pending_payment") {
-                            stringResource(R.string.cancel)
-                        } else {
-                            stringResource(R.string.booking_cancel_cta)
-                        }
-                        ServixSecondaryButton(
-                            text = cancelLabel,
-                            onClick = { onOpenModal(BookingActionModal.CANCEL) },
-                            enabled = !uiState.actionBusy,
-                            testTag = "booking_action_cancel",
-                        )
-                    }
-
-                    // Dispute: in_progress, delivered -> POST /bookings/:id/dispute
-                    if (booking.status in setOf("in_progress", "delivered")) {
-                        ServixSecondaryButton(
-                            text = stringResource(R.string.booking_dispute_cta),
-                            onClick = { onOpenModal(BookingActionModal.DISPUTE) },
-                            enabled = !uiState.actionBusy,
-                            testTag = "booking_action_dispute",
-                        )
-                    }
-
-                    // Review: completed && hasReview == false -> POST /bookings/:id/review
-                    if (booking.status == "completed" && !booking.hasReview) {
-                        ServixPrimaryButton(
-                            text = stringResource(R.string.booking_review_cta),
-                            onClick = { onOpenModal(BookingActionModal.REVIEW) },
-                            enabled = !uiState.actionBusy,
-                            testTag = "booking_action_review",
-                        )
-                    }
-
-                    if (booking.status == "completed" && booking.hasReview) {
-                        ServixBadge(
-                            text = stringResource(R.string.booking_reviewed_badge),
-                            containerColor = DeepForest,
-                            contentColor = WarmIvory,
-                        )
-                    }
-
-                    // Book again: completed, cancelled, declined -> GET /bookings/:id/rebook
-                    if (booking.status in setOf("completed", "cancelled", "declined")) {
-                        ServixSecondaryButton(
-                            text = if (uiState.rebookLoading) {
-                                stringResource(R.string.booking_rebook_preparing)
-                            } else {
-                                stringResource(R.string.booking_rebook_cta)
-                            },
-                            onClick = onStartBookAgain,
-                            enabled = !uiState.actionBusy && !uiState.rebookLoading,
-                            testTag = "booking_action_rebook",
+                            enabled = action.enabled,
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = action.testTag + "_more",
                         )
                     }
                 }
             }
         }
+    }
     }
 
     // Action Bottom Sheets / Modals
@@ -1146,6 +1153,107 @@ fun BookingDetailScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/** One plain sentence describing what happens next, per booking state. */
+internal fun bookingNextStepSentence(status: String): String = when (status) {
+    "pending_payment" -> "Pay now to hold this slot — your money stays in escrow until you confirm the work."
+    "requested" -> "Waiting for the professional to accept. You can cancel free of charge until they do."
+    "accepted" -> "The professional accepted. Payment is held in escrow until you confirm the work is done."
+    "in_progress" -> "Work is under way. Confirm when it is delivered and the payment is released."
+    "delivered" -> "The professional marked this delivered — check the work, then confirm to release payment."
+    "completed" -> "All done and paid. Leave a review to help the next customer decide."
+    "cancelled" -> "This booking was cancelled. Nothing was charged, or your payment was refunded."
+    "declined" -> "The professional could not take this booking. Try another professional or time."
+    "disputed" -> "You reported a problem. Servix support reviews the details and contacts both sides."
+    "refunded" -> "Your payment was refunded. It can take a few working days to reach your bank."
+    else -> "We will show the next step here as this booking moves along."
+}
+
+/** One offered action: exactly one primary is shown in the bar, the rest live under "More". */
+data class BookingAction(
+    val label: String,
+    val secondary: Boolean,
+    val enabled: Boolean,
+    val testTag: String,
+    val onClick: () -> Unit,
+)
+
+/** Same gates as Stage 3 — pay, confirm, cancel, dispute, review, book again. */
+internal fun bookingActionsFor(
+    booking: ng.name.servix.app.data.model.BookingDto,
+    busy: Boolean,
+    rebookLoading: Boolean,
+    payLabel: String,
+    cancelLabel: String,
+    onPay: () -> Unit,
+    onOpenModal: (BookingActionModal) -> Unit,
+    onStartBookAgain: () -> Unit,
+): List<BookingAction> {
+    val actions = mutableListOf<BookingAction>()
+    if (booking.status == "pending_payment") {
+        actions += BookingAction(payLabel, secondary = false, enabled = !busy, testTag = "booking_action_pay", onClick = onPay)
+    }
+    if (booking.status == "delivered") {
+        actions += BookingAction("Confirm work is done", secondary = false, enabled = !busy, testTag = "booking_action_confirm", onClick = { onOpenModal(BookingActionModal.CONFIRM_COMPLETION) })
+    }
+    if (booking.status == "completed" && !booking.hasReview) {
+        actions += BookingAction("Leave a review", secondary = false, enabled = !busy, testTag = "booking_action_review", onClick = { onOpenModal(BookingActionModal.REVIEW) })
+    }
+    if (booking.status in setOf("completed", "cancelled", "declined")) {
+        actions += BookingAction(if (rebookLoading) "Preparing…" else "Book again", secondary = false, enabled = !busy && !rebookLoading, testTag = "booking_action_rebook", onClick = onStartBookAgain)
+    }
+    if (booking.status in setOf("pending_payment", "requested", "accepted")) {
+        actions += BookingAction(cancelLabel, secondary = true, enabled = !busy, testTag = "booking_action_cancel", onClick = { onOpenModal(BookingActionModal.CANCEL) })
+    }
+    if (booking.status in setOf("in_progress", "delivered")) {
+        actions += BookingAction("Report a problem", secondary = true, enabled = !busy, testTag = "booking_action_dispute", onClick = { onOpenModal(BookingActionModal.DISPUTE) })
+    }
+    return actions
+}
+
+/** Sticky bottom bar: the single next step, plus "More" when other actions exist. */
+@Composable
+private fun BookingActionBar(
+    actions: List<BookingAction>,
+    onMore: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val primary = actions.firstOrNull { !it.secondary }
+    val extras = actions.filter { it.secondary }
+    if (primary == null && extras.isEmpty()) return
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = WarmIvory,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSand),
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (extras.isNotEmpty()) {
+                ServixSecondaryButton(
+                    text = "More",
+                    onClick = onMore,
+                    modifier = Modifier.weight(0.4f),
+                    testTag = "booking_action_more",
+                )
+            }
+            if (primary != null) {
+                ServixPrimaryButton(
+                    text = primary.label,
+                    onClick = primary.onClick,
+                    enabled = primary.enabled,
+                    modifier = Modifier.weight(if (extras.isNotEmpty()) 0.6f else 1f),
+                    testTag = primary.testTag,
+                )
             }
         }
     }

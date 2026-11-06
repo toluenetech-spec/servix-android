@@ -5,6 +5,7 @@ import ng.name.servix.app.data.local.TermsAcceptanceStore
 import ng.name.servix.app.data.local.TokenStore
 import ng.name.servix.app.data.network.PersistentCookieJar
 import ng.name.servix.app.data.network.ServixNetworkModule
+import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.AuthRepository
 import ng.name.servix.app.data.repository.BookingRepository
@@ -37,6 +38,8 @@ class AppContainer(context: Context) {
     ).also {
         authRepository.attachNetworkModule(it)
     }
+
+    val aiRepository = AiRepository(networkModule.aiApiService, networkModule.aiHttpClient)
 
     val catalogueRepository: CatalogueRepository = CatalogueRepository(
         apiProvider = { networkModule.apiService }

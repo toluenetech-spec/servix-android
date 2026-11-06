@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -11,16 +13,39 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.Coil
+import coil.ImageLoader
+import okhttp3.OkHttpClient
+import ng.name.servix.app.data.network.servixUserAgentInterceptor
 import ng.name.servix.app.di.AppContainer
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.navigation.ServixAppShell
 import ng.name.servix.app.ui.theme.ServixTheme
+import ng.name.servix.app.util.AppLinkBus
+import ng.name.servix.app.util.OAuthReturnBus
 
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.data?.let { uri ->
+            OAuthReturnBus.publish(uri)
+            AppLinkBus.publish(uri)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Transparent bars with dark icons on the Warm Ivory canvas (plan §3).
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+        intent?.data?.let(OAuthReturnBus::publish)
         val container = AppContainer.getInstance(applicationContext)
+        // Images use their own client: never attach account tokens to third-party URLs.
+        Coil.setImageLoader(ImageLoader.Builder(applicationContext)
+            .okHttpClient(OkHttpClient.Builder().addInterceptor(servixUserAgentInterceptor).build())
+            .build())
 
         setContent {
             ServixTheme {
@@ -42,6 +67,7 @@ class MainActivity : ComponentActivity() {
                         catalogueRepository = container.catalogueRepository,
                         bookingRepository = container.bookingRepository,
                         accountRepository = container.accountRepository,
+                        aiRepository = container.aiRepository,
                         isOnline = isOnline,
                     )
                 }

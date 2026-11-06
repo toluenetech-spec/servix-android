@@ -23,13 +23,13 @@ sealed interface ServixRoute {
     data object ForgotPassword : ServixRoute
 
     @Serializable
-    data object Dashboard : ServixRoute
-
-    @Serializable
     data object Home : ServixRoute
 
     @Serializable
     data object Search : ServixRoute
+
+    @Serializable
+    data object Notifications : ServixRoute
 
     @Serializable
     data class ProfessionalProfile(val slug: String) : ServixRoute

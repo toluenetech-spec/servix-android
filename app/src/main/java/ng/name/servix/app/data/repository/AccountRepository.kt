@@ -7,9 +7,16 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import ng.name.servix.app.data.model.AccountInsightsDto
 import ng.name.servix.app.data.model.AccountOverviewDto
 import ng.name.servix.app.data.model.AccountPaymentsResponse
+import ng.name.servix.app.data.model.MarkNotificationsReadRequest
+import ng.name.servix.app.data.model.MarkNotificationsReadResponse
+import ng.name.servix.app.data.model.NotificationListResponse
 import ng.name.servix.app.data.model.SecuritySummaryDto
+import ng.name.servix.app.data.model.UnreadCountResponse
 import ng.name.servix.app.data.network.ApiErrorParser
 import ng.name.servix.app.data.network.ServixApiService
+
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class AccountRepository(
     private val apiProvider: () -> ServixApiService,
@@ -72,6 +79,58 @@ class AccountRepository(
         }
         ApiErrorParser.json.decodeFromJsonElement<AccountPaymentsResponse>(raw)
     }
+
+    suspend fun getDevice() = safeCall { api.getAccountDevice() }
+
+    /* -------- profile (PATCH /account/profile) -------- */
+
+    suspend fun updateProfile(
+        fullName: String? = null,
+        avatarUrl: String? = null,
+    ): Result<Unit> = safeCall {
+        api.updateProfile(
+            ng.name.servix.app.data.model.UpdateProfileRequest(fullName = fullName, avatarUrl = avatarUrl),
+        )
+        Unit
+    }
+
+    /**
+     * Avatar upload: POST /uploads?kind=avatar&fileName=… with the raw bytes (uploads.ts:67-91),
+     * then PATCH /account/profile { avatarUrl } (account.ts:14-31). Server caps images at 5 MB.
+     */
+    suspend fun uploadAvatar(fileName: String, contentType: String, bytes: ByteArray): Result<String> = safeCall {
+        val body = bytes.toRequestBody(contentType.toMediaTypeOrNull())
+        api.uploadMedia(kind = "avatar", fileName = fileName, contentType = contentType, body = body).url
+    }
+
+    /* -------- saved professionals (GET /account/saved, DELETE /account/saved/:slug) -------- */
+
+    suspend fun getSaved(): Result<List<ng.name.servix.app.data.model.SavedProfessionalItemDto>> =
+        safeCall { api.getSavedProfessionals() }
+
+    suspend fun unsave(slug: String): Result<Unit> = safeCall {
+        api.unsaveProfessional(slug)
+        Unit
+    }
+
+    /* -------- plan (GET /billing/plan, alias of /me/entitlements) -------- */
+
+    suspend fun billingPlan(): Result<kotlinx.serialization.json.JsonElement> = safeCall { api.billingPlan() }
+
+    /* -------- notifications (android/reference/api-routes/account.ts:44-63) -------- */
+
+    suspend fun getNotifications(before: String? = null): Result<NotificationListResponse> =
+        safeCall { api.getNotifications(before = before) }
+
+    suspend fun getUnreadNotificationCount(): Result<UnreadCountResponse> =
+        safeCall { api.getUnreadNotificationCount() }
+
+    suspend fun markNotificationsRead(ids: List<String>? = null, all: Boolean = false): Result<MarkNotificationsReadResponse> =
+        safeCall {
+            api.markNotificationsRead(
+                MarkNotificationsReadRequest(ids = ids, all = if (all) true else null),
+            )
+        }
 
     private suspend fun <T> safeCall(block: suspend () -> T): Result<T> =
         withContext(Dispatchers.IO) {
