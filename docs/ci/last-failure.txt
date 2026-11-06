@@ -1,3 +1,7 @@
+PlayAssetsTest > playIcon512 FAILED
+    java.lang.IllegalStateException at PlayAssetsTest.kt:287
+> Task :app:testDebugUnitTest FAILED
 Execution failed for task ':app:testDebugUnitTest'.
 org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:testDebugUnitTest'.
 Caused by: org.gradle.api.internal.exceptions.MarkedVerificationException: There were failing tests. See the report at: file:///home/runner/work/servix-android/servix-android/app/build/reports/tests/testDebugUnitTest/index.html
+BUILD FAILED in 1m 8s
