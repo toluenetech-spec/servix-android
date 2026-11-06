@@ -120,6 +120,7 @@ class PlayAssetsTest {
                 categories = Fixtures.categories,
                 professionals = Fixtures.professionals,
                 overview = AccountOverviewDto(emailVerified = true),
+                bookings = Fixtures.bookings,
             ),
             aiUsage = Fixtures.usage,
         )
@@ -298,10 +299,10 @@ class PlayAssetsTest {
         canvas.drawColor(DEEP_FOREST)
 
         val padding = 72
-        val markSize = 130
-        val gap = 34
-        val wordSize = 150f
-        val taglineSize = 40f
+        val markSize = 156
+        val gap = 36
+        val wordSize = 132f
+        val taglineSize = 42f
 
         val wordPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = ResourcesCompat.getFont(context, R.font.inter_700) ?: Typeface.DEFAULT_BOLD
