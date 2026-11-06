@@ -29,6 +29,9 @@ sealed interface ServixRoute {
     data object Search : ServixRoute
 
     @Serializable
+    data object Notifications : ServixRoute
+
+    @Serializable
     data class ProfessionalProfile(val slug: String) : ServixRoute
 
     @Serializable

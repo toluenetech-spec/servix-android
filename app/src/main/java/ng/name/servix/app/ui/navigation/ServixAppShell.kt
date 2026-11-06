@@ -1,5 +1,19 @@
 package ng.name.servix.app.ui.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.core.content.ContextCompat
+import ng.name.servix.app.data.model.OAuthReturn
+import ng.name.servix.app.notifications.NotificationPrefs
+import ng.name.servix.app.notifications.NotificationsWorker
+import ng.name.servix.app.ui.notifications.NotificationsScreen
+import ng.name.servix.app.ui.notifications.NotificationsViewModel
+import ng.name.servix.app.util.OAuthReturnBus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,6 +125,7 @@ import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.updates.UpdateCard
 import ng.name.servix.app.updates.UpdateUiState
 import ng.name.servix.app.updates.rememberUpdateUiState
+import ng.name.servix.app.util.AppLinkBus
 import ng.name.servix.app.util.CustomTabLauncher
 
 private data class BottomTabItem(
@@ -254,6 +269,77 @@ fun ServixAppShell(
         ServixRoute.Welcome
     }
 
+    val shellContext = LocalContext.current
+    val notificationPrefs = remember { NotificationPrefs(shellContext) }
+    var showNotifRationale by remember { mutableStateOf(false) }
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        notificationPrefs.permissionAsked = true
+        showNotifRationale = false
+    }
+
+    LaunchedEffect(isAuthenticated) {
+        if (isAuthenticated) {
+            NotificationsWorker.schedule(shellContext)
+            val needsAsk = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(shellContext, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            if (needsAsk && !notificationPrefs.permissionAsked) showNotifRationale = true
+        } else {
+            NotificationsWorker.cancel(shellContext)
+            notificationPrefs.clear()
+        }
+    }
+
+    LaunchedEffect(Unit) { authViewModel.loadOAuthProviders() }
+
+    LaunchedEffect(Unit) {
+        OAuthReturnBus.returns.collect { result ->
+            authViewModel.handleOAuthReturn(result.ticket, result.error) { destination ->
+                val route = when (destination) {
+                    PostAuthDestination.SECURITY_CHECK -> ServixRoute.SecurityCheck
+                    PostAuthDestination.VERIFY_EMAIL -> ServixRoute.VerifyEmail
+                    else -> ServixRoute.Home
+                }
+                navController.navigate(route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        AppLinkBus.links.collect { target ->
+            when {
+                target.bookingId != null -> navController.navigate(ServixRoute.BookingDetail(target.bookingId!!))
+                target.notifications -> navController.navigate(ServixRoute.Notifications)
+            }
+        }
+    }
+
+    if (showNotifRationale) {
+        AlertDialog(
+            onDismissRequest = {
+                notificationPrefs.permissionAsked = true
+                showNotifRationale = false
+            },
+            title = { Text(stringResource(R.string.notifications_rationale_title)) },
+            text = { Text(stringResource(R.string.notifications_rationale_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text(stringResource(R.string.notifications_rationale_allow)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    notificationPrefs.permissionAsked = true
+                    showNotifRationale = false
+                }) { Text(stringResource(R.string.notifications_rationale_later)) }
+            },
+        )
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
         containerColor = WarmIvory,
@@ -340,7 +426,11 @@ fun ServixAppShell(
                         navController.navigate(ServixRoute.Home) {
                             popUpTo(ServixRoute.Welcome) { inclusive = true }
                         }
-                    }
+                    },
+                    providers = authUiState.oauthProviders,
+                    onProviderClick = { provider ->
+                        CustomTabLauncher.launchUrl(shellContext, OAuthReturnBus.nativeStartUrl(provider))
+                    },
                 )
             }
 
@@ -370,6 +460,10 @@ fun ServixAppShell(
                         navController.navigate(ServixRoute.Register) {
                             popUpTo(ServixRoute.Login) { inclusive = true }
                         }
+                    },
+                    providers = authUiState.oauthProviders,
+                    onProviderClick = { provider ->
+                        CustomTabLauncher.launchUrl(shellContext, OAuthReturnBus.nativeStartUrl(provider))
                     },
                     onBackClick = {
                         if (!navController.popBackStack()) {
@@ -413,7 +507,11 @@ fun ServixAppShell(
                                 popUpTo(0) { inclusive = true }
                             }
                         }
-                    }
+                    },
+                    providers = authUiState.oauthProviders,
+                    onProviderClick = { provider ->
+                        CustomTabLauncher.launchUrl(shellContext, OAuthReturnBus.nativeStartUrl(provider))
+                    },
                 )
             }
 
@@ -819,6 +917,24 @@ fun ServixAppShell(
                     onSignIn = {
                         pendingPostAuthRoute = ServixRoute.ServixAi
                         navController.navigate(ServixRoute.Login)
+                    },
+                )
+            }
+
+            composable<ServixRoute.Notifications> {
+                val notificationsViewModel = remember { NotificationsViewModel(accountRepository) }
+                val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+                NotificationsScreen(
+                    uiState = notificationsState,
+                    onBackClick = { navController.popBackStack() },
+                    onRefresh = { notificationsViewModel.load(refresh = true) },
+                    onMarkAllRead = notificationsViewModel::markAllRead,
+                    onItemClick = { item ->
+                        notificationsViewModel.markRead(item.id)
+                        val bookingId = Regex("/bookings/([^/?#]+)").find(item.link.orEmpty())?.groupValues?.get(1)
+                        if (!bookingId.isNullOrBlank()) {
+                            navController.navigate(ServixRoute.BookingDetail(bookingId))
+                        }
                     },
                 )
             }

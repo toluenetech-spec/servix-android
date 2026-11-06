@@ -12,7 +12,13 @@ import ng.name.servix.app.data.model.ForgotPasswordRequest
 import ng.name.servix.app.data.model.ForgotPasswordResponse
 import ng.name.servix.app.data.model.LoginRequest
 import ng.name.servix.app.data.model.MeResponse
+import ng.name.servix.app.data.model.MarkNotificationsReadRequest
+import ng.name.servix.app.data.model.MarkNotificationsReadResponse
+import ng.name.servix.app.data.model.NotificationListResponse
+import ng.name.servix.app.data.model.OAuthConfigResponse
+import ng.name.servix.app.data.model.OAuthNativeExchangeRequest
 import ng.name.servix.app.data.model.OkResponse
+import ng.name.servix.app.data.model.UnreadCountResponse
 import ng.name.servix.app.data.model.PayBookingResponse
 import ng.name.servix.app.data.model.ProfessionalDetailDto
 import ng.name.servix.app.data.model.ProfessionalsPageResponse
@@ -61,6 +67,24 @@ interface ServixApiService {
     suspend fun aiFeedback(@Body request: ng.name.servix.app.data.model.AiFeedbackRequest): Response<Unit>
 
     // reference/api-routes/account.ts:40-46: device summary for the current request.
+    @GET("auth/oauth/config")
+    suspend fun getOAuthConfig(): OAuthConfigResponse
+
+    @POST("auth/oauth/native/exchange")
+    suspend fun exchangeOAuthTicket(@Body body: OAuthNativeExchangeRequest): AuthSessionResponse
+
+    @GET("account/notifications")
+    suspend fun getNotifications(
+        @Query("before") before: String? = null,
+        @Query("unread") unread: String? = null,
+    ): NotificationListResponse
+
+    @GET("account/notifications/unread")
+    suspend fun getUnreadNotificationCount(): UnreadCountResponse
+
+    @POST("account/notifications/read")
+    suspend fun markNotificationsRead(@Body body: MarkNotificationsReadRequest): MarkNotificationsReadResponse
+
     @GET("account/device")
     suspend fun getAccountDevice(): ng.name.servix.app.data.model.AccountDeviceDto
 

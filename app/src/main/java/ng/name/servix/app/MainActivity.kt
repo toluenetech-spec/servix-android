@@ -21,14 +21,26 @@ import ng.name.servix.app.di.AppContainer
 import ng.name.servix.app.ui.auth.AuthViewModel
 import ng.name.servix.app.ui.navigation.ServixAppShell
 import ng.name.servix.app.ui.theme.ServixTheme
+import ng.name.servix.app.util.AppLinkBus
+import ng.name.servix.app.util.OAuthReturnBus
 
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.data?.let { uri ->
+            OAuthReturnBus.publish(uri)
+            AppLinkBus.publish(uri)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Transparent bars with dark icons on the Warm Ivory canvas (plan §3).
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+        intent?.data?.let(OAuthReturnBus::publish)
         val container = AppContainer.getInstance(applicationContext)
         // Images use their own client: never attach account tokens to third-party URLs.
         Coil.setImageLoader(ImageLoader.Builder(applicationContext)

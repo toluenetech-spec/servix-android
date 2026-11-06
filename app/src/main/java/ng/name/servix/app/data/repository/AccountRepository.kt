@@ -7,7 +7,10 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import ng.name.servix.app.data.model.AccountInsightsDto
 import ng.name.servix.app.data.model.AccountOverviewDto
 import ng.name.servix.app.data.model.AccountPaymentsResponse
+import ng.name.servix.app.data.model.MarkNotificationsReadResponse
+import ng.name.servix.app.data.model.NotificationListResponse
 import ng.name.servix.app.data.model.SecuritySummaryDto
+import ng.name.servix.app.data.model.UnreadCountResponse
 import ng.name.servix.app.data.network.ApiErrorParser
 import ng.name.servix.app.data.network.ServixApiService
 
@@ -74,6 +77,21 @@ class AccountRepository(
     }
 
     suspend fun getDevice() = safeCall { api.getAccountDevice() }
+
+    /* -------- notifications (android/reference/api-routes/account.ts:44-63) -------- */
+
+    suspend fun getNotifications(before: String? = null): Result<NotificationListResponse> =
+        safeCall { api.getNotifications(before = before) }
+
+    suspend fun getUnreadNotificationCount(): Result<UnreadCountResponse> =
+        safeCall { api.getUnreadNotificationCount() }
+
+    suspend fun markNotificationsRead(ids: List<String>? = null, all: Boolean = false): Result<MarkNotificationsReadResponse> =
+        safeCall {
+            api.markNotificationsRead(
+                MarkNotificationsReadRequest(ids = ids, all = if (all) true else null),
+            )
+        }
 
     private suspend fun <T> safeCall(block: suspend () -> T): Result<T> =
         withContext(Dispatchers.IO) {

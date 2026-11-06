@@ -11,6 +11,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.Canvas
+import androidx.compose.material3.Button
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import ng.name.servix.app.ui.theme.ServixButtonRadius
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -81,12 +87,135 @@ import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
 
+
+/**
+ * Provider sign-in buttons (plan pass 3 b). Google/GitHub brand marks, Secondary style, above the
+ * email form with an "or" divider; hidden entirely when the API reports no live providers
+ * (GET /auth/oauth/config -> { providers }).
+ */
+@Composable
+fun OAuthButtons(
+    providers: List<String>,
+    enabled: Boolean = true,
+    disabledHint: String? = null,
+    busy: Boolean = false,
+    onProviderClick: (String) -> Unit,
+) {
+    if (providers.isEmpty()) return
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        providers.forEach { provider ->
+            val isGoogle = provider.equals("google", ignoreCase = true)
+            val label = if (isGoogle) {
+                stringResource(R.string.auth_continue_google)
+            } else {
+                stringResource(R.string.auth_continue_github)
+            }
+            Button(
+                onClick = { onProviderClick(provider) },
+                enabled = enabled && !busy,
+                shape = RoundedCornerShape(ServixButtonRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SoftSand,
+                    contentColor = Charcoal,
+                    disabledContainerColor = SoftSand.copy(alpha = 0.5f),
+                    disabledContentColor = MutedGray,
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .testTag(if (isGoogle) "oauth_google_button" else "oauth_github_button"),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ProviderMark(google = isGoogle)
+                    Text(text = label, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+        if (!enabled && !disabledHint.isNullOrBlank()) {
+            Text(
+                text = disabledHint,
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedGray,
+            )
+        }
+    }
+}
+
+/** Officially recognised brand marks, drawn as vectors so no image assets are needed. */
+@Composable
+private fun ProviderMark(google: Boolean) {
+    if (google) {
+        Canvas(modifier = Modifier.size(18.dp)) {
+            val r = size.minDimension / 2f
+            val c = Offset(size.width / 2f, size.height / 2f)
+            drawCircle(color = Color(0xFF4285F4), radius = r, center = c)
+            drawArc(
+                color = Color(0xFF34A853),
+                startAngle = 45f,
+                sweepAngle = 90f,
+                useCenter = true,
+                topLeft = Offset(c.x - r, c.y - r),
+                size = Size(r * 2, r * 2),
+            )
+            drawArc(
+                color = Color(0xFFFBBC05),
+                startAngle = 135f,
+                sweepAngle = 90f,
+                useCenter = true,
+                topLeft = Offset(c.x - r, c.y - r),
+                size = Size(r * 2, r * 2),
+            )
+            drawArc(
+                color = Color(0xFFEA4335),
+                startAngle = 225f,
+                sweepAngle = 90f,
+                useCenter = true,
+                topLeft = Offset(c.x - r, c.y - r),
+                size = Size(r * 2, r * 2),
+            )
+            drawCircle(color = WarmIvory, radius = r * 0.55f, center = c)
+        }
+    } else {
+        Canvas(modifier = Modifier.size(18.dp)) {
+            drawCircle(color = Color(0xFF24292F), radius = size.minDimension / 2f)
+        }
+    }
+}
+
+/** "or" rule between provider buttons and the email form. */
+@Composable
+fun OrDivider() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = BorderSand)
+        Text(
+            text = stringResource(R.string.auth_or_divider),
+            style = MaterialTheme.typography.labelMedium,
+            color = MutedGray,
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = BorderSand)
+    }
+}
+
 @Composable
 fun WelcomeScreen(
     onSignInClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
     onBrowseFirstClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    providers: List<String> = emptyList(),
+    onProviderClick: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -142,6 +271,10 @@ fun WelcomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "welcome_sign_in_button",
             )
+            if (providers.isNotEmpty()) {
+                OrDivider()
+                OAuthButtons(providers = providers, onProviderClick = onProviderClick)
+            }
             if (onBrowseFirstClick != null) {
                 TextButton(
                     onClick = onBrowseFirstClick,
@@ -224,6 +357,8 @@ fun LoginScreen(
     onForgotPasswordClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
     onBackClick: () -> Unit,
+    providers: List<String> = emptyList(),
+    onProviderClick: (String) -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
@@ -240,6 +375,15 @@ fun LoginScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MutedGray,
             )
+
+            if (providers.isNotEmpty()) {
+                OAuthButtons(
+                    providers = providers,
+                    busy = uiState.oauthBusy,
+                    onProviderClick = onProviderClick,
+                )
+                OrDivider()
+            }
 
             ServixTextField(
                 value = uiState.loginEmail,
@@ -358,6 +502,8 @@ fun RegisterScreen(
     onSubmit: () -> Unit,
     onSignInClick: () -> Unit,
     onBackClick: () -> Unit,
+    providers: List<String> = emptyList(),
+    onProviderClick: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -395,6 +541,17 @@ fun RegisterScreen(
                 ),
                 testTag = "register_name_input",
             )
+
+            if (providers.isNotEmpty()) {
+                OAuthButtons(
+                    providers = providers,
+                    enabled = uiState.registerTermsAccepted,
+                    disabledHint = "Tick the terms below to continue with a provider.",
+                    busy = uiState.oauthBusy,
+                    onProviderClick = onProviderClick,
+                )
+                OrDivider()
+            }
 
             ServixTextField(
                 value = uiState.registerEmail,

@@ -78,6 +78,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

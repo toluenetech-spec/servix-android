@@ -18,6 +18,7 @@ import ng.name.servix.app.data.model.ResendVerificationResponse
 import ng.name.servix.app.data.model.SecurityCodeRequest
 import ng.name.servix.app.data.model.SecurityConfigResponse
 import ng.name.servix.app.data.model.SecurityFinishRequest
+import ng.name.servix.app.data.model.OAuthNativeExchangeRequest
 import ng.name.servix.app.data.model.SecurityFlowState
 import ng.name.servix.app.data.model.SecurityResetPasswordRequest
 import ng.name.servix.app.data.model.SecurityTotpSetupResponse
@@ -237,6 +238,29 @@ class AuthRepository(
             tokenStore.setCachedUser(me)
             _sessionState.value = SessionState.Authenticated(me)
             Result.success(me)
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    /* -------- Provider sign-in (api/src/routes/oauth.ts:25-28, 85-90) -------- */
+
+    /** GET /auth/oauth/config -> { providers }; the server decides which providers are live. */
+    suspend fun oauthProviders(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(api.getOAuthConfig().providers)
+        } catch (t: Throwable) {
+            Result.failure(ApiErrorParser.toServixException(t))
+        }
+    }
+
+    /** POST /auth/oauth/native/exchange { ticket } -> the usual security flow response. */
+    suspend fun oauthExchange(ticket: String): Result<AuthOutcome> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.exchangeOAuthTicket(OAuthNativeExchangeRequest(ticket = ticket))
+            response.security?.let { flow ->
+                Result.success(AuthOutcome.SecurityRequired(flow))
+            } ?: Result.failure(ServixApiException(0, "OAUTH_INCOMPLETE", "The provider sign-in did not complete."))
         } catch (t: Throwable) {
             Result.failure(ApiErrorParser.toServixException(t))
         }
