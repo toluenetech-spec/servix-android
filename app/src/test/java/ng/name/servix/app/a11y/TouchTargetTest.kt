@@ -47,7 +47,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import androidx.activity.compose.setContent
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 
@@ -73,9 +74,8 @@ class TouchTargetTest {
 
     private val user = UserDto(
         id = "11111111-1111-4111-8111-111111111111",
-        fullName = "Adaeze Okonkwo",
         email = "adaeze@example.com",
-        firstName = "Adaeze",
+        fullName = "Adaeze Okonkwo",
         emailVerified = true,
         role = "customer",
     )
@@ -144,10 +144,11 @@ class TouchTargetTest {
     fun explore() = audit("explore") {
         ExploreScreen(
             uiState = SearchUiState(mode = SearchMode.PROFESSIONALS, query = "logo designer"),
-            onQueryChange = {}, onModeChange = {}, onOpenFiltersChange = {},
-            onSortChange = {}, onCategoryChange = {}, onPriceChange = {}, onAvailabilityChange = {},
-            onPriceLimitChange = {}, onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {},
-            onClearFilters = {}, categories = emptyList(),
+            categoryNameFor = { null },
+            onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
+            onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+            onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {},
+            onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {},
         )
     }
 
