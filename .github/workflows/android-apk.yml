@@ -31,11 +31,29 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
-      - name: Restore test signing key
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: servix-debug-keystore-v1
+      - name: Prepare test signing key
+        id: signing
+        shell: bash
+        env:
+          TEST_KEYSTORE_BASE64: ${{ secrets.TEST_KEYSTORE_BASE64 }}
+          TEST_KEYSTORE_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$TEST_KEYSTORE_BASE64" ] && [ -n "$TEST_KEYSTORE_PASSWORD" ]; then
+            printf '%s' "$TEST_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/servix-test.jks"
+            if [ ! -s "$RUNNER_TEMP/servix-test.jks" ]; then
+              echo "::error::TEST_KEYSTORE_BASE64 decoded to an empty file — check the secret"
+              exit 1
+            fi
+            echo "SERVIX_TEST_KEYSTORE=$RUNNER_TEMP/servix-test.jks" >> "$GITHUB_ENV"
+            echo "SERVIX_TEST_KEYSTORE_PASSWORD=$TEST_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+            echo "note=" >> "$GITHUB_OUTPUT"
+            echo "Stable test keystore restored from repository secrets."
+          else
+            echo "::warning::TEST_KEYSTORE_BASE64 / TEST_KEYSTORE_PASSWORD are not configured — unsigned-stable: updates will require uninstall"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            echo "note=unsigned-stable: updates will require uninstall" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -44,6 +62,18 @@ jobs:
 
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Print APK signing certificate
+        id: cert
+        shell: bash
+        run: |
+          APKSIGNER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools/35.0.0/apksigner"
+          CERTS=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk 2>&1 || true)
+          echo "$CERTS"
+          SHA=$(echo "$CERTS" | grep -i "SHA-256 digest" | head -1 | sed 's/^[^:]*: *//')
+          if [ -z "$SHA" ]; then SHA="unavailable"; fi
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "APK signing certificate SHA-256: $SHA"
 
       - name: Run offline feature tests only
         run: gradle testDebugUnitTest --tests 'ng.name.servix.app.OfflineFeaturesTest' --tests 'ng.name.servix.app.AiOfflineTest' --no-daemon --stacktrace
@@ -79,4 +109,9 @@ jobs:
             If Android says "App not installed" over an older copy, uninstall the old one first.
 
             Talks to the live API at https://api.servix.name.ng (Paystack TEST mode — no real money).
+            Signing certificate SHA-256: `${{ steps.cert.outputs.sha256 }}`
+            The same fingerprint on every build means in-app updates keep working.
+
+            ${{ steps.signing.outputs.note }}
+
             Debug-signed test build, not a Play Store release.

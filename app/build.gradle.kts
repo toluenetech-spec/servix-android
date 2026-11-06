@@ -19,9 +19,31 @@ android {
         buildConfigField("String", "WEB_BASE_URL", "\"https://www.servix.name.ng\"")
     }
 
+    // Stable test signing: the CI restores one keystore from repository secrets so every APK
+    // carries the same certificate and in-app updates keep working. Without the secrets we fall
+    // back to the throwaway debug key (updates over an older install will then need an uninstall).
+    val testKeyStorePath = System.getenv("SERVIX_TEST_KEYSTORE")
+    val testKeyStorePassword = System.getenv("SERVIX_TEST_KEYSTORE_PASSWORD")
+    val hasTestKeyStore = !testKeyStorePath.isNullOrBlank() && !testKeyStorePassword.isNullOrBlank()
+
+    signingConfigs {
+        if (hasTestKeyStore) {
+            create("testRelease") {
+                storeFile = file(testKeyStorePath!!)
+                storePassword = testKeyStorePassword
+                keyAlias = "servix-test"
+                keyPassword = testKeyStorePassword
+                storeType = "PKCS12"
+            }
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField("String", "SELF_UPDATE_CHANNEL", "\"github\"")
+            if (hasTestKeyStore) {
+                signingConfig = signingConfigs.getByName("testRelease")
+            }
         }
         release {
             buildConfigField("String", "SELF_UPDATE_CHANNEL", "\"none\"")
