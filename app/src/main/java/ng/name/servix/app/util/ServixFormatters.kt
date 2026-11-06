@@ -51,7 +51,7 @@ object ServixFormatters {
         if (clean.isEmpty()) return "?"
         val parts = clean.split(Regex("\\s+")).filter { it.isNotBlank() }
         return when {
-            parts.size >= 2 -> "${parts[0].first().uppercaseChar()}${parts[1].first().uppercaseChar()}"
+            parts.size >= 2 -> "${parts.first().first().uppercaseChar()}${parts.last().first().uppercaseChar()}"
             else -> parts[0].take(1).uppercase()
         }
     }

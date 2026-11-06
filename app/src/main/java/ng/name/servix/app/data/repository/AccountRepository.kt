@@ -79,6 +79,27 @@ class AccountRepository(
 
     suspend fun getDevice() = safeCall { api.getAccountDevice() }
 
+    /* -------- profile (PATCH /account/profile) -------- */
+
+    suspend fun updateProfile(fullName: String): Result<Unit> = safeCall {
+        api.updateProfile(ng.name.servix.app.data.model.UpdateProfileRequest(fullName = fullName))
+        Unit
+    }
+
+    /* -------- saved professionals (GET /account/saved, DELETE /account/saved/:slug) -------- */
+
+    suspend fun getSaved(): Result<List<ng.name.servix.app.data.model.SavedProfessionalItemDto>> =
+        safeCall { api.getSavedProfessionals() }
+
+    suspend fun unsave(slug: String): Result<Unit> = safeCall {
+        api.unsaveProfessional(slug)
+        Unit
+    }
+
+    /* -------- plan (GET /billing/plan, alias of /me/entitlements) -------- */
+
+    suspend fun billingPlan(): Result<kotlinx.serialization.json.JsonElement> = safeCall { api.billingPlan() }
+
     /* -------- notifications (android/reference/api-routes/account.ts:44-63) -------- */
 
     suspend fun getNotifications(before: String? = null): Result<NotificationListResponse> =

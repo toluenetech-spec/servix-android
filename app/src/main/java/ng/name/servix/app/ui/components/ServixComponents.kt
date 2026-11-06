@@ -202,21 +202,7 @@ fun ServixTextField(
     testTag: String? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = Charcoal,
-            )
-            if (required) {
-                Text(
-                    text = " *",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Coral,
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(6.dp))
+        // Floating label lives inside the field (plan §5 auth): 56 dp tall, label in the notch.
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -225,6 +211,12 @@ fun ServixTextField(
             minLines = minLines,
             maxLines = maxLines,
             isError = !error.isNullOrBlank(),
+            label = {
+                Text(
+                    text = if (required) "$label *" else label,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            },
             placeholder = placeholder?.let {
                 {
                     Text(

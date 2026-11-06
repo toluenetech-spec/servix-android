@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import ng.name.servix.app.data.model.OAuthReturn
 import ng.name.servix.app.notifications.NotificationPrefs
 import ng.name.servix.app.notifications.NotificationsWorker
+import ng.name.servix.app.ui.account.AccountHubScreen
 import ng.name.servix.app.ui.notifications.NotificationsScreen
 import ng.name.servix.app.ui.notifications.NotificationsViewModel
 import ng.name.servix.app.util.OAuthReturnBus
@@ -263,6 +264,14 @@ fun ServixAppShell(
     }
 
     val isAuthenticated = sessionState is SessionState.Authenticated
+    var unreadNotifications by remember { mutableStateOf(0) }
+    LaunchedEffect(isAuthenticated, currentDest) {
+        unreadNotifications = if (isAuthenticated) {
+            accountRepository.getUnreadNotificationCount().getOrNull()?.unread ?: 0
+        } else {
+            0
+        }
+    }
     val startRoute: ServixRoute = if (isAuthenticated) {
         ServixRoute.Home
     } else {
@@ -633,6 +642,8 @@ fun ServixAppShell(
                             restoreState = true
                         }
                     },
+                    unreadNotifications = unreadNotifications,
+                    onOpenNotifications = { navController.navigate(ServixRoute.Notifications) },
                     onOpenAccount = {
                         navController.navigate(ServixRoute.Account) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -941,11 +952,13 @@ fun ServixAppShell(
 
             composable<ServixRoute.Account> {
                 val user = (sessionState as? SessionState.Authenticated)?.user
-                Stage1AccountTab(
+                AccountHubScreen(
                     user = user,
                     accountRepository = accountRepository,
                     updateState = updateState,
                     city = city,
+                    unreadNotifications = unreadNotifications,
+                    onOpenNotifications = { navController.navigate(ServixRoute.Notifications) },
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },

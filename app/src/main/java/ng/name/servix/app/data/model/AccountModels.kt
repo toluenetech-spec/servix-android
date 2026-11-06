@@ -120,3 +120,9 @@ data class AccountDeviceDto(
     val userAgent: String? = null,
     val seenAt: String? = null,
 )
+
+/** PATCH /account/profile (api account.ts:14-31): at least one field, fullName 2-200 chars. */
+@Serializable
+data class UpdateProfileRequest(
+    val fullName: String? = null,
+)

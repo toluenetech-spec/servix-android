@@ -1,19 +1,32 @@
 package ng.name.servix.app.ui.ai
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material.icons.rounded.ThumbUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -21,14 +34,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -41,107 +57,273 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
+import java.text.NumberFormat
+import java.util.Locale
 import ng.name.servix.app.R
-import ng.name.servix.app.data.model.AiMeter
 import ng.name.servix.app.data.model.AiUsage
 import ng.name.servix.app.data.model.ServixApiException
 import ng.name.servix.app.data.model.UserDto
+import ng.name.servix.app.ui.components.FilterChipPill
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
-import ng.name.servix.app.ui.components.ServixTextField
+import ng.name.servix.app.ui.components.ServixSegmentedControl
+import ng.name.servix.app.util.CustomTabLauncher
+import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
-import ng.name.servix.app.util.CustomTabLauncher
+import ng.name.servix.app.ui.theme.PureWhite
+import ng.name.servix.app.ui.theme.SoftSand
+import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.ServixFormatters
-import java.text.NumberFormat
-import java.util.Locale
 
+/**
+ * Servix AI (plan §5): real chat layout — bubbles, streaming caret, suggestion chips when empty,
+ * composer pinned above the nav bar with IME insets, thin usage bar in the top bar, rounded icon
+ * buttons under answers, Budget guide as a segment.
+ */
 @Composable
 fun AiScreen(user: UserDto?, state: AiUiState, viewModel: AiViewModel, onSignIn: () -> Unit) {
     var tab by rememberSaveable { mutableStateOf("assistant") }
-    val clipboard = LocalClipboardManager.current
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp).testTag("ai_screen"),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .testTag("ai_screen"),
     ) {
-        Text(if (user != null) "Good to see you, ${user.firstName}." else "Your AI helper", style = MaterialTheme.typography.headlineMedium, color = DeepForest)
-        Text("Ask anything about professionals, prices or how Servix works, and get budget guidance from real Servix listings.", style = MaterialTheme.typography.bodyMedium, color = Charcoal)
-        Text("Private to your account · never books, pays or edits anything for you", style = MaterialTheme.typography.bodySmall, color = MutedGray)
-        if (user == null) {
-            ServixCard { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Sign in to use Servix AI.")
-                ServixPrimaryButton(text = stringResource(R.string.sign_in), onClick = onSignIn, testTag = "ai_sign_in_button")
-            } }
-        } else if (state.ownerId != user.id) {
-            Text("Loading Servix AI…")
-        } else {
-            state.usage?.let { UsageCard(it) }
-            if (state.usageError != null && state.usage == null) {
-                Text("AI usage could not be loaded: ${state.usageError}", style = MaterialTheme.typography.bodySmall, color = MutedGray)
-                TextButton(onClick = viewModel::reload) { Text("Try again") }
-            }
-            if (state.usage?.enabled == false) {
-                ServixCard { Text("Servix AI helpers are not enabled on this account yet.") }
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (tab == "assistant") ServixPrimaryButton("Assistant", onClick = { tab = "assistant" }) else ServixSecondaryButton("Assistant", onClick = { tab = "assistant" })
-                    if (tab == "pricing") ServixPrimaryButton("Budget guide", onClick = { tab = "pricing" }) else ServixSecondaryButton("Budget guide", onClick = { tab = "pricing" })
+        AiTopBar(
+            state = state,
+            tab = tab,
+            onTab = { tab = it },
+        )
+        when {
+            user == null -> Column(Modifier.padding(16.dp)) {
+                ServixCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Sign in to use Servix AI.", style = MaterialTheme.typography.titleSmall, color = Charcoal)
+                        ServixPrimaryButton(
+                            text = stringResource(R.string.sign_in),
+                            onClick = onSignIn,
+                            testTag = "ai_sign_in_button",
+                        )
+                    }
                 }
-                if (tab == "assistant") AssistantPanel(state, viewModel, clipboard) else BudgetPanel(state, viewModel)
             }
+            state.ownerId != user.id -> Text(
+                text = "Loading Servix AI…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedGray,
+                modifier = Modifier.padding(16.dp),
+            )
+            state.usage?.enabled == false -> Text(
+                text = "Servix AI helpers are not enabled on this account yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Charcoal,
+                modifier = Modifier.padding(16.dp),
+            )
+            tab == "assistant" -> AssistantChat(state = state, vm = viewModel, modifier = Modifier.weight(1f))
+            else -> Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+            ) { BudgetPanel(state, viewModel) }
         }
-        Text(stringResource(R.string.ai_disclaimer), style = MaterialTheme.typography.bodySmall, color = MutedGray)
+        Text(
+            text = stringResource(R.string.ai_disclaimer),
+            style = MaterialTheme.typography.labelSmall,
+            color = MutedGray,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
     }
 }
 
 @Composable
-private fun UsageCard(usage: AiUsage) {
-    ServixCard { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Your Servix AI this month", style = MaterialTheme.typography.titleMedium, color = DeepForest)
-        Meter(if (usage.subject == "org") "Team AI token pool" else "${usage.planLabel ?: ""} plan AI tokens".trim(), usage.used, usage.allowed, usage.percent, usage.level)
-        usage.member?.takeIf { it.allowed != null }?.let { Meter("Your personal cap", it.used, it.allowed, it.percent, it.level) }
-        Text("Tokens are counted on the server for every AI request (prompt + answer). Failed requests are never charged.", style = MaterialTheme.typography.bodySmall, color = MutedGray)
-    } }
+private fun AiTopBar(state: AiUiState, tab: String, onTab: (String) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Servix AI",
+                style = MaterialTheme.typography.titleLarge,
+                color = DeepForest,
+                modifier = Modifier.weight(1f),
+            )
+            state.usage?.let { usage ->
+                Text(
+                    text = usageLine(usage),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MutedGray,
+                    modifier = Modifier.testTag("ai_usage_label"),
+                )
+            }
+        }
+        // Thin usage bar: how much of this month's allowance is gone.
+        val percent = state.usage?.percent?.div(100.0)?.toFloat()?.coerceIn(0f, 1f)
+        if (percent != null) {
+            LinearProgressIndicator(
+                progress = { percent },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 3.dp).testTag("ai_usage_bar"),
+                color = if (percent > 0.9f) ForestGreen else DeepForest,
+                trackColor = SoftSand,
+            )
+        }
+        ServixSegmentedControl(
+            options = listOf(
+                "assistant" to "Assistant",
+                "pricing" to "Budget guide",
+            ),
+            selectedId = tab,
+            onSelect = onTab,
+        )
+    }
 }
 
-@Composable
-private fun Meter(label: String, used: Long, allowed: Long?, percent: Double?, level: String?) {
+private fun usageLine(usage: AiUsage): String {
     val format = NumberFormat.getIntegerInstance(Locale.US)
-    Text(if (allowed == null) "$label: ${format.format(used)} used" else "$label: ${format.format(used)} / ${format.format(allowed)} used", style = MaterialTheme.typography.bodySmall)
-    if (percent != null) LinearProgressIndicator(progress = { (percent / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-    if (level in listOf("warning", "critical", "exhausted")) Text(if (level == "exhausted") "Your AI allowance is used up." else "Your AI allowance is running low.", style = MaterialTheme.typography.bodySmall)
+    return if (usage.allowed == null) {
+        "${format.format(usage.used)} tokens used"
+    } else {
+        "${format.format(usage.used)} / ${format.format(usage.allowed)}"
+    }
 }
 
 @Composable
-private fun AssistantPanel(state: AiUiState, vm: AiViewModel, clipboard: ClipboardManager) {
-    ServixCard { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Assistant", style = MaterialTheme.typography.titleMedium, color = DeepForest)
-        Text("Ask in plain language. Servix AI looks things up in real Servix data before it answers.", style = MaterialTheme.typography.bodyMedium)
-        if (state.turns.isEmpty() && !state.busy) {
-            Text("Hi — I’m Servix AI.")
-            listOf("Who can design a logo for a small bakery in Lagos?", "How does payment protection work on Servix?", "What does “delivered” mean on my booking?").forEach { prompt ->
-                TextButton(onClick = { vm.send(prompt) }) { Text(prompt) }
+private fun AssistantChat(state: AiUiState, vm: AiViewModel, modifier: Modifier = Modifier) {
+    val clipboard = LocalClipboardManager.current
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.turns.size, state.streaming) {
+        val target = state.turns.size + if (state.busy) 1 else 0
+        if (target > 1) listState.animateScrollToItem(target - 1)
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.weight(1f).fillMaxWidth().testTag("ai_messages"),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (state.turns.isEmpty() && !state.busy) {
+                item(key = "intro") {
+                    ChatBubble(
+                        text = lightMarkdown("Hi — I’m Servix AI. I look things up in real Servix data before I answer."),
+                        mine = false,
+                    )
+                }
+                item(key = "suggestions") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        SUGGESTIONS.forEach { prompt ->
+                            FilterChipPill(
+                                label = prompt,
+                                onClick = { vm.send(prompt) },
+                                modifier = Modifier.testTag("ai_suggestion"),
+                            )
+                        }
+                    }
+                }
+            }
+            items(state.turns, key = { it.id }) { turn ->
+                Column(horizontalAlignment = if (turn.role == "user") Alignment.End else Alignment.Start) {
+                    ChatBubble(text = lightMarkdown(turn.content), mine = turn.role == "user")
+                    if (turn.role == "assistant") FeedbackActions(turn, vm, clipboard)
+                }
+            }
+            if (state.busy) {
+                item(key = "streaming") {
+                    Column(horizontalAlignment = Alignment.Start) {
+                        ChatBubble(
+                            text = lightMarkdown(
+                                state.streaming.ifBlank { "Looking that up…" } + " ▍",
+                            ),
+                            mine = false,
+                            testTag = "ai_streaming_bubble",
+                        )
+                        TextButton(onClick = vm::stop) { Text("Stop", style = MaterialTheme.typography.labelMedium) }
+                    }
+                }
+            }
+            state.chatError?.let { error ->
+                item(key = "error") { AiError(error, onRetry = vm::retry) }
             }
         }
-        state.turns.forEach { turn ->
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                Text(if (turn.role == "user") "You" else "Servix AI", style = MaterialTheme.typography.labelMedium, color = ForestGreen)
-                Text(lightMarkdown(turn.content), style = MaterialTheme.typography.bodyMedium, color = Charcoal)
-                if (turn.role == "assistant") FeedbackActions(turn, vm, clipboard)
+
+        // Composer pinned above the nav bar; imePadding keeps it above the keyboard.
+        Surface(
+            color = WarmIvory,
+            border = BorderStroke(1.dp, BorderSand),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = state.input,
+                    onValueChange = vm::updateInput,
+                    placeholder = { Text("Ask Servix AI…") },
+                    modifier = Modifier.weight(1f).testTag("ai_question"),
+                    maxLines = 4,
+                    shape = RoundedCornerShape(16.dp),
+                )
+                Surface(
+                    onClick = { vm.send() },
+                    enabled = !state.busy && state.input.isNotBlank(),
+                    shape = CircleShape,
+                    color = if (!state.busy && state.input.isNotBlank()) DeepForest else SoftSand,
+                    modifier = Modifier.size(48.dp).testTag("ai_send"),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.Send,
+                            contentDescription = "Send",
+                            tint = if (!state.busy && state.input.isNotBlank()) WarmIvory else MutedGray,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
             }
         }
-        if (state.busy) {
-            Text(if (state.streaming.isBlank()) "Looking that up…" else state.streaming, style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = vm::stop) { Text("Stop") }
+    }
+}
+
+private val SUGGESTIONS = listOf(
+    "Who can design a logo for a small bakery in Lagos?",
+    "How does payment protection work on Servix?",
+    "What does “delivered” mean on my booking?",
+)
+
+@Composable
+private fun ChatBubble(text: AnnotatedString, mine: Boolean, testTag: String? = null) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+    ) {
+        Surface(
+            color = if (mine) DeepForest else PureWhite,
+            contentColor = if (mine) WarmIvory else Charcoal,
+            border = if (mine) null else BorderStroke(1.dp, BorderSand),
+            shape = if (mine) {
+                RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 4.dp)
+            } else {
+                RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 16.dp)
+            },
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            )
         }
-        state.chatError?.let { error -> AiError(error, onRetry = vm::retry) }
-        OutlinedTextField(value = state.input, onValueChange = vm::updateInput, label = { Text("Your question") }, placeholder = { Text("Ask Servix AI…") }, modifier = Modifier.fillMaxWidth().testTag("ai_question"), minLines = 2, maxLines = 5)
-        ServixPrimaryButton(text = "Send", enabled = !state.busy && state.input.isNotBlank(), onClick = { vm.send() }, testTag = "ai_send")
-    } }
+    }
 }
 
 /** Light Markdown only; rendered as text, never HTML. */
@@ -159,70 +341,136 @@ fun lightMarkdown(text: String): AnnotatedString = buildAnnotatedString {
     append(source.substring(cursor))
 }
 
+/** Rounded icon buttons under each answer: copy, helpful, not helpful. */
 @Composable
 private fun FeedbackActions(turn: ChatTurn, vm: AiViewModel, clipboard: ClipboardManager) {
     var asking by remember(turn.id) { mutableStateOf(false) }
     var comment by rememberSaveable(turn.id) { mutableStateOf("") }
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        IconButton(onClick = { clipboard.setText(AnnotatedString(turn.content)) }) {
-            Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy answer", tint = MutedGray, modifier = Modifier.size(20.dp))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 6.dp),
+    ) {
+        IconPill(onClick = { clipboard.setText(AnnotatedString(turn.content)) }) {
+            Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy answer", tint = MutedGray, modifier = Modifier.size(16.dp))
         }
-        if (turn.feedback == "sent") Text("Thanks for the feedback.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 14.dp))
-        else if (turn.feedback == "sending") Text("Sending…", modifier = Modifier.padding(top = 14.dp))
-        else {
-            IconButton(onClick = { vm.feedback(turn.id, "up") }) {
-                Icon(Icons.Rounded.ThumbUp, contentDescription = "Helpful", tint = MutedGray, modifier = Modifier.size(20.dp))
-            }
-            IconButton(onClick = { asking = true }) {
-                Icon(Icons.Rounded.ThumbDown, contentDescription = "Not helpful", tint = MutedGray, modifier = Modifier.size(20.dp))
+        when (turn.feedback) {
+            "sent" -> Text("Thanks for the feedback.", style = MaterialTheme.typography.labelSmall, color = MutedGray)
+            "sending" -> Text("Sending…", style = MaterialTheme.typography.labelSmall, color = MutedGray)
+            else -> {
+                IconPill(onClick = { vm.feedback(turn.id, "up") }) {
+                    Icon(Icons.Rounded.ThumbUp, contentDescription = "Helpful", tint = MutedGray, modifier = Modifier.size(16.dp))
+                }
+                IconPill(onClick = { asking = true }) {
+                    Icon(Icons.Rounded.ThumbDown, contentDescription = "Not helpful", tint = MutedGray, modifier = Modifier.size(16.dp))
+                }
             }
         }
     }
-    turn.feedbackError?.let { Text("Couldn't send feedback: $it", style = MaterialTheme.typography.bodySmall) }
-    if (asking) AlertDialog(
-        onDismissRequest = { asking = false },
-        title = { Text("What was wrong?") },
-        text = { Column {
-            Text("Your question and this answer will be shared with the Servix team so we can fix it.")
-            OutlinedTextField(value = comment, onValueChange = { comment = it.take(500) }, label = { Text("Comment (optional)") })
-        } },
-        confirmButton = { TextButton(onClick = { vm.feedback(turn.id, "down", comment); asking = false }) { Text("Send") } },
-        dismissButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
-    )
+    turn.feedbackError?.let { Text("Couldn't send feedback: $it", style = MaterialTheme.typography.labelSmall, color = MutedGray) }
+    if (asking) {
+        AlertDialog(
+            onDismissRequest = { asking = false },
+            title = { Text("What was wrong?") },
+            text = {
+                Column {
+                    Text("Your question and this answer will be shared with the Servix team so we can fix it.")
+                    OutlinedTextField(
+                        value = comment,
+                        onValueChange = { comment = it.take(500) },
+                        label = { Text("Comment (optional)") },
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { vm.feedback(turn.id, "down", comment); asking = false }) { Text("Send") } },
+            dismissButton = { TextButton(onClick = { asking = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun IconPill(onClick: () -> Unit, content: @Composable () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = SoftSand,
+        modifier = Modifier.size(32.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) { content() }
+    }
 }
 
 @Composable
 private fun BudgetPanel(state: AiUiState, vm: AiViewModel) {
     var expanded by remember { mutableStateOf(false) }
-    ServixCard { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Budget guide", style = MaterialTheme.typography.titleMedium, color = DeepForest)
-        Text("Based on the prices professionals actually list on Servix in that category. When Servix doesn’t have enough data yet, it says so instead of guessing.", style = MaterialTheme.typography.bodyMedium)
-        Text("Category", style = MaterialTheme.typography.labelMedium)
-        androidx.compose.foundation.layout.Box {
-            ServixSecondaryButton(text = state.categories.find { it.id == state.category }?.name ?: "Choose a category", onClick = { expanded = true }, enabled = state.categories.isNotEmpty() && !state.pricingBusy, testTag = "ai_category")
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                state.categories.forEach { category -> DropdownMenuItem(text = { Text(category.name) }, onClick = { vm.selectCategory(category.id); expanded = false }) }
+    ServixCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Budget guide", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+            Text(
+                "Based on the prices professionals actually list on Servix in that category. When Servix doesn’t have enough data yet, it says so instead of guessing.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Charcoal,
+            )
+            Text("Category", style = MaterialTheme.typography.labelMedium)
+            Box {
+                ServixSecondaryButton(
+                    text = state.categories.find { it.id == state.category }?.name ?: "Choose a category",
+                    onClick = { expanded = true },
+                    enabled = state.categories.isNotEmpty() && !state.pricingBusy,
+                    testTag = "ai_category",
+                )
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    state.categories.forEach { category ->
+                        DropdownMenuItem(text = { Text(category.name) }, onClick = { vm.selectCategory(category.id); expanded = false })
+                    }
+                }
+            }
+            state.categoriesError?.let { Text("Categories could not be loaded: $it"); TextButton(onClick = vm::reload) { Text("Try again") } }
+            if (state.categories.isEmpty() && state.categoriesError == null) Text("No categories available yet.")
+            OutlinedTextField(
+                value = state.days,
+                onValueChange = vm::updateDays,
+                label = { Text("Delivery (days, optional)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                enabled = !state.pricingBusy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.brief,
+                onValueChange = vm::updateBrief,
+                label = { Text("Describe the job (optional)") },
+                enabled = !state.pricingBusy,
+                placeholder = { Text("e.g. 5-page website with contact form and basic SEO") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+            )
+            ServixPrimaryButton(
+                text = "Get guidance",
+                onClick = vm::getPricing,
+                enabled = state.category.isNotBlank() && !state.pricingBusy,
+                testTag = "ai_pricing_submit",
+            )
+            if (state.pricingBusy) Text("Checking Servix prices…")
+            state.pricingError?.let { error -> AiError(error, onRetry = vm::getPricing) }
+            state.pricing?.let { pricing ->
+                if (pricing.basis == "servix_data" && pricing.rangeLow != null && pricing.rangeHigh != null) {
+                    Text(
+                        "${ServixFormatters.formatNaira(pricing.rangeLow)} – ${ServixFormatters.formatNaira(pricing.rangeHigh)}",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = DeepForest,
+                    )
+                } else {
+                    Text("Not enough Servix data yet", style = MaterialTheme.typography.titleSmall)
+                }
+                Text(lightMarkdown(pricing.summary))
+                pricing.stats?.takeIf { !it.insufficient && it.median != null && it.min != null && it.max != null }?.let { stats ->
+                    Text("Servix listings in this category: ${stats.count} gigs · median ${ServixFormatters.formatNaira(stats.median)} · from ${ServixFormatters.formatNaira(stats.min)} to ${ServixFormatters.formatNaira(stats.max)}.")
+                }
+                pricing.tips.forEach { Text("• $it") }
+                Text("Ranges are clamped to real Servix prices — they are guidance, not a quote.", style = MaterialTheme.typography.bodySmall, color = MutedGray)
             }
         }
-        state.categoriesError?.let { Text("Categories could not be loaded: $it"); TextButton(onClick = vm::reload) { Text("Try again") } }
-        if (state.categories.isEmpty() && state.categoriesError == null) Text("No categories available yet.")
-        OutlinedTextField(value = state.days, onValueChange = vm::updateDays, label = { Text("Delivery (days, optional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), enabled = !state.pricingBusy, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = state.brief, onValueChange = vm::updateBrief, label = { Text("Describe the job (optional)") }, enabled = !state.pricingBusy, placeholder = { Text("e.g. 5-page website with contact form and basic SEO") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
-        ServixPrimaryButton("Get guidance", onClick = vm::getPricing, enabled = state.category.isNotBlank() && !state.pricingBusy, testTag = "ai_pricing_submit")
-        if (state.pricingBusy) Text("Checking Servix prices…")
-        state.pricingError?.let { error -> AiError(error, onRetry = vm::getPricing) }
-        state.pricing?.let { pricing ->
-            if (pricing.basis == "servix_data" && pricing.rangeLow != null && pricing.rangeHigh != null) {
-                Text("${ServixFormatters.formatNaira(pricing.rangeLow)} – ${ServixFormatters.formatNaira(pricing.rangeHigh)}", style = MaterialTheme.typography.titleLarge, color = DeepForest)
-            } else Text("Not enough Servix data yet", style = MaterialTheme.typography.titleSmall)
-            Text(lightMarkdown(pricing.summary))
-            pricing.stats?.takeIf { !it.insufficient && it.median != null && it.min != null && it.max != null }?.let { stats ->
-                Text("Servix listings in this category: ${stats.count} gigs · median ${ServixFormatters.formatNaira(stats.median)} · from ${ServixFormatters.formatNaira(stats.min)} to ${ServixFormatters.formatNaira(stats.max)}.")
-            }
-            pricing.tips.forEach { Text("• $it") }
-            Text("Ranges are clamped to real Servix prices — they are guidance, not a quote.", style = MaterialTheme.typography.bodySmall, color = MutedGray)
-        }
-    } }
+    }
 }
 
 @Composable

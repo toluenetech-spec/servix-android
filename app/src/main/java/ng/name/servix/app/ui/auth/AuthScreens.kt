@@ -18,6 +18,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import ng.name.servix.app.ui.theme.ServixButtonRadius
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -306,6 +308,7 @@ private fun AuthShellContainer(
         modifier = Modifier
             .fillMaxSize()
             .background(WarmIvory)
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1104,6 +1107,54 @@ private fun SixDigitCodeField(
  * Mirrors reference/web/src/pages/auth/SecurityCheckPage.jsx:16-191 and
  * checks GET /auth/security/config -> { enabled } first.
  */
+/** 0 Email, 1 Authenticator, 2 Recovery codes, 3 Done — derived from the security flow state. */
+internal fun securityStepOf(uiState: AuthUiState): Int = when {
+    uiState.securitySuccessMode != null -> 3
+    uiState.securityRecoveryCodes.isNotEmpty() -> 2
+    uiState.securityTotpSetup != null || uiState.securityUseRecovery -> 1
+    else -> 0
+}
+
+/** Four-dot progress row with the step name (plan §5 security check). */
+@Composable
+fun SecurityStepProgress(current: Int) {
+    val steps = listOf("Email", "Authenticator", "Recovery codes", "Done")
+    val index = current.coerceIn(0, steps.lastIndex)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+            .testTag("security_step_progress"),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Step ${index + 1} of ${steps.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MutedGray,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = steps[index],
+                style = MaterialTheme.typography.labelLarge,
+                color = DeepForest,
+                modifier = Modifier.testTag("security_step_name"),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            steps.indices.forEach { i ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (i <= index) DeepForest else SoftSand),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun SecurityCheckScreen(
     uiState: AuthUiState,
@@ -1129,6 +1180,7 @@ fun SecurityCheckScreen(
     }
 
     AuthShellContainer(onBackClick = onCancelAndReturnLogin) {
+        SecurityStepProgress(current = securityStepOf(uiState))
         if (uiState.securitySuccessMode == "reset") {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(

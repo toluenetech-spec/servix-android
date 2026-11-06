@@ -137,7 +137,11 @@ fun ExploreScreen(
                 selectedId = uiState.mode.name,
                 onSelect = { id -> onModeChange(SearchMode.valueOf(id)) },
             )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 8.dp),
+                modifier = Modifier.fillMaxWidth().offset(x = (-16).dp),
+            ) {
                 item {
                     FilterChipPill(
                         label = stringResource(R.string.explore_filters),

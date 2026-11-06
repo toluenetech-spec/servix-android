@@ -171,8 +171,9 @@ fun AvatarImage(
             .background(SoftSand),
         contentAlignment = Alignment.Center,
     ) {
+        val label = avatarLabel(initials)
         if (image.isNullOrBlank()) {
-            Text(initials.take(2).uppercase(), style = MaterialTheme.typography.titleMedium, color = DeepForest)
+            Text(label, style = MaterialTheme.typography.titleMedium, color = DeepForest)
         } else {
             SubcomposeAsyncImage(
                 model = image,
@@ -180,9 +181,23 @@ fun AvatarImage(
                 modifier = Modifier.size(size),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 loading = { Box(Modifier.fillMaxWidth().height(size).background(SoftSand)) },
-                error = { Text(initials.take(2).uppercase(), style = MaterialTheme.typography.titleMedium, color = DeepForest) },
+                error = { Text(label, style = MaterialTheme.typography.titleMedium, color = DeepForest) },
             )
         }
+    }
+}
+
+/**
+ * First letter of the first name + first letter of the last name ("TB"), a single letter when
+ * there is only one name, and already-formed initials are passed through untouched.
+ */
+fun avatarLabel(source: String?): String {
+    val clean = source?.trim().orEmpty()
+    if (clean.isEmpty()) return "?"
+    return if (clean.contains(' ')) {
+        ng.name.servix.app.util.ServixFormatters.extractInitials(clean)
+    } else {
+        clean.take(2).uppercase()
     }
 }
 

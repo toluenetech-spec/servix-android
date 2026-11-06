@@ -6,7 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -61,6 +66,7 @@ import ng.name.servix.app.ui.components.StatusChip
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DeepForest
+import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.ServixButtonRadius
@@ -88,6 +94,8 @@ fun HomeTabScreen(
     onOpenAccount: () -> Unit = {},
     onSignInClick: () -> Unit = {},
     onCreateAccountClick: () -> Unit = {},
+    unreadNotifications: Int = 0,
+    onOpenNotifications: () -> Unit = {},
 ) {
     val signedIn = user != null
     Column(
@@ -103,6 +111,8 @@ fun HomeTabScreen(
             city = city,
             onOpenAccount = onOpenAccount,
             onSignIn = onSignInClick,
+            unreadNotifications = unreadNotifications,
+            onOpenNotifications = onOpenNotifications,
         )
 
         SearchField(
@@ -150,13 +160,18 @@ fun HomeTabScreen(
                         )
                     }
                 } else {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 8.dp),
+                        modifier = Modifier.fillMaxWidth().offset(x = (-16).dp),
+                    ) {
                         items(uiState.upcomingBookings, key = { it.id }) { booking ->
                             UpcomingBookingCard(
                                 booking = booking,
                                 onClick = { onOpenBookingDetail(booking.id) },
                             )
                         }
+                        item { Spacer(Modifier.width(8.dp)) }
                     }
                 }
             }
@@ -179,7 +194,11 @@ fun HomeTabScreen(
                         action = stringResource(R.string.home_see_all),
                         onAction = { onOpenCategory(null) },
                     )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 8.dp),
+                        modifier = Modifier.fillMaxWidth().offset(x = (-16).dp),
+                    ) {
                         items(uiState.categories.take(8), key = { it.id }) { category ->
                             CategoryChip(
                                 label = category.name,
@@ -187,6 +206,7 @@ fun HomeTabScreen(
                                 onClick = { onOpenCategory(category.id) },
                             )
                         }
+                        item { Spacer(Modifier.width(8.dp)) }
                     }
                 }
             }
@@ -241,6 +261,8 @@ private fun HomeTopBar(
     city: String?,
     onOpenAccount: () -> Unit,
     onSignIn: () -> Unit,
+    unreadNotifications: Int = 0,
+    onOpenNotifications: () -> Unit = {},
 ) {
     val greeting = when (LocalTime.now(ZoneId.of("Africa/Lagos")).hour) {
         in 0..11 -> stringResource(R.string.home_good_morning)
@@ -271,10 +293,31 @@ private fun HomeTopBar(
         }
         if (user != null) {
             IconButton(
+                onClick = onOpenNotifications,
+                modifier = Modifier.size(48.dp).testTag("home_notifications_button"),
+            ) {
+                Box(contentAlignment = Alignment.TopEnd) {
+                    Icon(
+                        imageVector = Icons.Rounded.Notifications,
+                        contentDescription = stringResource(R.string.notifications_open),
+                        tint = DeepForest,
+                        modifier = Modifier.size(24.dp).padding(top = 2.dp),
+                    )
+                    if (unreadNotifications > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(ForestGreen, CircleShape)
+                                .testTag("home_notifications_dot"),
+                        )
+                    }
+                }
+            }
+            IconButton(
                 onClick = onOpenAccount,
                 modifier = Modifier.size(48.dp).testTag("home_account_avatar"),
             ) {
-                AvatarImage(size = 36.dp, initials = user.firstName, image = null)
+                AvatarImage(size = 36.dp, initials = user.fullName, image = null)
             }
         } else {
             ServixTextButton(text = stringResource(R.string.sign_in), onClick = onSignIn)

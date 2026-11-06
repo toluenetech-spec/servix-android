@@ -18,6 +18,7 @@ import ng.name.servix.app.data.model.NotificationListResponse
 import ng.name.servix.app.data.model.OAuthConfigResponse
 import ng.name.servix.app.data.model.OAuthNativeExchangeRequest
 import ng.name.servix.app.data.model.OkResponse
+import ng.name.servix.app.data.model.UpdateProfileRequest
 import ng.name.servix.app.data.model.UnreadCountResponse
 import ng.name.servix.app.data.model.PayBookingResponse
 import ng.name.servix.app.data.model.ProfessionalDetailDto
@@ -51,6 +52,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -84,6 +86,15 @@ interface ServixApiService {
 
     @POST("account/notifications/read")
     suspend fun markNotificationsRead(@Body body: MarkNotificationsReadRequest): MarkNotificationsReadResponse
+
+    @PATCH("account/profile")
+    suspend fun updateProfile(@Body body: UpdateProfileRequest): OkResponse
+
+    @GET("billing/plan")
+    suspend fun billingPlan(): kotlinx.serialization.json.JsonElement
+
+    @GET("me/entitlements")
+    suspend fun entitlements(): kotlinx.serialization.json.JsonElement
 
     @GET("account/device")
     suspend fun getAccountDevice(): ng.name.servix.app.data.model.AccountDeviceDto

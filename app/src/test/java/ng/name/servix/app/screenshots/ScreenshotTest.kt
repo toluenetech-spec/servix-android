@@ -13,6 +13,15 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import retrofit2.Retrofit
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import ng.name.servix.app.ui.account.AccountHubScreen
+import ng.name.servix.app.ui.notifications.NotificationsScreen
+import ng.name.servix.app.ui.notifications.NotificationsUiState
+import ng.name.servix.app.ui.auth.SecurityCheckScreen
+import ng.name.servix.app.data.repository.AccountRepository
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import ng.name.servix.app.data.model.*
 import ng.name.servix.app.data.network.ApiErrorParser
 import ng.name.servix.app.data.network.ServixApiService
@@ -23,6 +32,7 @@ import ng.name.servix.app.ui.home.HomeTabScreen
 import ng.name.servix.app.ui.home.HomeUiState
 import ng.name.servix.app.ui.ai.AiUiState
 import ng.name.servix.app.ui.ai.AiViewModel
+import ng.name.servix.app.ui.ai.ChatTurn
 import ng.name.servix.app.ui.auth.AuthUiState
 import ng.name.servix.app.ui.auth.LoginScreen
 import ng.name.servix.app.ui.auth.WelcomeScreen
@@ -239,12 +249,94 @@ class ScreenshotTest {
     }
 
     @Test
-    fun bookingsList() = rule.capture("10_bookings_list") {
+    fun bookingsGrouped() = rule.capture("10_bookings_grouped") {
+        val zone = java.time.ZoneId.of("Africa/Lagos")
+        val today = java.time.LocalDate.now(zone)
+        fun at(date: java.time.LocalDate) = date.atTime(10, 0).atZone(zone).toInstant().toString()
         BookingsScreen(
             user = Fixtures.user,
-            uiState = BookingsUiState(loading = false, bookings = Fixtures.bookings),
+            uiState = BookingsUiState(
+                loading = false,
+                bookings = listOf(
+                    Fixtures.booking("requested", "55555555-5555-4555-8555-555555555555", "Logo suite").copy(scheduledAt = at(today)),
+                    Fixtures.booking("accepted", "66666666-6666-4666-8666-666666666666", "Social media starter kit").copy(scheduledAt = at(today.plusDays(2))),
+                    Fixtures.booking("in_progress", "77777777-7777-4777-8777-777777777777", "Pitch deck design").copy(scheduledAt = at(today.plusDays(30))),
+                ),
+            ),
             onTabSelect = {}, onRefresh = {}, onExploreServicesClick = {}, onSignInClick = {},
             onOpenBooking = {},
+        )
+    }
+
+    @Test
+    fun aiEmpty() = rule.capture("14b_ai_empty") {
+        AiScreen(
+            user = Fixtures.user,
+            state = aiState().copy(turns = emptyList()),
+            viewModel = AiViewModel(AiRepository(api, OkHttpClient()), CatalogueRepository { api }),
+            onSignIn = {},
+        )
+    }
+
+    @Test
+    fun accountHub() = rule.capture("15_account") {
+        AccountHubScreen(
+            user = Fixtures.user,
+            accountRepository = AccountRepository { api },
+            updateState = ng.name.servix.app.updates.UpdateUiState(
+                context = androidx.test.core.app.ApplicationProvider.getApplicationContext(),
+                scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+            ),
+            city = "Lagos",
+            unreadNotifications = 2,
+        )
+    }
+
+    @Test
+    fun notificationsList() = rule.capture("16_notifications") {
+        NotificationsScreen(
+            uiState = NotificationsUiState(
+                loading = false,
+                unread = 2,
+                items = listOf(
+                    ng.name.servix.app.data.model.NotificationDto(
+                        id = "n1", type = "booking", title = "Tunde accepted your booking",
+                        body = "Your brand identity package is scheduled for 12 November.",
+                        link = "/bookings/${Fixtures.BOOKING_ID}", createdAt = "2026-11-05T09:12:00.000Z",
+                    ),
+                    ng.name.servix.app.data.model.NotificationDto(
+                        id = "n2", type = "payment", title = "Payment received",
+                        body = "₦350,000 is held in escrow until you confirm the work.",
+                        link = "/bookings/${Fixtures.BOOKING_ID}", readAt = "2026-11-04T18:02:00.000Z",
+                        createdAt = "2026-11-04T17:58:00.000Z",
+                    ),
+                ),
+            ),
+            onBackClick = {}, onRefresh = {}, onMarkAllRead = {}, onItemClick = {},
+        )
+    }
+
+    @Test
+    fun planCard() = rule.capture("17_plan") {
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().padding(16.dp)) {
+            ng.name.servix.app.ui.account.PlanCard(
+                label = "Free",
+                source = "account",
+                expiresAt = null,
+            )
+        }
+    }
+
+    @Test
+    fun securityCheckStep() = rule.capture("18_security_check_step") {
+        SecurityCheckScreen(
+            uiState = AuthUiState(
+                securityFlow = ng.name.servix.app.data.model.SecurityFlowState(next = "factor"),
+            ),
+            onLoadSecurityCheck = {}, onCodeChange = {}, onSubmitCode = {}, onResendEmailCode = {},
+            onBeginTotpSetup = {}, onClearTotpSetup = {}, onToggleUseRecovery = {},
+            onSavedRecoveryChange = {}, onFinishSecurity = {}, onNewPasswordChange = {},
+            onConfirmPasswordChange = {}, onSubmitResetPassword = {}, onCancelAndReturnLogin = {},
         )
     }
 
@@ -277,7 +369,15 @@ class ScreenshotTest {
     fun aiChat() = rule.capture("14_ai_chat") {
         AiScreen(
             user = Fixtures.user,
-            state = aiState(),
+            state = aiState().copy(
+                turns = Fixtures.aiTurns + listOf(
+                    ChatTurn(3L, "user", "Does that price include brand guidelines?"),
+                    ChatTurn(
+                        4L, "assistant",
+                        "Yes — the **₦120,000** package includes a logo suite, colour and type system, and a short brand guidelines PDF. Revisions are included; extra deliverables are quoted separately.",
+                    ),
+                ),
+            ),
             viewModel = AiViewModel(AiRepository(api, OkHttpClient()), CatalogueRepository { api }),
             onSignIn = {},
         )
