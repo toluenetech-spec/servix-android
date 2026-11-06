@@ -69,6 +69,7 @@ private const val DEEP_FOREST = 0xFF12372A.toInt()
 private const val WARM_IVORY = 0xFFF7F4EC.toInt()
 private const val CORAL = 0xFFE56B5D.toInt()
 private const val TAGLINE = "Hire trusted Nigerian professionals."
+private const val BRAND_SVG = "servix-logo-dark.svg"
 
 /**
  * Renders the Google Play store assets from the same offline fixture harness as the review
@@ -76,12 +77,13 @@ private const val TAGLINE = "Hire trusted Nigerian professionals."
  *
  *  * `phone/NN_name.png`          — 1080 x 1920 (360 x 640 dp xxxhdpi)
  *  * `icon-512.png`               — 512 x 512, opaque, the real adaptive launcher icon
- *  * `feature-graphic-1024x500.png` — Deep Forest canvas, the real servix-logo-dark.svg wordmark, tagline
+ *  * `feature-graphic-1024x500.png` — Deep Forest canvas, the real brand lockup, tagline
  *
- * Everything is drawn from the brand artwork: the wordmark comes from public/brand/servix-logo-dark.svg
- * (toluenetech-spec/servix, ref arena/01a0dc4c-servix), the icon from the adaptive-icon layers whose
- * foreground is asserted byte-for-byte against that SVG's monogram path, and the palette from
- * ui/theme/Color.kt. No network access: the Retrofit binding points at 127.0.0.1:9.
+ * The wordmark is not a redraw: it is public/brand/servix-logo-dark.svg from
+ * toluenetech-spec/servix (ref arena/01a0dc4c-servix), parsed with
+ * androidx.core.graphics.PathParser and painted in the SVG's own Warm Ivory fill over the Deep
+ * Forest background. The launcher icon is asserted to carry exactly that SVG's monogram path.
+ * No network access: the Retrofit binding points at 127.0.0.1:9 and never calls anything.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -269,27 +271,24 @@ class PlayAssetsTest {
     fun playIcon512() {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        // The launcher icon must BE the brand monogram, not a lookalike. The brand source is
-        // public/brand/servix-logo-dark.svg in toluenetech-spec/servix (ref arena/01a0dc4c-servix);
-        // its first path is the SX monogram, and the vector below must carry exactly that path data.
-        val brandSvg = brandAsset("servix-logo-dark.svg").readText()
-        val monogram = svgPaths(brandSvg).firstOrNull()?.third
-            ?: error("servix-logo-dark.svg exposes no paths")
-        val launcherVector = File("src/main/res/drawable/ic_launcher_foreground.xml")
-        check(launcherVector.isFile) { "launcher foreground vector is missing" }
-        val launcherPath = Regex("android:pathData=\"([^\"]+)\"")
-            .find(launcherVector.readText())?.groupValues?.get(1)
-            ?: error("ic_launcher_foreground.xml has no pathData")
-        check(normalizedPath(launcherPath) == normalizedPath(monogram)) {
-            "the launcher icon has drifted from the brand monogram in servix-logo-dark.svg"
+        // The launcher icon must BE the brand monogram: the vector has to carry the same path data
+        // as the first path of servix-logo-dark.svg, otherwise Play would ship a lookalike mark.
+        val brandSvg = readBrandAsset(BRAND_SVG)
+        val monogram = brandPaths(brandSvg).first().second
+        val vectorFile = File("src/main/res/drawable/ic_launcher_foreground.xml")
+        check(vectorFile.isFile) { "ic_launcher_foreground.xml is missing" }
+        val vectorData = firstGroupValue(vectorFile.readText(), "android:pathData")
+        checkNotNull(vectorData) { "ic_launcher_foreground.xml has no pathData" }
+        check(normalizePath(vectorData) == normalizePath(monogram)) {
+            "the launcher icon has drifted from the brand monogram in $BRAND_SVG"
         }
-
-        // mipmap-anydpi-v26/ic_launcher.xml declares exactly two layers: @color/deep_forest and that
-        // foreground vector. Paint them directly — AdaptiveIconDrawable's mask/inset maths is the
-        // least reliable part outside a real device, and Play wants a flat opaque 512 square anyway
-        // (the launcher applies its own mask).
         val bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        // The adaptive icon (mipmap-anydpi-v26/ic_launcher.xml) declares exactly two layers:
+        // @color/deep_forest as the background and @drawable/ic_launcher_foreground as the SX mark.
+        // Paint them directly rather than going through AdaptiveIconDrawable: the mask/inset maths of
+        // that drawable is the part that is least reliable outside a real device, and Play wants a
+        // flat, fully opaque 512 square anyway (the launcher applies its own mask).
         canvas.drawColor(DEEP_FOREST)
         val foreground = ResourcesCompat.getDrawable(
             context.resources, R.drawable.ic_launcher_foreground, context.theme,
@@ -316,70 +315,67 @@ class PlayAssetsTest {
         val canvas = Canvas(bitmap)
         canvas.drawColor(DEEP_FOREST)
 
-        // The wordmark is the real brand artwork — public/brand/servix-logo-dark.svg in
-        // toluenetech-spec/servix (ref arena/01a0dc4c-servix), the file served on the website for
-        // dark backgrounds. Two paths: the SX monogram and the "servix" lettering, each inside its
-        // own translate() group. Both are parsed with androidx PathParser and drawn as vectors, so
-        // this is the real outline data, not a type approximation.
-        val svg = brandAsset("servix-logo-dark.svg").readText()
-        val viewBox = Regex("viewBox=\"([^\"]+)\"").find(svg)?.groupValues?.get(1)
-            ?.trim()?.split(Regex("[\\s,]+"))?.map { it.toFloat() }
-            ?: error("servix-logo-dark.svg has no viewBox")
-        check(viewBox.size == 4) { "unexpected viewBox '${viewBox.joinToString(" ")}'" }
-        val paths = svgPaths(svg)
-        check(paths.size == 2) { "expected 2 paths in servix-logo-dark.svg, found ${paths.size}" }
+        // The artwork is the brand's own: public/brand/servix-logo-dark.svg, drawn as vectors so
+        // the wordmark is the real lettering and not a system font standing in for it.
+        val svg = readBrandAsset(BRAND_SVG)
+        val viewBox = svgViewBox(svg)
+        val paths = brandPaths(svg)
+        check(paths.size == 2) {
+            "expected the monogram and the wordmark in $BRAND_SVG, found ${paths.size} paths"
+        }
 
-        val padding = 72
+        val padding = 72f
         val markWidth = 620f
-        val scale = markWidth / viewBox[2]
-        val markHeight = viewBox[3] * scale
         val gap = 52f
         val taglineSize = 42f
         val ruleGap = 22f
         val ruleHeight = 6f
-        check(markWidth <= w - 2 * padding) { "wordmark is $markWidth px, wider than the safe area" }
+        val ruleWidth = 88f
+        val safeWidth = w - 2 * padding
+        check(markWidth <= safeWidth) { "the brand lockup is wider than the safe area" }
 
-        val blockHeight = markHeight + gap + taglineSize * 0.75f + ruleGap + ruleHeight
+        val scale = markWidth / viewBox[2]
+        val markHeight = viewBox[3] * scale
+
+        val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        brandPaint.color = WARM_IVORY
+        brandPaint.style = Paint.Style.FILL
+
+        val taglinePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        taglinePaint.typeface = ResourcesCompat.getFont(context, R.font.inter_500) ?: Typeface.DEFAULT
+        taglinePaint.textSize = taglineSize
+        taglinePaint.color = WARM_IVORY
+        taglinePaint.alpha = 0xDD
+
+        val taglineWidth = taglinePaint.measureText(TAGLINE)
+        check(taglineWidth <= safeWidth) { "the tagline is wider than the safe area" }
+
+        val taglineHeight = taglineSize * 0.75f
+        val blockHeight = markHeight + gap + taglineHeight + ruleGap + ruleHeight
         val top = (h - blockHeight) / 2f
-        val markX = (w - markWidth) / 2f
+        val markLeft = (w - markWidth) / 2f
+        val baseline = top + markHeight + gap + taglineHeight
 
-        val brandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = WARM_IVORY // the SVG's own fill is #F7F4EC
-        }
-        for ((groupX, groupY, data) in paths) {
-            val path = PathParser.createPathFromPathData(data)
-                ?: error("could not parse a path from servix-logo-dark.svg")
+        for (entry in paths) {
+            val parsed = PathParser.createPathFromPathData(entry.second)
+            checkNotNull(parsed) { "could not parse a path from $BRAND_SVG" }
             val matrix = Matrix()
             matrix.postScale(scale, scale)
-            matrix.postTranslate(groupX * scale, groupY * scale)
-            matrix.postTranslate(markX - viewBox[0] * scale, top - viewBox[1] * scale)
-            path.transform(matrix)
-            canvas.drawPath(path, brandPaint)
+            matrix.postTranslate(entry.first.first * scale, entry.first.second * scale)
+            matrix.postTranslate(markLeft - viewBox[0] * scale, top - viewBox[1] * scale)
+            parsed.transform(matrix)
+            canvas.drawPath(parsed, brandPaint)
         }
 
-        val taglinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = ResourcesCompat.getFont(context, R.font.inter_500) ?: Typeface.DEFAULT
-            textSize = taglineSize
-            color = WARM_IVORY
-            alpha = 0xDD
-        }
-        val taglineWidth = taglinePaint.measureText(TAGLINE)
-        check(taglineWidth <= w - 2 * padding) {
-            "tagline is $taglineWidth px wide, wider than the ${w - 2 * padding} px safe area"
-        }
-        val taglineBaseline = top + markHeight + gap + taglineSize * 0.75f
-        canvas.drawText(TAGLINE, (w - taglineWidth) / 2f, taglineBaseline, taglinePaint)
+        canvas.drawText(TAGLINE, (w - taglineWidth) / 2f, baseline, taglinePaint)
 
         // Coral accent rule under the tagline — the palette's accent, used nowhere else here.
-        val ruleTop = taglineBaseline + ruleGap
-        val ruleWidth = 88f
-        canvas.drawRect(
-            (w - ruleWidth) / 2f,
-            ruleTop,
-            (w + ruleWidth) / 2f,
-            ruleTop + ruleHeight,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = CORAL },
-        )
+        val rulePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        rulePaint.color = CORAL
+        val ruleTop = baseline + ruleGap
+        val ruleLeft = (w - ruleWidth) / 2f
+        val ruleRight = (w + ruleWidth) / 2f
+        canvas.drawRect(ruleLeft, ruleTop, ruleRight, ruleTop + ruleHeight, rulePaint)
 
         check(Color.alpha(bitmap.getPixel(1, 1)) == 255) { "feature graphic background is not opaque" }
         writePlayAsset(bitmap, "feature-graphic-1024x500.png")
@@ -388,52 +384,74 @@ class PlayAssetsTest {
     // ---------------------------------------------------------------- brand assets
 
     /**
-     * The brand SVGs live in the website snapshot (`reference/web/public/brand/`), byte-identical to
-     * public/brand/*.svg in toluenetech-spec/servix at ref arena/01a0dc4c-servix. Unit tests run with
-     * the module directory as the working directory, so `app/../reference/...` resolves.
+     * The brand SVGs live in the website snapshot (`reference/web/public/brand/`), byte-identical
+     * to public/brand/*.svg in toluenetech-spec/servix at ref arena/01a0dc4c-servix. Unit tests run
+     * with the module directory as the working directory, hence the relative candidates.
      */
-    private fun brandAsset(name: String): File {
+    private fun readBrandAsset(name: String): String {
         val candidates = listOf(
             File("../reference/web/public/brand/$name"),
             File("reference/web/public/brand/$name"),
             File("../../reference/web/public/brand/$name"),
         )
-        return candidates.firstOrNull { it.isFile }
-            ?: error("brand asset $name not found; looked in ${candidates.joinToString { it.path }}")
+        for (candidate in candidates) {
+            if (candidate.isFile) return candidate.readText()
+        }
+        error("brand asset not found: $name")
+    }
+
+    private fun svgViewBox(svg: String): List<Float> {
+        val raw = firstGroupValue(svg, "viewBox")
+        checkNotNull(raw) { "the brand SVG has no viewBox" }
+        val parts = raw.trim().split(Regex("[\\s,]+"))
+        check(parts.size == 4) { "the brand SVG viewBox is not four numbers" }
+        return parts.map { it.toFloat() }
     }
 
     /**
-     * Minimal, data-driven reader for the brand SVGs: walks `<g>` / `</g>` / `<path>` in document
-     * order, keeps a stack so nested groups compose (servix-logo-dark.svg nests the lettering group
-     * inside the monogram group — a flat read would put the wordmark off-canvas), and returns
-     * (translateX, translateY, pathData) per path. No coordinate is hardcoded.
+     * Returns (translateX, translateY) to pathData for each path, in document order. servix-logo-dark.svg
+     * nests the lettering group inside the monogram group, so a stack of offsets is required: a flat
+     * read of the transforms puts the wordmark off the canvas.
      */
-    private fun svgPaths(svg: String): List<Triple<Float, Float, String>> {
-        val out = mutableListOf<Triple<Float, Float, String>>()
-        val stack = ArrayDeque<Pair<Float, Float>>()
-        stack.addLast(0f to 0f)
-        for (match in Regex("""<g\b[^>]*>|</g>|<path\b[^>]*>""").findAll(svg)) {
+    private fun brandPaths(svg: String): List<Pair<Pair<Float, Float>, String>> {
+        val result = mutableListOf<Pair<Pair<Float, Float>, String>>()
+        val offsets = java.util.ArrayDeque<Pair<Float, Float>>()
+        offsets.addLast(0f to 0f)
+        val tagPattern = Regex("<g\\b[^>]*>|</g>|<path\\b[^>]*>")
+        val translatePattern = Regex("translate\\(\\s*(-?[\\d.]+)[\\s,]+(-?[\\d.]+)\\s*\\)")
+        for (match in tagPattern.findAll(svg)) {
             val tag = match.value
             if (tag == "</g>") {
-                if (stack.size > 1) stack.removeLast()
+                if (offsets.size > 1) offsets.removeLast()
             } else if (tag.startsWith("<g")) {
-                val parent = stack.last()
-                val translate = Regex("""translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*\)""").find(tag)
-                val dx = translate?.groupValues?.get(1)?.toFloat() ?: 0f
-                val dy = translate?.groupValues?.get(2)?.toFloat() ?: 0f
-                stack.addLast((parent.first + dx) to (parent.second + dy))
-            } else {
-                val data = Regex("\\sd=\"([^\"]+)\"").find(tag)?.groupValues?.get(1)
-                if (data != null) {
-                    val current = stack.last()
-                    out += Triple(current.first, current.second, data)
+                val parent = offsets.last()
+                var dx = 0f
+                var dy = 0f
+                val found = translatePattern.find(tag)
+                if (found != null) {
+                    dx = found.groupValues[1].toFloat()
+                    dy = found.groupValues[2].toFloat()
                 }
+                offsets.addLast(parent.first + dx to parent.second + dy)
+            } else {
+                val data = firstGroupValue(tag, "d")
+                if (data != null) result.add(offsets.last() to data)
             }
         }
-        return out
+        return result
     }
 
-    private fun normalizedPath(data: String): String = data.replace(Regex("""\s+"""), " ").trim()
+    /** Value of `attribute="…"` in a tag or document, or null. */
+    private fun firstGroupValue(text: String, attribute: String): String? {
+        val pattern = Regex(attribute + "=\"([^\"]+)\"")
+        val match = pattern.find(text)
+        return match?.groupValues?.get(1)
+    }
+
+    private fun normalizePath(data: String): String {
+        val collapsed = data.replace(Regex("\\s+"), " ")
+        return collapsed.trim()
+    }
 
     // ---------------------------------------------------------------- plumbing
 
