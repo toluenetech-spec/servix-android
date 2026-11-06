@@ -75,6 +75,60 @@ jobs:
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           echo "APK signing certificate SHA-256: $SHA"
 
+      - name: Build release APK (R8 + resource shrinking)
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Release-variant smoke tests (DI graph + DTO decoding)
+        run: gradle testReleaseUnitTest --tests 'ng.name.servix.app.release.*' --no-daemon --stacktrace
+
+      - name: Verify R8 kept kotlinx.serialization generated code
+        shell: bash
+        run: |
+          set -e
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK" || { echo "::error::release APK missing"; exit 1; }
+          SIZE=$(stat -c%s "$APK")
+          echo "Release APK size: $SIZE bytes"
+          unzip -p "$APK" 'classes*.dex' > /tmp/release.dex
+          SERIALIZERS=$(strings /tmp/release.dex | grep -c '\$\$serializer' || true)
+          MODELS=$(strings /tmp/release.dex | grep -c 'ng/name/servix/app/data/model' || true)
+          API=$(strings /tmp/release.dex | grep -c 'ServixApiService' || true)
+          echo "serializer refs=$SERIALIZERS model refs=$MODELS api refs=$API"
+          if [ "$SERIALIZERS" -lt 1 ] || [ "$API" -lt 1 ]; then
+            echo "::error::R8 stripped serializers or the Retrofit interface"
+            exit 1
+          fi
+
+      - name: Print release APK signing certificate
+        id: releasecert
+        shell: bash
+        run: |
+          APKSIGNER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools/36.0.0/apksigner"
+          CERTS=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk 2>&1 || true)
+          SHA=$(echo "$CERTS" | grep -i "SHA-256 digest" | head -1 | sed 's/^[^:]*: *//')
+          if [ -z "$SHA" ]; then SHA="unavailable (unsigned release build)"; fi
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Release APK signing certificate SHA-256: $SHA"
+
+      - name: Name the release APK and mapping
+        id: releaseapk
+        shell: bash
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "0.0.0")
+          NAME="servix-${VERSION}-release-build${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$NAME"
+          cp app/build/outputs/mapping/release/mapping.txt "servix-${VERSION}-mapping-build${{ github.run_number }}.txt"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "mapping=servix-${VERSION}-mapping-build${{ github.run_number }}.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release APK + mapping as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.releaseapk.outputs.name }}
+          path: |
+            ${{ steps.releaseapk.outputs.name }}
+            ${{ steps.releaseapk.outputs.mapping }}
+
       - name: Run offline feature tests only
         run: gradle testDebugUnitTest --tests 'ng.name.servix.app.OfflineFeaturesTest' --tests 'ng.name.servix.app.AiOfflineTest' --no-daemon --stacktrace
 
@@ -101,7 +155,9 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Servix v${{ steps.apk.outputs.version }} (build ${{ github.run_number }})
           prerelease: true
-          files: ${{ steps.apk.outputs.name }}
+          files: |
+            ${{ steps.apk.outputs.name }}
+            ${{ steps.releaseapk.outputs.name }}
           body: |
             Test build of the Servix Android app from commit ${{ github.sha }}.
 
@@ -113,5 +169,11 @@ jobs:
             The same fingerprint on every build means in-app updates keep working.
 
             ${{ steps.signing.outputs.note }}
+
+            Also attached: `${{ steps.releaseapk.outputs.name }}` — the **minified release build**
+            (R8 + resource shrinking, cleartext off, self-update off) signed with the same test
+            certificate, plus `mapping.txt` as a separate workflow artifact. That is the exact
+            byte-for-byte build Play will receive in Block 4, so if it installs and runs here it will
+            run from Play. Release certificate SHA-256: `${{ steps.releasecert.outputs.sha256 }}`.
 
             Debug-signed test build, not a Play Store release.

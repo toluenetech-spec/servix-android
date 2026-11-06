@@ -14,8 +14,8 @@ android {
         applicationId = "ng.name.servix.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.7.0"
+        versionCode = 100
+        versionName = "1.0.0"
         buildConfigField("String", "API_BASE_URL", "\"https://api.servix.name.ng/api/v1/\"")
         buildConfigField("String", "WEB_BASE_URL", "\"https://www.servix.name.ng\"")
     }
@@ -47,9 +47,16 @@ android {
             }
         }
         release {
+            // Play builds never self-update: the in-app updater only runs on the "github" channel.
             buildConfigField("String", "SELF_UPDATE_CHANNEL", "\"none\"")
-            isMinifyEnabled = false
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasTestKeyStore) {
+                // Block 4 switches this to the separate upload key for the .aab.
+                signingConfig = signingConfigs.getByName("testRelease")
+            }
         }
     }
     compileOptions {
