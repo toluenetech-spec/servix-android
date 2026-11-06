@@ -80,6 +80,26 @@ class ScreenshotTest {
     }
 
     @Test
+    fun welcomeProviders() = rule.capture("01b_welcome_providers") {
+        WelcomeScreen(
+            onSignInClick = {},
+            onCreateAccountClick = {},
+            onBrowseFirstClick = {},
+            providers = listOf("google", "github"),
+        )
+    }
+
+    @Test
+    fun signInProviders() = rule.capture("02b_sign_in_providers") {
+        LoginScreen(
+            uiState = AuthUiState(loginEmail = "adaeze@example.com", loginPassword = "secret-pass"),
+            onEmailChange = {}, onPasswordChange = {}, onSubmit = {},
+            onForgotPasswordClick = {}, onCreateAccountClick = {}, onBackClick = {},
+            providers = listOf("google", "github"),
+        )
+    }
+
+    @Test
     fun signIn() = rule.capture("02_sign_in") {
         LoginScreen(
             uiState = AuthUiState(loginEmail = "adaeze@example.com", loginPassword = "secret-pass"),
