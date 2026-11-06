@@ -84,6 +84,7 @@ fun AccountHubScreen(
     onSignOutClick: () -> Unit = {},
 ) {
     var panel by remember { mutableStateOf(AccountPanel.NONE) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -161,9 +162,9 @@ fun AccountHubScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MutedGray,
             )
-            ServixTextButton(text = "Manage account on the website") {
-                CustomTabLauncher.launchWebPath(LocalContext.current, "/dashboard/settings")
-            }
+            ServixTextButton(text = "Manage account on the website", onClick = {
+                CustomTabLauncher.launchWebPath(context, "/dashboard/settings")
+            })
         } else {
             ServixTextButton(text = "← Back to account") { panel = AccountPanel.NONE }
             when (panel) {
