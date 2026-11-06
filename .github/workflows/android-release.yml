@@ -147,24 +147,31 @@ jobs:
             exit 1
           fi
 
-          COLONS=$(echo "$RAW" | sed 's/../&:/g; s/:$//')
+          # keytool prints the fingerprint colon-separated; keep one canonical no-colon, uppercase
+          # hex form for comparison and rebuild the readable form from it.
+          HEX=$(echo "$RAW" | tr -d ':' | tr -d ' ' | tr 'a-f' 'A-F')
+          if [ "${#HEX}" -ne 64 ]; then
+            echo "::error::Certificate fingerprint parsed as '${HEX}' (${#HEX} chars, expected 64) — keytool output format changed; see cert.log above."
+            exit 1
+          fi
+          COLONS=$(echo "$HEX" | sed 's/../&:/g; s/:$//')
           echo "Bundle signing certificate SHA-256: $COLONS"
           echo "sha256=$COLONS" >> "$GITHUB_OUTPUT"
 
           # Also read the certificate straight out of the keystore we signed with, so a mismatch
           # between "what we signed with" and "what the bundle carries" can never hide.
-          STORE_RAW=$(keytool -list -v -keystore "$SERVIX_UPLOAD_KEYSTORE" -storetype PKCS12 \
+          STORE_HEX=$(keytool -list -v -keystore "$SERVIX_UPLOAD_KEYSTORE" -storetype PKCS12 \
             -storepass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" -alias servix-upload 2>/dev/null \
-            | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
-          echo "Keystore certificate SHA-256: $(echo "$STORE_RAW" | sed 's/../&:/g; s/:$//')"
+            | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ':' | tr -d ' ' | tr 'a-f' 'A-F' || true)
+          echo "Keystore certificate SHA-256: $(echo "$STORE_HEX" | sed 's/../&:/g; s/:$//')"
 
           EXPECTED=$(echo "$EXPECTED_CERT_SHA256" | tr -d ':' | tr 'a-f' 'A-F')
-          if [ "$RAW" != "$EXPECTED" ]; then
+          if [ "$HEX" != "$EXPECTED" ]; then
             echo "::error::Bundle certificate mismatch. Expected $EXPECTED_CERT_SHA256 but got $COLONS. The bundle was signed with a different key (test key? missing upload secrets?) — do NOT upload it to Play."
             exit 1
           fi
-          if [ -n "$STORE_RAW" ] && [ "$STORE_RAW" != "$EXPECTED" ]; then
-            echo "::error::The restored keystore's certificate ($STORE_RAW) is not the expected upload certificate — check UPLOAD_KEYSTORE_BASE64."
+          if [ -n "$STORE_HEX" ] && [ "$STORE_HEX" != "$EXPECTED" ]; then
+            echo "::error::The restored keystore's certificate ($STORE_HEX) is not the expected upload certificate — check UPLOAD_KEYSTORE_BASE64."
             exit 1
           fi
           echo "Certificate matches the Play upload key ($EXPECTED_CERT_SHA256)."
