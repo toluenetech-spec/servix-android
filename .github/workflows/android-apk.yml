@@ -134,19 +134,26 @@ jobs:
       - name: Run offline feature tests only
         run: gradle testDebugUnitTest --tests 'ng.name.servix.app.OfflineFeaturesTest' --tests 'ng.name.servix.app.AiOfflineTest' --no-daemon --stacktrace
 
-      - name: Surface Gradle errors
+      - name: Collect failure diagnostics
         if: failure()
         shell: bash
         run: |
-          mkdir -p docs/ci
-          grep -vE "kotlin metadata" gradle-build.log 2>/dev/null | grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:|What went wrong|> Task .*FAILED" | head -40 > docs/ci/last-failure.txt || true
-          git config user.name "servix-ci"
-          git config user.email "ci@servix.name.ng"
-          git add docs/ci/last-failure.txt
-          git commit -m "chore: CI failure log [apk]" || true
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          exit 0
+          # CI output is never committed. A file that every failing run rewrites is exactly what
+          # made this branch unmergeable with main, so diagnostics go to an artifact instead.
+          mkdir -p ci-failure
+          grep -vE "kotlin metadata" gradle-build.log 2>/dev/null \
+            | grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:|What went wrong|> Task .*FAILED" \
+            | head -40 > ci-failure/gradle-errors.txt || true
+          cp -f gradle-build.log ci-failure/ 2>/dev/null || true
+          wc -l ci-failure/* 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-diagnostics
+          path: ci-failure/
+          if-no-files-found: ignore
 
       - name: Name the APK
         id: apk

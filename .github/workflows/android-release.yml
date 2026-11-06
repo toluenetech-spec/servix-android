@@ -266,11 +266,13 @@ jobs:
             Nothing was uploaded to Play automatically — this pre-release is the hand-off artifact.
             The app does not self-update on this build (`SELF_UPDATE_CHANNEL = "none"`).
 
-      - name: Surface Gradle errors
+      - name: Collect failure diagnostics
         if: failure()
         shell: bash
         run: |
-          mkdir -p docs/ci
+          # CI output is never committed (see Block 4): it goes to an artifact. The signature
+          # evidence in particular must survive a failed run.
+          mkdir -p ci-failure
           {
             grep -vE "kotlin metadata" gradle-build.log 2>/dev/null \
               | grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:|What went wrong|> Task .*FAILED" \
@@ -279,18 +281,25 @@ jobs:
               | grep -E "^e: |error:|FAILED|Execution failed|Caused by" \
               | head -20
             if [ -s jarsigner.log ] && ! grep -q "jar verified" jarsigner.log; then
-              echo "----- jarsigner -verify -----"
+              echo "----- jarsigner -verify (as built) -----"
               head -20 jarsigner.log
+            fi
+            if [ -s jarsigner-final.log ] && ! grep -q "jar verified" jarsigner-final.log; then
+              echo "----- jarsigner -verify (final) -----"
+              head -20 jarsigner-final.log
             fi
             if [ -s cert.log ] && ! grep -qi "SHA256:" cert.log; then
               echo "----- keytool -printcert -----"
               head -20 cert.log
             fi
-          } > docs/ci/last-failure.txt || true
-          git config user.name "servix-ci"
-          git config user.email "ci@servix.name.ng"
-          git add docs/ci/last-failure.txt
-          git commit -m "chore: CI failure log [play-bundle]" || true
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          exit 0
+          } > ci-failure/play-bundle.txt || true
+          cp -f gradle-build.log gradle-test.log jarsigner.log jarsigner-final.log cert.log ci-failure/ 2>/dev/null || true
+          wc -l ci-failure/* 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-diagnostics
+          path: ci-failure/
+          if-no-files-found: ignore

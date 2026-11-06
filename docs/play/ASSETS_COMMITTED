@@ -1,4 +1,0 @@
-Rendered by the play_assets job in .github/workflows/screenshots.yml, run 42226236157 on 3b99b42.
-This file is a sentinel: while it exists the workflow re-renders but never re-commits,
-so the store art only enters git once. Delete it to allow a fresh commit.
-Art only — no Play Console upload happens here.

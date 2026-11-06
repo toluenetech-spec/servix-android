@@ -47,20 +47,24 @@ jobs:
             --tests "ng.name.servix.app.screenshots.TypographyTest" \
             --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
 
-      - name: Surface Gradle errors
+      - name: Collect failure diagnostics
         if: failure()
+        shell: bash
         run: |
-          mkdir -p docs/ci
-          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log > docs/ci/last-failure.txt || true
-          grep -E "^e: " gradle-screenshots.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
-          git config user.name "servix-ci"
-          git config user.email "ci@servix.name.ng"
-          git add docs/ci/last-failure.txt
-          git commit -m "chore: CI failure log [shots]" || true
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          exit 0
+          # CI output is never committed: it goes to an artifact.
+          mkdir -p ci-failure
+          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log > ci-failure/gradle-errors.txt 2>/dev/null || true
+          grep -E "^e: " gradle-screenshots.log 2>/dev/null | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          cp -f gradle-screenshots.log ci-failure/ 2>/dev/null || true
+          wc -l ci-failure/* 2>/dev/null || true
 
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-diagnostics
+          path: ci-failure/
+          if-no-files-found: ignore
       - name: Upload renders artifact
         if: success()
         uses: actions/upload-artifact@v4
@@ -215,12 +219,15 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "committed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Surface Gradle errors
+      - name: Collect failure diagnostics
         if: failure()
+        shell: bash
         run: |
-          mkdir -p docs/ci
-          { grep -vE "kotlin metadata" gradle-play-assets.log 2>/dev/null \
-              | grep -E "^e: |error:|expected |Execution failed|Caused by|PLAY_ASSET|FAILED|AssertionError|IllegalStateException" | head -40; } > docs/ci/last-failure.txt || true
+          # CI output is never committed: it goes to an artifact.
+          mkdir -p ci-failure
+          grep -vE "kotlin metadata" gradle-play-assets.log 2>/dev/null \
+            | grep -E "^e: |error:|expected |Execution failed|Caused by|PLAY_ASSET|FAILED|AssertionError|IllegalStateException" \
+            | head -40 > ci-failure/play-assets.txt || true
           # JUnit XML carries the real assertion message and run logs are not always reachable,
           # so turn each failure into a check-run annotation.
           for f in app/build/test-results/testDebugUnitTest/TEST-*.xml; do
@@ -229,13 +236,15 @@ jobs:
               | sed 's/failure message="//; s/"$//' | cut -c1-300 \
               | while IFS= read -r msg; do echo "::error::${msg}"; done
           done
-          # Test failures never reach a check-run annotation on their own; surface the first few.
           grep -E "FAILED$|AssertionError|expected a .* window" gradle-play-assets.log 2>/dev/null | head -8 \
             | while IFS= read -r line; do echo "::error::$line"; done || true
-          git config user.name "servix-ci"
-          git config user.email "ci@servix.name.ng"
-          git add docs/ci/last-failure.txt
-          git commit -m "chore: CI failure log [play-assets]" || true
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          exit 0
+          cp -f gradle-play-assets.log ci-failure/ 2>/dev/null || true
+          wc -l ci-failure/* 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-diagnostics
+          path: ci-failure/
+          if-no-files-found: ignore
