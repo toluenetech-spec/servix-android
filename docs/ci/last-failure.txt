@@ -1,30 +1,41 @@
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/data/repository/AccountRepository.kt:99:26 Unresolved reference 'toRequestBody'.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/data/repository/AccountRepository.kt:99:52 Unresolved reference 'toMediaTypeOrNull'.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:450:37 Argument type mismatch: actual type is 'androidx.compose.animation.core.TweenSpec<kotlin.Float>', but 'androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>' was expected.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:453:38 Argument type mismatch: actual type is 'androidx.compose.animation.core.TweenSpec<kotlin.Float>', but 'androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>' was expected.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:456:37 Argument type mismatch: actual type is 'androidx.compose.animation.core.TweenSpec<kotlin.Float>', but 'androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>' was expected.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:459:38 Argument type mismatch: actual type is 'androidx.compose.animation.core.TweenSpec<kotlin.Float>', but 'androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>' was expected.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:641:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:642:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:643:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:644:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:697:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:698:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:699:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:700:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:860:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:861:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:862:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:863:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:968:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:969:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:970:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:971:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:1006:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:1007:50 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:1008:53 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/navigation/ServixAppShell.kt:1009:53 @Composable invocations can only happen from the context of a @Composable function
-Execution failed for task ':app:compileDebugKotlin'.
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:50:18 Unresolved reference 'converter'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:69:54 Unresolved reference 'asConverterFactory'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:78:9 No parameter with name 'firstName' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:100:23 Unresolved reference 'setContent'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:100:36 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:147:52 No parameter with name 'onOpenFiltersChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:148:13 No parameter with name 'onSortChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:148:32 No parameter with name 'onCategoryChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:148:55 No parameter with name 'onPriceChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:148:75 No parameter with name 'onAvailabilityChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No parameter with name 'categories' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'categoryNameFor'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onQuerySubmit'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onCategorySelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onLocationChange'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onRatingSelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onPriceSelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onAvailabilitySelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onSortSelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:34 No value passed for parameter 'onRefresh'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/a11y/TouchTargetTest.kt:150:47 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:407:52 No parameter with name 'onOpenFiltersChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:407:78 No parameter with name 'onSortChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:408:13 No parameter with name 'onCategoryChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:408:36 No parameter with name 'onPriceChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:408:56 No parameter with name 'onAvailabilityChange' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No parameter with name 'categories' found.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'categoryNameFor'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onQuerySubmit'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onCategorySelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onLocationChange'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onRatingSelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onPriceSelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onAvailabilitySelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onSortSelect'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:13 No value passed for parameter 'onRefresh'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/screenshots/ScreenshotTest.kt:410:26 Cannot infer type for this parameter. Please specify it explicitly.
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugUnitTestKotlin'.
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
 Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
