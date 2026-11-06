@@ -55,8 +55,12 @@ import retrofit2.Retrofit
 import java.io.File
 import java.io.FileOutputStream
 
-/** 360 x 640 dp at xxxhdpi = exactly 1080 x 1920 px, Play's 9:16 phone screenshot size. */
-const val PLAY_PHONE_QUALIFIERS = "w360dp-h640dp-xxxhdpi"
+/**
+ * 360 x 640 dp at xxhdpi (density 3) = exactly 1080 x 1920 px, Play's 9:16 phone screenshot size.
+ * Density matters: the same dp window at xxxhdpi (density 4) would render 1440 x 2560, which is a
+ * valid Play size but not the 1080 x 1920 asked for.
+ */
+const val PLAY_PHONE_QUALIFIERS = "w360dp-h640dp-xxhdpi"
 const val PLAY_W = 1080
 const val PLAY_H = 1920
 
@@ -370,7 +374,7 @@ class PlayAssetsTest {
         val width = metrics.widthPixels
         val height = metrics.heightPixels
         check(width == PLAY_W && height == PLAY_H) {
-            "expected a ${PLAY_W}x$PLAY_H window from '$PLAY_PHONE_QUALIFIERS', got ${width}x$height"
+            "expected a ${PLAY_W}x$PLAY_H window from '$PLAY_PHONE_QUALIFIERS' (360dp x 640dp at density 3), got ${width}x$height"
         }
         if (decor.width != width || decor.height != height) {
             decor.measure(

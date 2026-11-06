@@ -40,7 +40,12 @@ jobs:
       - name: Render screen screenshots (Robolectric, offline fixtures)
         run: |
           set -o pipefail
-          gradle :app:testDebugUnitTest --tests "ng.name.servix.app.screenshots.*" --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
+          # Explicit classes: PlayAssetsTest renders eight full-size 1080x1920 PNGs and belongs to the
+          # manual play_assets job, not to every push.
+          gradle :app:testDebugUnitTest \
+            --tests "ng.name.servix.app.screenshots.ScreenshotTest" \
+            --tests "ng.name.servix.app.screenshots.TypographyTest" \
+            --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
 
       - name: Surface Gradle errors
         if: failure()
@@ -215,7 +220,10 @@ jobs:
         run: |
           mkdir -p docs/ci
           { grep -vE "kotlin metadata" gradle-play-assets.log 2>/dev/null \
-              | grep -E "^e: |error:|expected |Execution failed|Caused by|PLAY_ASSET" | head -40; } > docs/ci/last-failure.txt || true
+              | grep -E "^e: |error:|expected |Execution failed|Caused by|PLAY_ASSET|FAILED|AssertionError|IllegalStateException" | head -40; } > docs/ci/last-failure.txt || true
+          # Test failures never reach a check-run annotation on their own; surface the first few.
+          grep -E "FAILED$|AssertionError|expected a .* window" gradle-play-assets.log 2>/dev/null | head -8 \
+            | while IFS= read -r line; do echo "::error::$line"; done || true
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
           git add docs/ci/last-failure.txt
