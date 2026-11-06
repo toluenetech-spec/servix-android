@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -882,8 +883,6 @@ fun ServiceDetailScreen(
         if (service.faqs.isNotEmpty()) {
             FaqAccordionSection(faqs = service.faqs)
         }
-    }
-
     }
 
     val barService = uiState.service
