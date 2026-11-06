@@ -1,6 +1,52 @@
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/data/repository/AccountRepository.kt:92:17 Unresolved reference 'MarkNotificationsReadRequest'.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:120:26 Unresolved reference 'ButtonDefaults'.
-e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/auth/AuthScreens.kt:126:29 Unresolved reference 'ButtonDefaults'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ProfessionalProfileScreen.kt:23:41 Unresolved reference 'stickyHeader'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:352:5 Unresolved reference 'Box'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:353:5 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:356:29 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:503:25 Unresolved reference 'Box'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:895:33 Unresolved reference 'align'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:5 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:8 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:9 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:26 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:29 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:36 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:37 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:45 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:48 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:52 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:54 Syntax error: Expecting a top level declaration.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:54 Functions which invoke @Composable functions must be marked with the @Composable annotation
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:901:54 Function declaration must have a name.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:902:19 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:903:26 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:903:26 This material API is experimental and is likely to change or to be removed in the future.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:904:9 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:904:9 This material API is experimental and is likely to change or to be removed in the future.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:905:39 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:905:60 Unresolved reference 'bookingSheetOpen'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:906:26 This material API is experimental and is likely to change or to be removed in the future.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:912:24 Unresolved reference 'user'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:914:25 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:915:39 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:916:32 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:917:25 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:918:32 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:919:24 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:920:25 Unresolved reference 'uiState'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:921:32 Unresolved reference 'onSelectSlot'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:922:33 Unresolved reference 'onNotesChange'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:924:21 Unresolved reference 'onSubmitBookAndPay'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:924:42 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:924:53 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:925:25 Unresolved reference 'bookingSheetOpen'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:926:53 Unresolved reference 'context'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:927:25 Unresolved reference 'onNavigateToBookingAfterPay'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:930:34 Unresolved reference 'bookingSheetOpen'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:932:21 Unresolved reference 'bookingSheetOpen'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:933:21 Unresolved reference 'onSignInToBookClick'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:936:21 Unresolved reference 'bookingSheetOpen'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:937:21 Unresolved reference 'onCreateAccountToBookClick'.
+e: file:///home/runner/work/servix-android/servix-android/app/src/main/java/ng/name/servix/app/ui/catalogue/ServiceDetailScreen.kt:942:1 Syntax error: Expecting a top level declaration.
 Execution failed for task ':app:compileDebugKotlin'.
 org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction

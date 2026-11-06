@@ -7,6 +7,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import ng.name.servix.app.data.model.AccountInsightsDto
 import ng.name.servix.app.data.model.AccountOverviewDto
 import ng.name.servix.app.data.model.AccountPaymentsResponse
+import ng.name.servix.app.data.model.MarkNotificationsReadRequest
 import ng.name.servix.app.data.model.MarkNotificationsReadResponse
 import ng.name.servix.app.data.model.NotificationListResponse
 import ng.name.servix.app.data.model.SecuritySummaryDto
