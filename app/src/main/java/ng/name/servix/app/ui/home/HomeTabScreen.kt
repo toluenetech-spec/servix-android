@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -97,13 +98,25 @@ fun HomeTabScreen(
             .padding(top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        HomeTopBar(user = user, city = city, onOpenAccount = onOpenAccount)
+        HomeTopBar(
+            user = user,
+            city = city,
+            onOpenAccount = onOpenAccount,
+            onSignIn = onSignInClick,
+        )
 
         SearchField(
             placeholder = stringResource(R.string.home_search_placeholder),
             onClick = onOpenSearch,
             testTag = "home_search_field",
         )
+
+        if (!signedIn) {
+            SignInCard(
+                onSignInClick = onSignInClick,
+                onCreateAccountClick = onCreateAccountClick,
+            )
+        }
 
         if (signedIn && uiState.attention.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -119,7 +132,7 @@ fun HomeTabScreen(
             }
         }
 
-        if (signedIn) {
+        if (signedIn && !(uiState.loading && uiState.bookings.isEmpty())) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionHeader(
                     title = stringResource(R.string.home_your_bookings),
@@ -150,7 +163,10 @@ fun HomeTabScreen(
         }
 
         if (uiState.loading && uiState.categories.isEmpty()) {
-            ListSkeleton(rows = 4)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SectionHeader(title = stringResource(R.string.home_recommended))
+                ListSkeleton(rows = 4)
+            }
         } else {
             if (uiState.error != null) {
                 ErrorCard(message = uiState.error, onRetry = onRefresh)
@@ -215,11 +231,6 @@ fun HomeTabScreen(
                 usage = aiUsage,
                 onManage = onOpenAccount,
             )
-        } else {
-            SignInCard(
-                onSignInClick = onSignInClick,
-                onCreateAccountClick = onCreateAccountClick,
-            )
         }
     }
 }
@@ -229,6 +240,7 @@ private fun HomeTopBar(
     user: UserDto?,
     city: String?,
     onOpenAccount: () -> Unit,
+    onSignIn: () -> Unit,
 ) {
     val greeting = when (LocalTime.now(ZoneId.of("Africa/Lagos")).hour) {
         in 0..11 -> stringResource(R.string.home_good_morning)
@@ -257,15 +269,15 @@ private fun HomeTopBar(
                 color = MutedGray,
             )
         }
-        IconButton(
-            onClick = onOpenAccount,
-            modifier = Modifier.size(48.dp).testTag("home_account_avatar"),
-        ) {
-            AvatarImage(
-                size = 36.dp,
-                initials = user?.firstName ?: "",
-                image = null,
-            )
+        if (user != null) {
+            IconButton(
+                onClick = onOpenAccount,
+                modifier = Modifier.size(48.dp).testTag("home_account_avatar"),
+            ) {
+                AvatarImage(size = 36.dp, initials = user.firstName, image = null)
+            }
+        } else {
+            ServixTextButton(text = stringResource(R.string.sign_in), onClick = onSignIn)
         }
     }
 }
@@ -282,42 +294,13 @@ private fun UpcomingBookingCard(
             .testTag("home_upcoming_card"),
         contentPadding = PaddingValues(16.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = booking.serviceTitle.ifBlank { stringResource(R.string.home_booking_fallback) },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = DeepForest,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
                 StatusChip(status = booking.status)
-            }
-            Text(
-                text = booking.professionalName.orEmpty().ifBlank { stringResource(R.string.home_professional_fallback) },
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedGray,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = listOf(
-                        ServixFormatters.formatShortDayMonth(booking.scheduledAt),
-                        ServixFormatters.formatSlotTime(booking.scheduledAt),
-                    ).filter { it.isNotBlank() }.joinToString(" · "),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                    modifier = Modifier.weight(1f),
-                )
+                Spacer(modifier = Modifier.weight(1f))
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = null,
@@ -325,6 +308,28 @@ private fun UpcomingBookingCard(
                     modifier = Modifier.size(20.dp),
                 )
             }
+            Text(
+                text = booking.serviceTitle.ifBlank { stringResource(R.string.home_booking_fallback) },
+                style = MaterialTheme.typography.titleMedium,
+                color = DeepForest,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = booking.professionalName.orEmpty().ifBlank { stringResource(R.string.home_professional_fallback) },
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedGray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = listOf(
+                    ServixFormatters.formatShortDayMonth(booking.scheduledAt),
+                    ServixFormatters.formatSlotTime(booking.scheduledAt),
+                ).filter { it.isNotBlank() }.joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Charcoal,
+            )
         }
     }
 }
