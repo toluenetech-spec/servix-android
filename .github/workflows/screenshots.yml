@@ -100,3 +100,126 @@ jobs:
           name: screenshot-test-report
           path: app/build/reports/tests/testDebugUnitTest/**
           if-no-files-found: ignore
+
+  play_assets:
+    # Store art is rendered only when someone asks for it: it changes when a screen changes, and
+    # committing ~3 MB of PNGs on every push would bloat history. Manual dispatch only.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Render Play assets (Robolectric harness, offline fixtures)
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --tests "ng.name.servix.app.screenshots.PlayAssetsTest" \
+            --no-daemon --stacktrace 2>&1 | tee gradle-play-assets.log
+
+      - name: Verify asset dimensions
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=app/build/reports/screenshots/play
+          # Width/height straight out of the PNG IHDR chunk (bytes 16-23, big endian).
+          png_dims() {
+            od -An -tu4 -j16 -N4 --endian=big "$1" | tr -d ' \n'
+            printf 'x'
+            od -An -tu4 -j20 -N4 --endian=big "$1" | tr -d ' \n'
+          }
+
+          fail=0
+          shopt -s nullglob
+          PHONE=("$BASE"/phone/*.png)
+          if [ "${#PHONE[@]}" -ne 8 ]; then
+            echo "::error::expected 8 phone screenshots, found ${#PHONE[@]}"
+            fail=1
+          fi
+          for f in "${PHONE[@]}"; do
+            d=$(png_dims "$f")
+            echo "phone $(basename "$f"): $d"
+            [ "$d" = "1080x1920" ] || { echo "::error::$f is $d, expected 1080x1920"; fail=1; }
+          done
+
+          for spec in "icon-512.png:512x512" "feature-graphic-1024x500.png:1024x500"; do
+            name=${spec%%:*}
+            want=${spec##*:}
+            if [ ! -f "$BASE/$name" ]; then
+              echo "::error::$BASE/$name is missing"
+              fail=1
+              continue
+            fi
+            d=$(png_dims "$BASE/$name")
+            echo "$name: $d"
+            [ "$d" = "$want" ] || { echo "::error::$name is $d, expected $want"; fail=1; }
+          done
+
+          du -sh "$BASE"
+          exit "$fail"
+
+      - name: Upload Play assets as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-assets
+          path: app/build/reports/screenshots/play/**
+          retention-days: 30
+
+      - name: Commit docs/play once
+        id: commit
+        run: |
+          set -euo pipefail
+          if [ -f docs/play/ASSETS_COMMITTED ]; then
+            echo "::notice::docs/play/ASSETS_COMMITTED exists — the store art was already committed once. Rendering only; nothing re-committed."
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SRC=app/build/reports/screenshots/play
+          mkdir -p docs/play/phone
+          cp "$SRC"/phone/*.png docs/play/phone/
+          cp "$SRC"/icon-512.png docs/play/
+          cp "$SRC"/feature-graphic-1024x500.png docs/play/
+          {
+            echo "Rendered by .github/workflows/play-assets.yml, run $GITHUB_RUN_ID on ${GITHUB_SHA:0:7}."
+            echo "This file is a sentinel: while it exists the workflow re-renders but never re-commits,"
+            echo "so the store art only enters git once. Delete it to allow a fresh commit."
+            echo "Art only — no Play Console upload happens here."
+          } > docs/play/ASSETS_COMMITTED
+          ls -l docs/play docs/play/phone
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          git add -A docs/play
+          git commit -m "docs(play): store assets — 8 phone screenshots, 512 icon, 1024x500 feature graphic [play-assets][shots]"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Surface Gradle errors
+        if: failure()
+        run: |
+          mkdir -p docs/ci
+          { grep -vE "kotlin metadata" gradle-play-assets.log 2>/dev/null \
+              | grep -E "^e: |error:|expected |Execution failed|Caused by|PLAY_ASSET" | head -40; } > docs/ci/last-failure.txt || true
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          git add docs/ci/last-failure.txt
+          git commit -m "chore: CI failure log [play-assets]" || true
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
+          exit 0
