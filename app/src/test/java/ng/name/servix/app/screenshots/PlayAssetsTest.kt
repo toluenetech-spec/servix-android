@@ -338,10 +338,10 @@ class PlayAssetsTest {
         mark.setBounds(markLeft, markTop, markLeft + markSize, markTop + markSize)
         mark.draw(canvas)
 
-        canvas.drawText("Servix", markLeft + markSize + gap, baseline, wordPaint)
+        canvas.drawText("Servix", (markLeft + markSize + gap).toFloat(), baseline, wordPaint)
 
         val taglineLeft = ((w - taglineWidth) / 2f).toInt()
-        canvas.drawText(TAGLINE, taglineLeft, baseline + 44f + taglineSize * 0.8f, taglinePaint)
+        canvas.drawText(TAGLINE, taglineLeft.toFloat(), baseline + 44f + taglineSize * 0.8f, taglinePaint)
 
         // Coral accent rule under the tagline — the palette's accent, used nowhere else here.
         val ruleTop = (baseline + 44f + taglineSize * 0.8f + 26f).toInt()
