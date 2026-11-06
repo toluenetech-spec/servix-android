@@ -191,7 +191,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -f docs/play/ASSETS_COMMITTED ]; then
-            echo "::notice::docs/play/ASSETS_COMMITTED exists — the store art was already committed once. Rendering only; nothing re-committed."
+            echo "::notice::docs/play/ASSETS_COMMITTED exists — the store art was already committed once. Rendering only; nothing re-committed. Delete the sentinel to publish a fresh set."
             echo "committed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -201,7 +201,7 @@ jobs:
           cp "$SRC"/icon-512.png docs/play/
           cp "$SRC"/feature-graphic-1024x500.png docs/play/
           {
-            echo "Rendered by .github/workflows/play-assets.yml, run $GITHUB_RUN_ID on ${GITHUB_SHA:0:7}."
+            echo "Rendered by the play_assets job in .github/workflows/screenshots.yml, run $GITHUB_RUN_ID on ${GITHUB_SHA:0:7}."
             echo "This file is a sentinel: while it exists the workflow re-renders but never re-commits,"
             echo "so the store art only enters git once. Delete it to allow a fresh commit."
             echo "Art only — no Play Console upload happens here."
