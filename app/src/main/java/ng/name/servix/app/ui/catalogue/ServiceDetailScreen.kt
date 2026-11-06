@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +61,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -336,7 +341,6 @@ fun ServiceDetailScreen(
     BackHandler(onBack = onBackClick)
 
     var bookingSheetOpen by rememberSaveable { mutableStateOf(openBookingSheetInitially) }
-    var selectedImageIndex by rememberSaveable { mutableIntStateOf(0) }
     val context = LocalContext.current
 
     LaunchedEffect(openBookingSheetInitially) {
@@ -345,11 +349,13 @@ fun ServiceDetailScreen(
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         // Back button + Breadcrumb (ServiceDetailPage.jsx:211-220)
@@ -469,45 +475,38 @@ fun ServiceDetailScreen(
                 listOfNotNull(service.image?.takeIf { it.isNotBlank() })
             }
         }
-        val activeIdx = selectedImageIndex.coerceIn(0, (galleryUrls.size - 1).coerceAtLeast(0))
-        val activeUrl = galleryUrls.getOrNull(activeIdx)
 
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ServixMediaImage(
-                rawImageUrl = activeUrl,
-                contentDescription = service.title,
-                shape = RoundedCornerShape(10.dp),
+            val pagerState = rememberPagerState(pageCount = { galleryUrls.size.coerceAtLeast(1) })
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
-                    .testTag("service_detail_main_image"),
-            )
+                    .aspectRatio(16f / 10f)
+                    .testTag("service_detail_pager"),
+            ) { page ->
+                ServixMediaImage(
+                    rawImageUrl = galleryUrls.getOrNull(page),
+                    contentDescription = service.title,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             if (galleryUrls.size > 1) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    galleryUrls.forEachIndexed { idx, imgUrl ->
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(
-                                width = if (idx == activeIdx) 2.dp else 1.dp,
-                                color = if (idx == activeIdx) DeepForest else BorderSand,
-                            ),
+                    galleryUrls.indices.forEach { index ->
+                        val current = pagerState.currentPage == index
+                        Box(
                             modifier = Modifier
-                                .size(width = 76.dp, height = 56.dp)
-                                .clickable { selectedImageIndex = idx }
-                                .testTag("service_gallery_thumb_$idx"),
-                        ) {
-                            ServixMediaImage(
-                                rawImageUrl = imgUrl,
-                                contentDescription = "${service.title} image ${idx + 1}",
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                                .padding(horizontal = 3.dp)
+                                .size(if (current) 8.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(if (current) DeepForest else BorderSand),
+                        )
                     }
                 }
             }
@@ -885,6 +884,19 @@ fun ServiceDetailScreen(
         }
     }
 
+    }
+
+    val barService = uiState.service
+    if (barService != null && !uiState.loading) {
+        ServiceBookBar(
+            priceLabel = ServixFormatters.formatNaira(barService.price),
+            priceUnit = barService.priceUnit,
+            onClick = { bookingSheetOpen = true },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+    }
+
     // Stage 3: Booking Bottom Sheet (ServiceDetailPage.jsx:58-160, 426-446)
     if (bookingSheetOpen && uiState.service != null) {
         val svc = uiState.service
@@ -894,6 +906,7 @@ fun ServiceDetailScreen(
             sheetState = sheetState,
             containerColor = WarmIvory,
             contentColor = Charcoal,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         ) {
             BookingSheetContent(
                 user = user,
@@ -923,6 +936,41 @@ fun ServiceDetailScreen(
                     bookingSheetOpen = false
                     onCreateAccountToBookClick()
                 },
+            )
+        }
+    }
+}
+
+
+/** Sticky bottom action bar for service detail (plan §5). */
+@Composable
+private fun ServiceBookBar(
+    priceLabel: String,
+    priceUnit: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = WarmIvory,
+        border = BorderStroke(1.dp, BorderSand),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(priceLabel, style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                Text(priceUnit, style = MaterialTheme.typography.labelSmall, color = MutedGray)
+            }
+            ServixPrimaryButton(
+                text = stringResource(R.string.service_book_cta),
+                onClick = onClick,
+                modifier = Modifier.weight(1.2f),
+                testTag = "service_book_bar_button",
             )
         }
     }
@@ -1131,7 +1179,7 @@ internal fun BookingSheetContent(
                 onValueChange = onNotesChange,
                 minLines = 3,
                 maxLines = 5,
-                shape = RoundedCornerShape(6.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = PureWhite,
                     unfocusedContainerColor = PureWhite,
@@ -1183,6 +1231,12 @@ internal fun BookingSheetContent(
                 testTag = "booking_cancel_sheet_button",
             )
         }
+
+        Text(
+            text = stringResource(R.string.booking_sheet_held_copy),
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedGray,
+        )
     }
 }
 

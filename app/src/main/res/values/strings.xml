@@ -15,6 +15,50 @@
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>
     <string name="nav_explore">Explore</string>
+    <string name="profile_book_cta">Book</string>
+    <string name="service_book_cta">Book this service</string>
+    <string name="booking_sheet_title">Book this service</string>
+    <string name="booking_sheet_held_copy">Payment is held securely by Servix until you confirm the work is done.</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="notifications_mark_all">Mark all read</string>
+    <string name="notifications_empty_title">No notifications yet</string>
+    <string name="notifications_empty_body">Booking updates and account messages appear here.</string>
+    <string name="notifications_channel_name">Bookings &amp; account</string>
+    <string name="notifications_channel_description">Booking updates, payments and account messages.</string>
+    <string name="notifications_rationale_title">Turn on booking alerts?</string>
+    <string name="notifications_rationale_body">We only notify you about your bookings, payments and account. You can turn this off any time.</string>
+    <string name="notifications_rationale_allow">Allow notifications</string>
+    <string name="notifications_rationale_later">Not now</string>
+    <string name="notifications_open">Notifications</string>
+    <string name="auth_or_divider">or</string>
+    <string name="auth_continue_google">Continue with Google</string>
+    <string name="auth_continue_github">Continue with GitHub</string>
+    <string name="auth_provider_failed">We could not finish that sign-in. Please try again.</string>
+    <string name="auth_provider_link_required">Sign in using your existing method first, then explicitly connect this provider.</string>
+
+    <string name="explore_professionals">Professionals</string>
+    <string name="explore_services">Services</string>
+    <string name="explore_filters">Filters</string>
+    <string name="explore_sort">Sort</string>
+    <string name="explore_category">Category</string>
+    <string name="explore_city">City</string>
+    <string name="explore_city_placeholder">City, e.g. Lagos</string>
+    <string name="explore_rating">Rating</string>
+    <string name="explore_price">Price</string>
+    <string name="explore_price_any">Any starting price</string>
+    <string name="explore_price_up_to">Up to %1$s</string>
+    <string name="explore_price_reset">Any price</string>
+    <string name="explore_availability">Availability</string>
+    <string name="explore_all_categories">All categories</string>
+    <string name="explore_available_now">Available now</string>
+    <string name="explore_count_professionals">%1$d professionals found</string>
+    <string name="explore_count_services">%1$d services found</string>
+    <string name="explore_show_results_professionals">Show %1$d professionals</string>
+    <string name="explore_show_results_services">Show %1$d services</string>
+    <string name="explore_empty_title">Nothing matches those filters</string>
+    <string name="explore_empty_body">Try a different city, category or price range.</string>
+    <string name="explore_clear_filters">Clear filters</string>
+
     <string name="nav_bookings">Bookings</string>
     <string name="nav_ai">Servix AI</string>
     <string name="nav_account">Account</string>
@@ -222,7 +266,6 @@
     <string name="service_not_found_message">This service does not exist or may have been removed.</string>
 
     <!-- Stage 3: Bookings, Booking Sheet & Payment -->
-    <string name="booking_sheet_title">Book this service</string>
     <string name="booking_sheet_price_line">%1$s %2$s — the price is locked when you book. Payment is held securely and only released after you confirm completion.</string>
     <string name="booking_sheet_choose_time">Choose a time</string>
     <string name="booking_sheet_select_slot">Select a slot…</string>

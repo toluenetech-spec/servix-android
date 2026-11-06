@@ -33,7 +33,7 @@ import ng.name.servix.app.ui.bookings.BookingsUiState
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileUiState
 import ng.name.servix.app.ui.catalogue.SearchMode
-import ng.name.servix.app.ui.catalogue.SearchScreen
+import ng.name.servix.app.ui.explore.ExploreScreen
 import ng.name.servix.app.ui.catalogue.SearchUiState
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
 import ng.name.servix.app.ui.catalogue.ServiceDetailUiState
@@ -143,7 +143,7 @@ class ScreenshotTest {
 
     @Test
     fun exploreResults() = rule.capture("06_explore_results") {
-        SearchScreen(
+        ExploreScreen(
             uiState = SearchUiState(
                 mode = SearchMode.PROFESSIONALS,
                 query = "logo designer",
@@ -157,14 +157,14 @@ class ScreenshotTest {
             categoryNameFor = { slug -> Fixtures.categories.find { it.id == slug }?.name.orEmpty() },
             onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
             onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onAvailabilitySelect = {},
-            onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+            onSortSelect = {}, onPriceLimitChange = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
             onOpenProfessional = {}, onOpenService = {},
         )
     }
 
     @Test
     fun exploreEmpty() = rule.capture("07_explore_empty") {
-        SearchScreen(
+        ExploreScreen(
             uiState = SearchUiState(
                 mode = SearchMode.SERVICES,
                 query = "drone pilot for a wedding in Katsina",
@@ -175,7 +175,7 @@ class ScreenshotTest {
             categoryNameFor = { "" },
             onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
             onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onAvailabilitySelect = {},
-            onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+            onSortSelect = {}, onPriceLimitChange = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
             onOpenProfessional = {}, onOpenService = {},
         )
     }

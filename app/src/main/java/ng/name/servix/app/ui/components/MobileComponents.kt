@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -300,6 +301,82 @@ fun CategoryChip(
         ) {
             if (icon != null) Icon(icon, contentDescription = null, tint = if (selected) WarmIvory else DeepForest, modifier = Modifier.size(20.dp))
             Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) WarmIvory else Charcoal)
+        }
+    }
+}
+
+
+/** Two-or-more option segmented control (plan §5): one row, pill halves, no tab chrome. */
+@Composable
+fun ServixSegmentedControl(
+    options: List<Pair<String, String>>,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(ServixButtonRadius),
+        color = SoftSand,
+    ) {
+        Row(modifier = Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            options.forEach { (id, label) ->
+                val selected = id == selectedId
+                Surface(
+                    onClick = { onSelect(id) },
+                    shape = RoundedCornerShape(ServixButtonRadius - 4.dp),
+                    color = if (selected) DeepForest else Color.Transparent,
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                        .testTag("segmented_$id"),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (selected) WarmIvory else Charcoal,
+                            modifier = Modifier.padding(vertical = 10.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Filter chip: label plus a value when one is applied. Pill, 48 dp target. */
+@Composable
+fun FilterChipPill(
+    label: String,
+    value: String? = null,
+    active: Boolean = false,
+    icon: ImageVector? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp),
+        shape = CircleShape,
+        color = if (active) DeepForest else PureWhite,
+        border = BorderStroke(1.dp, if (active) DeepForest else BorderSand),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = if (active) WarmIvory else Charcoal, modifier = Modifier.size(18.dp))
+            }
+            Text(
+                text = if (value.isNullOrBlank()) label else "$label · $value",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (active) WarmIvory else Charcoal,
+                maxLines = 1,
+                modifier = Modifier.widthIn(max = 200.dp),
+            )
         }
     }
 }

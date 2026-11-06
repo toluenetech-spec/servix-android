@@ -13,8 +13,8 @@ android {
         applicationId = "ng.name.servix.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.6.2"
+        versionCode = 12
+        versionName = "0.6.3"
         buildConfigField("String", "API_BASE_URL", "\"https://api.servix.name.ng/api/v1/\"")
         buildConfigField("String", "WEB_BASE_URL", "\"https://www.servix.name.ng\"")
     }

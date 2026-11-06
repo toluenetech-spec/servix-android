@@ -86,7 +86,7 @@ import ng.name.servix.app.ui.bookings.BookingsViewModel
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
 import ng.name.servix.app.ui.catalogue.SearchMode
-import ng.name.servix.app.ui.catalogue.SearchScreen
+import ng.name.servix.app.ui.explore.ExploreScreen
 import ng.name.servix.app.ui.catalogue.SearchViewModel
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
 import ng.name.servix.app.ui.catalogue.ServiceDetailViewModel
@@ -554,7 +554,7 @@ fun ServixAppShell(
                     searchViewModel.ensureInitialized()
                 }
 
-                SearchScreen(
+                ExploreScreen(
                     uiState = searchUiState,
                     categoryNameFor = searchViewModel::categoryNameFor,
                     onQueryChange = searchViewModel::updateQuery,
@@ -564,6 +564,7 @@ fun ServixAppShell(
                     onLocationChange = searchViewModel::setLocation,
                     onRatingSelect = searchViewModel::setRatingFilter,
                     onPriceSelect = searchViewModel::setPriceFilter,
+                    onPriceLimitChange = searchViewModel::setPriceLimit,
                     onAvailabilitySelect = searchViewModel::setAvailabilityFilter,
                     onSortSelect = searchViewModel::setSort,
                     onClearFilters = searchViewModel::clearFilters,
