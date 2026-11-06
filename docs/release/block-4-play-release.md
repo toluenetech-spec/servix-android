@@ -15,7 +15,7 @@ no commit can ever produce a Play-bound bundle by accident.
 | Read version | Greps `versionName` / `versionCode` from `app/build.gradle.kts` | either is absent (so the tag can never be malformed) |
 | Release-variant smoke tests | `gradle testReleaseUnitTest --tests 'ng.name.servix.app.release.*'` — the Block 2 DI-graph + DTO suite, on the same release variant Play receives | any test fails |
 | Build | `gradle :app:bundleRelease` (R8 + resource shrinking), log teed to `gradle-build.log` | the build fails |
-| Verify the bundle | `unzip -l` the META-INF signature entries, echo `jarsigner -verify` verbatim (advisory), read the certificate with `keytool -printcert -jarfile` (falling back to `META-INF/*.RSA` + `keytool -printcert -file`), normalise to 64-char uppercase hex, assert it equals `BC:31:4D:57:…:2D:94`, and cross-check it against the certificate inside the restored keystore | no certificate is readable, the fingerprint does not match, or the keystore's own certificate is not the upload certificate |
+| Verify + sign the bundle | Print the META-INF entries and `jarsigner -verify -verbose:summary -certs`; if the bundle does not verify, strip `META-INF/*.SF\|*.RSA\|*.EC\|*.DSA` and sign it with `servix-upload` (SHA256withRSA / SHA-256); then read the certificate with `keytool -printcert -jarfile` (falling back to `META-INF/*.RSA` + `keytool -printcert -file`), normalise to 64-char uppercase hex, and assert it equals `BC:31:4D:57:…:2D:94` and matches the restored keystore's own certificate | the bundle does not verify even after signing, no certificate is readable, or the fingerprint does not match |
 | Name | `servix-1.0.0-play-build<N>.aab` + `servix-1.0.0-mapping-play-build<N>.txt`, plus `du -h` size and `sha256sum` of the bundle | `mapping.txt` is missing |
 | Artifacts | Both files, 90-day retention | — |
 | Pre-release | Tag `play-v<versionName>-b<run>`, `prerelease: true`, notes carrying the upload-key fingerprint, versionCode, bundle size, bundle SHA-256 and the line "Upload this .aab in Play Console → Testing → Internal testing" | — |
@@ -39,12 +39,13 @@ if ! echo "$SIGNERS" | grep -q "jar verified"; then   # under set -o pipefail
 ```
 
 `grep -q` exits at the first match, `echo` then dies of `SIGPIPE`, and `pipefail` turns that into a
-non-zero pipeline — so the "verified" branch was never taken. Runs #2 and #3 on the same signing path
-show `jarsigner` verifying the bundle normally, which confirms the pipeline, not the signature, was
-the failure. Fixed by writing `jarsigner` output to a file and grepping the file (commit `a22f0bf`),
-which also made the step self-diagnosing: `jarsigner` is now **advisory** (its wording on bundle-style
-jars is not a reliable pass/fail signal), the hard gates are "a certificate is readable" and "that
-certificate is the upload key", and the step prints the META-INF listing plus both certificates.
+non-zero pipeline — so the "verified" branch was never taken. **This, not a bad signature, is the root
+cause**, and runs #2, #3 and #4 each confirm it: every one of them verified the same AGP-produced bundle
+with `jarsigner`, read the upload certificate out of it with `keytool`, and logged `AGP, as built`. Fixed by writing `jarsigner`
+output to a file and grepping the file (commit `a22f0bf`), and finished in run #4: the step now prints
+the META-INF listing and the verbose `jarsigner` verdict, re-signs with `servix-upload` if the bundle
+does not verify, and then applies an unconditional gate — `jar verified` **and** the upload-key
+fingerprint. There is no advisory wording left in the path.
 
 ### Run #2 — failed (run 42222970168)
 
@@ -75,21 +76,51 @@ too. It is byte-identical to the certificate created in Block 3.
 
 Run: https://github.com/toluenetech-spec/servix-android/actions/runs/42223571175
 
+### Run #4 — hardening, green (run 42278359287, commit `374bf23`)
+
+At the owner's request the job now stops trusting the build type and proves the signature itself:
+
+* it prints `unzip -l "$AAB" | grep -i META-INF` and
+  `jarsigner -verify -verbose:summary -certs "$AAB" | tail -15` before deciding anything;
+* if `jarsigner -verify` does **not** say `jar verified`, it strips
+  `META-INF/*.SF|*.RSA|*.EC|*.DSA` with `zip -d` and signs the bundle itself:
+
+  ```
+  jarsigner -keystore "$SERVIX_UPLOAD_KEYSTORE" -storetype PKCS12 \
+    -storepass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" -keypass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" \
+    -sigalg SHA256withRSA -digestalg SHA-256 "$AAB" servix-upload
+  ```
+
+  (`-keypass` is the one addition to the requested command: the alias uses the store password, and
+  without it a JDK that decides to prompt would hang the step until the 45-minute timeout.)
+* the gate afterwards is unconditional — `jar verified`, fingerprint equal to `BC:31:4D:57:…:2D:94`,
+  **and** equal to the certificate inside the restored keystore;
+* `setup-java` moved to `v5` (the runner had been warning that v4 is deprecated).
+
+Run #4 came back green and the release notes for `play-v1.0.0-b4` record, in the Signature row,
+**`AGP, as built`**, and the job emitted no "bundle did not verify as built" warning. That is the
+settled answer to the original report: **the bundle AGP produced is a validly JAR-signed bundle**, and
+the re-sign fallback never fired. The fallback stays in place as a guard for the day a signing config
+silently degrades.
+
+Run: https://github.com/toluenetech-spec/servix-android/actions/runs/42278359287
+
 ## The hand-off artifact
 
 | | |
 | --- | --- |
-| Pre-release | **https://github.com/toluenetech-spec/servix-android/releases/tag/play-v1.0.0-b3** |
-| Bundle | `servix-1.0.0-play-build3.aab` — 7,153,970 bytes (6.9 MB) |
-| Bundle SHA-256 | `d6af8c195216848014288492b576abc7543578a6708a43e8d146007fb2b3350a` |
-| Mapping | `servix-1.0.0-mapping-play-build3.txt` — 57,596,804 bytes |
+| Pre-release (current) | **https://github.com/toluenetech-spec/servix-android/releases/tag/play-v1.0.0-b4** |
+| Bundle | `servix-1.0.0-play-build4.aab` — 7,153,960 bytes (6.9 MB) |
+| Bundle SHA-256 | `b60c35098a152b6039b9378ffa7d210352189b9210e804a24d9917e42fafd7c4` |
+| Earlier artifact | `play-v1.0.0-b3` — same fingerprint, same versionCode, 7,153,970 bytes; superseded by b4, which adds the diagnostics and the re-sign fallback |
+| Mapping | `servix-1.0.0-mapping-play-build4.txt` — 57,596,804 bytes |
 | versionName / versionCode | `1.0.0` / `100` |
 | Upload-key certificate | `BC:31:4D:57:84:2B:A6:BF:FE:D5:77:11:EB:13:78:FA:1C:BC:6B:0A:52:A9:1F:1A:F6:82:16:12:15:B0:2D:94` |
-| Trigger | `workflow_dispatch`, branch `arena/e9ca0c44-servix-android`, run #3 |
+| Trigger | `workflow_dispatch`, branch `arena/e9ca0c44-servix-android`, run #4 |
 
-Both files are also attached to the run as a workflow artifact (`servix-1.0.0-play-build3.aab`,
-90-day retention). Tag numbers are per-workflow: the release workflow's `b3` is its own third run and
-has nothing to do with the APK workflow's `b50`.
+Both files are also attached to the run as a workflow artifact (`servix-1.0.0-play-build4.aab`,
+90-day retention). Tag numbers are per-workflow: the release workflow's `b4` is its own fourth run and
+has nothing to do with the APK workflow's `b50+`.
 
 ## Facts the owner needs when uploading
 
