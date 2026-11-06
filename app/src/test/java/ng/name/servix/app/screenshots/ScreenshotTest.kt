@@ -404,7 +404,7 @@ class ScreenshotTest {
     fun exploreFontScale130() = rule.capture("06b_explore_fontscale130", fontScale = 1.3f) {
         ExploreScreen(
             uiState = SearchUiState(mode = SearchMode.PROFESSIONALS, query = "logo designer"),
-            categoryNameFor = { null },
+            categoryNameFor = { _ -> "" },
             onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
             onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
             onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {},

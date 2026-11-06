@@ -144,7 +144,7 @@ class TouchTargetTest {
     fun explore() = audit("explore") {
         ExploreScreen(
             uiState = SearchUiState(mode = SearchMode.PROFESSIONALS, query = "logo designer"),
-            categoryNameFor = { null },
+            categoryNameFor = { _ -> "" },
             onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
             onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
             onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {},
