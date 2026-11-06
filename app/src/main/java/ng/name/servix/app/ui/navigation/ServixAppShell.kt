@@ -438,7 +438,9 @@ fun ServixAppShell(
         }
     ) { innerPadding ->
         val screenMs = motionMs(Motion.SCREEN_MS)
-        val screenSpec = tween<Float>(screenMs, easing = FastOutSlowInEasing)
+        val tabMs = motionMs(Motion.TAB_MS)
+        val slideSpec = tween<androidx.compose.ui.unit.IntOffset>(screenMs, easing = FastOutSlowInEasing)
+        val fadeSpec = tween<Float>(screenMs, easing = FastOutSlowInEasing)
         NavHost(
             navController = navController,
             startDestination = startRoute,
@@ -447,16 +449,16 @@ fun ServixAppShell(
                 .padding(innerPadding),
             // Shared-axis X pushes: new screen slides in from the end, old one drifts back.
             enterTransition = {
-                slideInHorizontally(screenSpec) { full -> full / 4 } + fadeIn(screenSpec)
+                slideInHorizontally(slideSpec) { full -> full / 4 } + fadeIn(fadeSpec)
             },
             exitTransition = {
-                slideOutHorizontally(screenSpec) { full -> -full / 12 } + fadeOut(screenSpec)
+                slideOutHorizontally(slideSpec) { full -> -full / 12 } + fadeOut(fadeSpec)
             },
             popEnterTransition = {
-                slideInHorizontally(screenSpec) { full -> -full / 12 } + fadeIn(screenSpec)
+                slideInHorizontally(slideSpec) { full -> -full / 12 } + fadeIn(fadeSpec)
             },
             popExitTransition = {
-                slideOutHorizontally(screenSpec) { full -> full / 4 } + fadeOut(screenSpec)
+                slideOutHorizontally(slideSpec) { full -> full / 4 } + fadeOut(fadeSpec)
             },
         ) {
             composable<ServixRoute.Welcome> {
@@ -638,10 +640,10 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.Home>(
-                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
-                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
@@ -694,10 +696,10 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.Search>(
-                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
-                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -857,10 +859,10 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.Bookings>(
-                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
-                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
@@ -965,10 +967,10 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.ServixAi>(
-                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
-                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val aiState by aiViewModel.state.collectAsStateWithLifecycle()
@@ -1003,10 +1005,10 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.Account>(
-                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
-                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
-                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 AccountHubScreen(
