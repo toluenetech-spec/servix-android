@@ -277,7 +277,7 @@ class PlayAssetsTest {
             ?: error("servix-logo-dark.svg exposes no paths")
         val launcherVector = File("src/main/res/drawable/ic_launcher_foreground.xml")
         check(launcherVector.isFile) { "launcher foreground vector is missing" }
-        val launcherPath = Regex("""android:pathData="([^"]+)"""")
+        val launcherPath = Regex("android:pathData=\"([^\"]+)\"")
             .find(launcherVector.readText())?.groupValues?.get(1)
             ?: error("ic_launcher_foreground.xml has no pathData")
         check(normalizedPath(launcherPath) == normalizedPath(monogram)) {
@@ -322,7 +322,7 @@ class PlayAssetsTest {
         // own translate() group. Both are parsed with androidx PathParser and drawn as vectors, so
         // this is the real outline data, not a type approximation.
         val svg = brandAsset("servix-logo-dark.svg").readText()
-        val viewBox = Regex("""viewBox="([^"]+)"""").find(svg)?.groupValues?.get(1)
+        val viewBox = Regex("viewBox=\"([^\"]+)\"").find(svg)?.groupValues?.get(1)
             ?.trim()?.split(Regex("[\\s,]+"))?.map { it.toFloat() }
             ?: error("servix-logo-dark.svg has no viewBox")
         check(viewBox.size == 4) { "unexpected viewBox '${viewBox.joinToString(" ")}'" }
@@ -423,7 +423,7 @@ class PlayAssetsTest {
                 val dy = translate?.groupValues?.get(2)?.toFloat() ?: 0f
                 stack.addLast((parent.first + dx) to (parent.second + dy))
             } else {
-                val data = Regex("""\sd="([^"]+)"""").find(tag)?.groupValues?.get(1)
+                val data = Regex("\\sd=\"([^\"]+)\"").find(tag)?.groupValues?.get(1)
                 if (data != null) {
                     val current = stack.last()
                     out += Triple(current.first, current.second, data)

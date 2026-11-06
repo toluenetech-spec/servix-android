@@ -67,6 +67,23 @@ jobs:
           name: failure-diagnostics
           path: ci-failure/
           if-no-files-found: ignore
+
+      - name: Report compile errors, continued (11-20)
+        if: failure()
+        shell: bash
+        run: |
+          # GitHub caps workflow-command annotations per step, so a long cascade needs another step.
+          grep -E "^e: " gradle-screenshots.log 2>/dev/null | sed -n '11,20p' \
+            | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
+            | while IFS= read -r line; do echo "::error::$line"; done
+
+      - name: Report compile errors, continued (21-30)
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "^e: " gradle-screenshots.log 2>/dev/null | sed -n '21,30p' \
+            | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
+            | while IFS= read -r line; do echo "::error::$line"; done
       - name: Upload renders artifact
         if: success()
         uses: actions/upload-artifact@v4
