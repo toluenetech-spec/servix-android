@@ -54,7 +54,9 @@ jobs:
           # CI output is never committed: it goes to an artifact.
           mkdir -p ci-failure
           grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log > ci-failure/gradle-errors.txt 2>/dev/null || true
-          grep -E "^e: " gradle-screenshots.log 2>/dev/null | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          # 40, not 10: a Kotlin parse error cascades into dozens of "unresolved reference" errors for
+          # everything declared after it, and the first ten are almost never the cause.
+          grep -E "^e: " gradle-screenshots.log 2>/dev/null | head -40 | sed 's#file:///home/runner/work/servix-android/servix-android/##' | while IFS= read -r line; do echo "::error::$line"; done
           cp -f gradle-screenshots.log ci-failure/ 2>/dev/null || true
           wc -l ci-failure/* 2>/dev/null || true
 
