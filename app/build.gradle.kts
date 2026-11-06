@@ -7,12 +7,13 @@ plugins {
 
 android {
     namespace = "ng.name.servix.app"
-    compileSdk = 35
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "ng.name.servix.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 14
         versionName = "0.7.0"
         buildConfigField("String", "API_BASE_URL", "\"https://api.servix.name.ng/api/v1/\"")
@@ -55,7 +56,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
     buildFeatures { compose = true; buildConfig = true }
     testOptions {
         unitTests {
@@ -65,7 +70,7 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -90,7 +95,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    testImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    testImplementation(platform("androidx.compose:compose-bom:2026.09.00"))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("androidx.test.ext:junit:1.2.1")

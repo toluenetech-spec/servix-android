@@ -29,7 +29,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Prepare test signing key
         id: signing
@@ -58,7 +58,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.14.3'
 
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
@@ -67,7 +67,7 @@ jobs:
         id: cert
         shell: bash
         run: |
-          APKSIGNER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools/35.0.0/apksigner"
+          APKSIGNER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools/36.0.0/apksigner"
           CERTS=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk 2>&1 || true)
           echo "$CERTS"
           SHA=$(echo "$CERTS" | grep -i "SHA-256 digest" | head -1 | sed 's/^[^:]*: *//')
