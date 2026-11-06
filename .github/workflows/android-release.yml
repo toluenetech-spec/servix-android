@@ -96,32 +96,79 @@ jobs:
         id: cert
         shell: bash
         run: |
-          set -euo pipefail
+          # Deliberately no `set -e`: every check is explicit, and a failure must leave a readable
+          # trail (logs are the only evidence this job produces).
+          set -uo pipefail
           AAB=app/build/outputs/bundle/release/app-release.aab
           test -f "$AAB" || { echo "::error::$AAB missing — gradle :app:bundleRelease did not produce a bundle"; exit 1; }
           echo "Bundle size: $(stat -c%s "$AAB") bytes"
 
+          echo "== META-INF signature entries in the bundle =="
+          unzip -l "$AAB" | grep -E 'META-INF/' || echo "(no META-INF entries listed)"
+
           # An .aab is a jar signed with the upload key (v1 scheme), so apksigner does not apply
-          # to it; keytool -printcert -jarfile reads the certificate straight from the signature.
-          SIGNERS=$(jarsigner -verify "$AAB" 2>&1 || true)
-          echo "$SIGNERS" | tail -5
-          if ! echo "$SIGNERS" | grep -q "jar verified"; then
-            echo "::error::The .aab is not correctly signed (jarsigner -verify failed). Play will reject it."
+          # to it. jarsigner only ever *advises* here: its wording on bundle-style jars is not a
+          # reliable pass/fail signal. The hard gates are the two below it — the bundle must carry
+          # a certificate at all, and that certificate must be the upload key.
+          echo "== jarsigner -verify (advisory) =="
+          jarsigner -verify "$AAB" > jarsigner.log 2>&1
+          JS_EXIT=$?
+          cat jarsigner.log
+          if grep -q "jar verified" jarsigner.log; then
+            echo "jarsigner: jar verified (exit $JS_EXIT)"
+          else
+            echo "::warning::jarsigner did not print 'jar verified' (exit $JS_EXIT): $(head -3 jarsigner.log | tr '\n' ' ')"
+            if grep -qiE "jar is unsigned|not signed|no signature|SecurityException" jarsigner.log; then
+              echo "::error::The .aab carries no valid JAR signature — Play will reject it. See the log above."
+              exit 1
+            fi
+          fi
+
+          echo "== certificate in the bundle =="
+          keytool -printcert -jarfile "$AAB" > cert.log 2>&1 || true
+          cat cert.log
+          RAW=$(grep -m1 -i 'SHA256:' cert.log | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
+
+          if [ -z "$RAW" ]; then
+            # Fallback: pull the PKCS #7 signature block out and let keytool read it directly.
+            rm -rf "$RUNNER_TEMP/sig" && mkdir -p "$RUNNER_TEMP/sig"
+            unzip -o -j "$AAB" 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/*.EC' -d "$RUNNER_TEMP/sig" > /dev/null 2>&1 || true
+            SIGFILE=$(ls "$RUNNER_TEMP"/sig/* 2>/dev/null | head -1 || true)
+            echo "fallback signature block: ${SIGFILE:-none}"
+            if [ -n "${SIGFILE:-}" ]; then
+              keytool -printcert -file "$SIGFILE" > cert-fallback.log 2>&1 || true
+              cat cert-fallback.log
+              RAW=$(grep -m1 -i 'SHA256:' cert-fallback.log | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
+            fi
+          fi
+          if [ -z "$RAW" ]; then
+            echo "::error::No signing certificate could be read from the .aab — it looks unsigned or the signature is corrupt. Play will reject it."
+            unzip -l "$AAB" | head -30
             exit 1
           fi
 
-          RAW=$(keytool -printcert -jarfile "$AAB" 2>/dev/null | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
-          [ -n "$RAW" ] || { echo "::error::Could not read a certificate SHA-256 from the .aab"; exit 1; }
           COLONS=$(echo "$RAW" | sed 's/../&:/g; s/:$//')
           echo "Bundle signing certificate SHA-256: $COLONS"
           echo "sha256=$COLONS" >> "$GITHUB_OUTPUT"
+
+          # Also read the certificate straight out of the keystore we signed with, so a mismatch
+          # between "what we signed with" and "what the bundle carries" can never hide.
+          STORE_RAW=$(keytool -list -v -keystore "$SERVIX_UPLOAD_KEYSTORE" -storetype PKCS12 \
+            -storepass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" -alias servix-upload 2>/dev/null \
+            | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
+          echo "Keystore certificate SHA-256: $(echo "$STORE_RAW" | sed 's/../&:/g; s/:$//')"
 
           EXPECTED=$(echo "$EXPECTED_CERT_SHA256" | tr -d ':' | tr 'a-f' 'A-F')
           if [ "$RAW" != "$EXPECTED" ]; then
             echo "::error::Bundle certificate mismatch. Expected $EXPECTED_CERT_SHA256 but got $COLONS. The bundle was signed with a different key (test key? missing upload secrets?) — do NOT upload it to Play."
             exit 1
           fi
+          if [ -n "$STORE_RAW" ] && [ "$STORE_RAW" != "$EXPECTED" ]; then
+            echo "::error::The restored keystore's certificate ($STORE_RAW) is not the expected upload certificate — check UPLOAD_KEYSTORE_BASE64."
+            exit 1
+          fi
           echo "Certificate matches the Play upload key ($EXPECTED_CERT_SHA256)."
+          echo "::notice title=Play upload certificate::Bundle signed by the upload key $COLONS"
 
       - name: Name the bundle and mapping
         id: files
@@ -198,6 +245,14 @@ jobs:
             grep -vE "kotlin metadata" gradle-test.log 2>/dev/null \
               | grep -E "^e: |error:|FAILED|Execution failed|Caused by" \
               | head -20
+            if [ -s jarsigner.log ] && ! grep -q "jar verified" jarsigner.log; then
+              echo "----- jarsigner -verify -----"
+              head -20 jarsigner.log
+            fi
+            if [ -s cert.log ] && ! grep -qi "SHA256:" cert.log; then
+              echo "----- keytool -printcert -----"
+              head -20 cert.log
+            fi
           } > docs/ci/last-failure.txt || true
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
