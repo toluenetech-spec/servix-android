@@ -3,7 +3,7 @@ package ng.name.servix.app.release
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import kotlinx.serialization.json.decodeFromString
+import kotlinx.serialization.decodeFromString
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.data.model.AiUsage
 import ng.name.servix.app.data.model.BookingDto
