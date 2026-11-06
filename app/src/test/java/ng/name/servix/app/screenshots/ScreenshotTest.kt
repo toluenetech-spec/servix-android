@@ -383,6 +383,51 @@ class ScreenshotTest {
         )
     }
 
+    @Test
+    fun homeFontScale130() = rule.capture("03c_home_fontscale130", fontScale = 1.3f) {
+        HomeTabScreen(
+            user = Fixtures.user,
+            city = "Lagos",
+            uiState = HomeUiState(
+                loading = false,
+                categories = Fixtures.categories,
+                professionals = Fixtures.professionals,
+                overview = AccountOverviewDto(emailVerified = true),
+            ),
+            aiUsage = Fixtures.usage,
+            onRefresh = {}, onOpenSearch = {}, onOpenCategory = {}, onOpenProfessional = {},
+            onOpenBookingDetail = {}, onOpenBookingsTab = {}, onOpenAi = {}, onOpenAccount = {},
+        )
+    }
+
+    @Test
+    fun exploreFontScale130() = rule.capture("06b_explore_fontscale130", fontScale = 1.3f) {
+        ExploreScreen(
+            uiState = SearchUiState(mode = SearchMode.PROFESSIONALS, query = "logo designer"),
+            onQueryChange = {}, onModeChange = {}, onOpenFiltersChange = {}, onSortChange = {},
+            onCategoryChange = {}, onPriceChange = {}, onAvailabilityChange = {}, onPriceLimitChange = {},
+            onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {}, onClearFilters = {},
+            categories = emptyList(),
+        )
+    }
+
+    @Test
+    fun bookingDetailFontScale130() = rule.capture("11b_booking_detail_fontscale130", fontScale = 1.3f) {
+        BookingDetail(
+            BookingDetailUiState(bookingId = Fixtures.BOOKING_ID, loading = false, booking = Fixtures.booking("delivered")),
+        )
+    }
+
+    @Test
+    fun aiFontScale130() = rule.capture("14c_ai_fontscale130", fontScale = 1.3f) {
+        AiScreen(
+            user = Fixtures.user,
+            state = aiState(),
+            viewModel = AiViewModel(AiRepository(api, OkHttpClient()), CatalogueRepository { api }),
+            onSignIn = {},
+        )
+    }
+
     @Composable
     private fun BookingDetail(state: BookingDetailUiState) {
         BookingDetailScreen(

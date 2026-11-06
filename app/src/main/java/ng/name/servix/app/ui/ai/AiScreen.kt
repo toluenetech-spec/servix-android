@@ -1,5 +1,14 @@
 package ng.name.servix.app.ui.ai
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import ng.name.servix.app.ui.motion.Motion
+import ng.name.servix.app.ui.motion.motionMs
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import ng.name.servix.app.ui.a11y.heading
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -151,7 +161,7 @@ private fun AiTopBar(state: AiUiState, tab: String, onTab: (String) -> Unit) {
                 text = "Servix AI",
                 style = MaterialTheme.typography.titleLarge,
                 color = DeepForest,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heading(),
             )
             state.usage?.let { usage ->
                 Text(
@@ -237,11 +247,10 @@ private fun AssistantChat(state: AiUiState, vm: AiViewModel, modifier: Modifier 
                 item(key = "streaming") {
                     Column(horizontalAlignment = Alignment.Start) {
                         ChatBubble(
-                            text = lightMarkdown(
-                                state.streaming.ifBlank { "Looking that up…" } + " ▍",
-                            ),
+                            text = lightMarkdown(state.streaming.ifBlank { "Looking that up…" }),
                             mine = false,
                             testTag = "ai_streaming_bubble",
+                            caret = true,
                         )
                         TextButton(onClick = vm::stop) { Text("Stop", style = MaterialTheme.typography.labelMedium) }
                     }
@@ -299,7 +308,7 @@ private val SUGGESTIONS = listOf(
 )
 
 @Composable
-private fun ChatBubble(text: AnnotatedString, mine: Boolean, testTag: String? = null) {
+private fun ChatBubble(text: AnnotatedString, mine: Boolean, testTag: String? = null, caret: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
@@ -317,13 +326,31 @@ private fun ChatBubble(text: AnnotatedString, mine: Boolean, testTag: String? = 
                 .widthIn(max = 300.dp)
                 .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
         ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            )
+            Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Text(text = text, style = MaterialTheme.typography.bodyMedium)
+                if (caret) BlinkingCaret()
+            }
         }
     }
+}
+
+/** Streaming caret: 600 ms blink, no bounce; static when animations are off. */
+@Composable
+private fun BlinkingCaret() {
+    val ms = motionMs(Motion.CARET_MS)
+    val transition = rememberInfiniteTransition(label = "caret")
+    val alpha by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.15f,
+        animationSpec = infiniteRepeatable(tween(ms, easing = LinearEasing), RepeatMode.Reverse),
+        label = "caretAlpha",
+    )
+    Text(
+        text = "▍",
+        style = MaterialTheme.typography.bodyMedium,
+        color = DeepForest,
+        modifier = Modifier.graphicsLayer { this.alpha = if (ms == 0) 1f else alpha },
+    )
 }
 
 /** Light Markdown only; rendered as text, never HTML. */
@@ -394,7 +421,7 @@ private fun IconPill(onClick: () -> Unit, content: @Composable () -> Unit) {
         onClick = onClick,
         shape = CircleShape,
         color = SoftSand,
-        modifier = Modifier.size(32.dp),
+        modifier = Modifier.size(48.dp),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }

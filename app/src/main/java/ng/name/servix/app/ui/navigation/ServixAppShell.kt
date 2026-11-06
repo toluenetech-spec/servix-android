@@ -15,6 +15,15 @@ import ng.name.servix.app.ui.account.AccountHubScreen
 import ng.name.servix.app.ui.notifications.NotificationsScreen
 import ng.name.servix.app.ui.notifications.NotificationsViewModel
 import ng.name.servix.app.util.OAuthReturnBus
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import ng.name.servix.app.ui.motion.Motion
+import ng.name.servix.app.ui.motion.rememberSuccessTick
+import ng.name.servix.app.ui.motion.motionMs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -265,6 +274,14 @@ fun ServixAppShell(
 
     val isAuthenticated = sessionState is SessionState.Authenticated
     var unreadNotifications by remember { mutableStateOf(0) }
+    // One light tick when a sign-in (email, provider or security finish) lands.
+    val signInTick = rememberSuccessTick()
+    var lastAuthState by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(isAuthenticated) {
+        if (lastAuthState == false && isAuthenticated) signInTick()
+        lastAuthState = isAuthenticated
+    }
+
     LaunchedEffect(isAuthenticated, currentDest) {
         unreadNotifications = if (isAuthenticated) {
             accountRepository.getUnreadNotificationCount().getOrNull()?.unread ?: 0
@@ -420,12 +437,27 @@ fun ServixAppShell(
             }
         }
     ) { innerPadding ->
+        val screenMs = motionMs(Motion.SCREEN_MS)
+        val screenSpec = tween<Float>(screenMs, easing = FastOutSlowInEasing)
         NavHost(
             navController = navController,
             startDestination = startRoute,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
+            // Shared-axis X pushes: new screen slides in from the end, old one drifts back.
+            enterTransition = {
+                slideInHorizontally(screenSpec) { full -> full / 4 } + fadeIn(screenSpec)
+            },
+            exitTransition = {
+                slideOutHorizontally(screenSpec) { full -> -full / 12 } + fadeOut(screenSpec)
+            },
+            popEnterTransition = {
+                slideInHorizontally(screenSpec) { full -> -full / 12 } + fadeIn(screenSpec)
+            },
+            popExitTransition = {
+                slideOutHorizontally(screenSpec) { full -> full / 4 } + fadeOut(screenSpec)
+            },
         ) {
             composable<ServixRoute.Welcome> {
                 WelcomeScreen(
@@ -605,7 +637,12 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Home> {
+            composable<ServixRoute.Home>(
+                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
@@ -656,7 +693,12 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Search> {
+            composable<ServixRoute.Search>(
+                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+            ) {
                 val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
 
                 LaunchedEffect(Unit) {
@@ -814,7 +856,12 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Bookings> {
+            composable<ServixRoute.Bookings>(
+                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -917,7 +964,12 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.ServixAi> {
+            composable<ServixRoute.ServixAi>(
+                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val aiState by aiViewModel.state.collectAsStateWithLifecycle()
                 DisposableEffect(aiViewModel) { onDispose { aiViewModel.stopAll() } }
@@ -950,7 +1002,12 @@ fun ServixAppShell(
                 )
             }
 
-            composable<ServixRoute.Account> {
+            composable<ServixRoute.Account>(
+                enterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                exitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+                popEnterTransition = { fadeIn(tween(motionMs(Motion.TAB_MS))) },
+                popExitTransition = { fadeOut(tween(motionMs(Motion.TAB_MS))) },
+            ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 AccountHubScreen(
                     user = user,

@@ -9,7 +9,7 @@ val WarmIvory = Color(0xFFF7F4EC)
 val SoftSand = Color(0xFFEDE8DC)
 val Coral = Color(0xFFE56B5D)
 val Charcoal = Color(0xFF202622)
-val MutedGray = Color(0xFF68716B)
+val MutedGray = Color(0xFF5F675F)
 val PureWhite = Color(0xFFFFFFFF)
 
 // Semantic border & danger tokens from tokens.css

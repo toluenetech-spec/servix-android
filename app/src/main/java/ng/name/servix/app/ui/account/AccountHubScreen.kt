@@ -22,6 +22,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import ng.name.servix.app.ui.a11y.heading
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -98,6 +101,7 @@ fun AccountHubScreen(
             text = stringResourceText(R.string.nav_account),
             style = MaterialTheme.typography.headlineMedium,
             color = DeepForest,
+            modifier = Modifier.heading(),
         )
 
         if (user == null) {
@@ -269,12 +273,70 @@ private fun ProfilePanel(user: UserDto, repository: AccountRepository) {
     var saving by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var avatarUrl by remember(user.id) { mutableStateOf<String?>(null) }
+    var uploading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val invalid = name.trim().length < 2
+    val context = LocalContext.current
+
+    // Photo picker: POST /uploads?kind=avatar (5 MB image cap) then PATCH /account/profile { avatarUrl }.
+    val pickImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            uploading = true
+            error = null
+            val resolver = context.contentResolver
+            val mime = resolver.getType(uri) ?: "image/jpeg"
+            val bytes = runCatching { resolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            when {
+                bytes == null -> error = "That photo could not be read. Try a different one."
+                bytes.size > 5 * 1024 * 1024 -> error = "Choose a photo under 5 MB."
+                !mime.startsWith("image/") -> error = "Choose a JPEG, PNG or WebP photo."
+                else -> repository.uploadAvatar(
+                    fileName = "avatar.${mime.substringAfter('/').replace("jpeg", "jpg")}",
+                    contentType = mime,
+                    bytes = bytes,
+                ).fold(
+                    onSuccess = { url ->
+                        repository.updateProfile(avatarUrl = url).fold(
+                            onSuccess = {
+                                avatarUrl = url
+                                message = "Photo updated."
+                            },
+                            onFailure = { error = it.message ?: "We could not save that photo." },
+                        )
+                    },
+                    onFailure = { error = it.message ?: "The upload did not finish. Try again." },
+                )
+            }
+            uploading = false
+        }
+    }
 
     ServixCard {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Profile", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                ServixAvatarImage(rawImageUrl = avatarUrl, name = user.fullName, size = 56.dp)
+                ServixSecondaryButton(
+                    text = if (uploading) "Uploading…" else "Change photo",
+                    onClick = {
+                        pickImage.launch(
+                            androidx.activity.result.PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
+                        )
+                    },
+                    enabled = !uploading,
+                    testTag = "profile_change_photo",
+                )
+            }
+            Text("JPEG, PNG or WebP up to 5 MB.", style = MaterialTheme.typography.bodySmall, color = MutedGray)
             Text("Your name is what professionals see on your bookings.", style = MaterialTheme.typography.bodySmall, color = MutedGray)
             ServixTextField(
                 value = name,

@@ -46,6 +46,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import ng.name.servix.app.ui.motion.rememberSuccessTick
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import ng.name.servix.app.ui.a11y.heading
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -528,6 +531,11 @@ fun BookingDetailScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var moreSheetOpen by remember { mutableStateOf(false) }
+    // One light tick on a successful action (Book & Pay, Confirm completion, Review submitted).
+    val successTick = rememberSuccessTick()
+    LaunchedEffect(uiState.actionSuccessMessage) {
+        if (!uiState.actionSuccessMessage.isNullOrBlank()) successTick()
+    }
 
     DisposableEffect(lifecycleOwner, pollingAfterPay) {
         val observer = LifecycleEventObserver { _, event ->
@@ -614,7 +622,7 @@ fun BookingDetailScreen(
                 text = booking.serviceTitle,
                 style = MaterialTheme.typography.headlineMedium,
                 color = DeepForest,
-                modifier = Modifier.testTag("booking_detail_title"),
+                modifier = Modifier.testTag("booking_detail_title").heading(),
             )
         }
 

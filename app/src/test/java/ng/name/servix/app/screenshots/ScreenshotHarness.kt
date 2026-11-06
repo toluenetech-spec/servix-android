@@ -7,6 +7,9 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.rules.ActivityScenarioRule
@@ -24,9 +27,21 @@ const val PIXEL_7_QUALIFIERS = "w411dp-h914dp-xxhdpi"
  */
 fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentActivity>.capture(
     name: String,
+    fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
-    activity.setContent { ServixTheme { content() } }
+    activity.setContent {
+        ServixTheme {
+            if (fontScale == 1f) {
+                content()
+            } else {
+                val base = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides Density(density = base.density, fontScale = fontScale),
+                ) { content() }
+            }
+        }
+    }
     waitForIdle()
     shadowOf(Looper.getMainLooper()).idle()
 
@@ -46,13 +61,16 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
 
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     decor.draw(Canvas(bitmap))
+    // Renders are committed at 50% scale to keep the repository small.
+    val half = Bitmap.createScaledBitmap(bitmap, width / 2, height / 2, true)
 
     val dir = File("build/reports/screenshots/screens").apply { mkdirs() }
     val file = File(dir, "$name.png")
     FileOutputStream(file).use { out ->
-        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) { "PNG encode failed for $name" }
+        check(half.compress(Bitmap.CompressFormat.PNG, 100, out)) { "PNG encode failed for $name" }
     }
+    half.recycle()
     bitmap.recycle()
-    check(file.length() > 10_000) { "Screenshot $name looks empty (${file.length()} bytes)" }
+    check(file.length() > 4_000) { "Screenshot $name looks empty (${file.length()} bytes)" }
     onRoot().fetchSemanticsNode()
 }

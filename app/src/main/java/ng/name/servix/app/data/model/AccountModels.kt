@@ -125,4 +125,13 @@ data class AccountDeviceDto(
 @Serializable
 data class UpdateProfileRequest(
     val fullName: String? = null,
+    val avatarUrl: String? = null,
+)
+
+/** POST /uploads?kind=avatar&fileName=… (api/src/routes/uploads.ts:67-91) -> { url, key, … }. */
+@Serializable
+data class UploadAck(
+    val url: String = "",
+    val key: String = "",
+    val kind: String = "",
 )

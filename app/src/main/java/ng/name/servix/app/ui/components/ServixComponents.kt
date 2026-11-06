@@ -46,6 +46,9 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import ng.name.servix.app.ui.motion.pressFeedback
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -118,9 +121,11 @@ fun ServixPrimaryButton(
     loading: Boolean = false,
     testTag: String? = null,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
+        interactionSource = interaction,
         shape = RoundedCornerShape(ServixButtonRadius),
         colors = ButtonDefaults.buttonColors(
             containerColor = DeepForest,
@@ -131,6 +136,7 @@ fun ServixPrimaryButton(
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = modifier
+            .pressFeedback(interaction, enabled && !loading)
             .heightIn(min = 52.dp)
             .let { if (testTag != null) it.testTag(testTag) else it },
     ) {
@@ -157,9 +163,11 @@ fun ServixSecondaryButton(
     enabled: Boolean = true,
     testTag: String? = null,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
+        interactionSource = interaction,
         shape = RoundedCornerShape(ServixButtonRadius),
         colors = ButtonDefaults.buttonColors(
             containerColor = SoftSand,
@@ -170,6 +178,7 @@ fun ServixSecondaryButton(
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = modifier
+            .pressFeedback(interaction, enabled)
             .heightIn(min = 52.dp)
             .let { if (testTag != null) it.testTag(testTag) else it },
     ) {

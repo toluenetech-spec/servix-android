@@ -343,7 +343,7 @@ fun ServixSegmentedControl(
                     color = if (selected) DeepForest else Color.Transparent,
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = 48.dp)
                         .testTag("segmented_$id"),
                 ) {
                     Box(contentAlignment = Alignment.Center) {

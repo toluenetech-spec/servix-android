@@ -87,6 +87,14 @@ interface ServixApiService {
     @POST("account/notifications/read")
     suspend fun markNotificationsRead(@Body body: MarkNotificationsReadRequest): MarkNotificationsReadResponse
 
+    @POST("uploads")
+    suspend fun uploadMedia(
+        @Query("kind") kind: String,
+        @Query("fileName") fileName: String,
+        @Header("Content-Type") contentType: String,
+        @Body body: okhttp3.RequestBody,
+    ): ng.name.servix.app.data.model.UploadAck
+
     @PATCH("account/profile")
     suspend fun updateProfile(@Body body: UpdateProfileRequest): OkResponse
 

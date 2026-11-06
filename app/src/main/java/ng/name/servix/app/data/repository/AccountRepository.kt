@@ -81,9 +81,23 @@ class AccountRepository(
 
     /* -------- profile (PATCH /account/profile) -------- */
 
-    suspend fun updateProfile(fullName: String): Result<Unit> = safeCall {
-        api.updateProfile(ng.name.servix.app.data.model.UpdateProfileRequest(fullName = fullName))
+    suspend fun updateProfile(
+        fullName: String? = null,
+        avatarUrl: String? = null,
+    ): Result<Unit> = safeCall {
+        api.updateProfile(
+            ng.name.servix.app.data.model.UpdateProfileRequest(fullName = fullName, avatarUrl = avatarUrl),
+        )
         Unit
+    }
+
+    /**
+     * Avatar upload: POST /uploads?kind=avatar&fileName=… with the raw bytes (uploads.ts:67-91),
+     * then PATCH /account/profile { avatarUrl } (account.ts:14-31). Server caps images at 5 MB.
+     */
+    suspend fun uploadAvatar(fileName: String, contentType: String, bytes: ByteArray): Result<String> = safeCall {
+        val body = bytes.toRequestBody(contentType.toMediaTypeOrNull())
+        api.uploadMedia(kind = "avatar", fileName = fileName, contentType = contentType, body = body).url
     }
 
     /* -------- saved professionals (GET /account/saved, DELETE /account/saved/:slug) -------- */

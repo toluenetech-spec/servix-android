@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import ng.name.servix.app.ui.a11y.heading
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -192,6 +193,7 @@ fun BookingsScreen(
                         text = stringResource(R.string.bookings_title),
                         style = MaterialTheme.typography.headlineMedium,
                         color = DeepForest,
+                        modifier = Modifier.heading(),
                     )
                 }
             }

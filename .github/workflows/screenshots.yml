@@ -56,9 +56,21 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}" || true
           exit 0
 
-      - name: Publish renders for review
+      - name: Upload renders artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen-renders
+          path: app/build/reports/screenshots/screens/*.png
+          if-no-files-found: ignore
+
+      - name: Publish renders for review (sentinel-gated)
         if: success()
         run: |
+          if [ ! -f docs/screenshots/COMMIT_RENDERS ]; then
+            echo "docs/screenshots/COMMIT_RENDERS is absent: renders stay in the artifact only."
+            exit 0
+          fi
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
           rm -rf docs/screenshots
