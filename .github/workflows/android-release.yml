@@ -1,0 +1,208 @@
+name: Build Play release bundle
+
+# Manual only. This is the workflow that produces the .aab handed to Play Console; it never
+# runs on push, so a green commit can never publish anything by accident. Nothing here uploads
+# to Play — Google Play's API is not wired up at all. The owner downloads the .aab and uploads
+# it by hand in Play Console → Testing → Internal testing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: play-bundle-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Certificate of the upload key (alias servix-upload). The job fails if the built bundle is
+  # signed by anything else — e.g. the shared test key, which must never reach Play.
+  EXPECTED_CERT_SHA256: 'BC:31:4D:57:84:2B:A6:BF:FE:D5:77:11:EB:13:78:FA:1C:BC:6B:0A:52:A9:1F:1A:F6:82:16:12:15:B0:2D:94'
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Restore Play upload keystore
+        id: signing
+        shell: bash
+        env:
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${UPLOAD_KEYSTORE_BASE64:-}" ] || [ -z "${UPLOAD_KEYSTORE_PASSWORD:-}" ]; then
+            echo "::error::UPLOAD_KEYSTORE_BASE64 and/or UPLOAD_KEYSTORE_PASSWORD are not set. Add both repository secrets (Block 3) before dispatching this workflow."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/servix-upload.p12"
+          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          if [ ! -s "$KEYSTORE" ]; then
+            echo "::error::UPLOAD_KEYSTORE_BASE64 decoded to an empty file — re-copy the secret (single line, no wrapping)."
+            exit 1
+          fi
+          echo "Keystore bytes: $(stat -c%s "$KEYSTORE")"
+          # Prove the password opens the store before spending 10 minutes on Gradle.
+          keytool -list -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$UPLOAD_KEYSTORE_PASSWORD" -alias servix-upload >/dev/null \
+            || { echo "::error::Alias servix-upload not found, or UPLOAD_KEYSTORE_PASSWORD does not match the keystore."; exit 1; }
+          echo "SERVIX_UPLOAD_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "SERVIX_UPLOAD_KEYSTORE_PASSWORD=$UPLOAD_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "Upload keystore restored; alias servix-upload opens with the stored password."
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || true)
+          CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts || true)
+          [ -n "$VERSION" ] || { echo "::error::versionName not found in app/build.gradle.kts"; exit 1; }
+          [ -n "$CODE" ] || { echo "::error::versionCode not found in app/build.gradle.kts"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "versionName=$VERSION versionCode=$CODE"
+
+      - name: Release-variant smoke tests (DI graph + DTO decoding)
+        run: |
+          set -o pipefail
+          gradle testReleaseUnitTest --tests 'ng.name.servix.app.release.*' --no-daemon --stacktrace 2>&1 | tee gradle-test.log
+
+      - name: Build signed bundle (:app:bundleRelease)
+        run: |
+          set -o pipefail
+          gradle :app:bundleRelease --no-daemon --stacktrace 2>&1 | tee gradle-build.log
+
+      - name: Verify the bundle exists and is signed by the upload key
+        id: cert
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          test -f "$AAB" || { echo "::error::$AAB missing — gradle :app:bundleRelease did not produce a bundle"; exit 1; }
+          echo "Bundle size: $(stat -c%s "$AAB") bytes"
+
+          # An .aab is a jar signed with the upload key (v1 scheme), so apksigner does not apply
+          # to it; keytool -printcert -jarfile reads the certificate straight from the signature.
+          SIGNERS=$(jarsigner -verify "$AAB" 2>&1 || true)
+          echo "$SIGNERS" | tail -5
+          if ! echo "$SIGNERS" | grep -q "jar verified"; then
+            echo "::error::The .aab is not correctly signed (jarsigner -verify failed). Play will reject it."
+            exit 1
+          fi
+
+          RAW=$(keytool -printcert -jarfile "$AAB" 2>/dev/null | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
+          [ -n "$RAW" ] || { echo "::error::Could not read a certificate SHA-256 from the .aab"; exit 1; }
+          COLONS=$(echo "$RAW" | sed 's/../&:/g; s/:$//')
+          echo "Bundle signing certificate SHA-256: $COLONS"
+          echo "sha256=$COLONS" >> "$GITHUB_OUTPUT"
+
+          EXPECTED=$(echo "$EXPECTED_CERT_SHA256" | tr -d ':' | tr 'a-f' 'A-F')
+          if [ "$RAW" != "$EXPECTED" ]; then
+            echo "::error::Bundle certificate mismatch. Expected $EXPECTED_CERT_SHA256 but got $COLONS. The bundle was signed with a different key (test key? missing upload secrets?) — do NOT upload it to Play."
+            exit 1
+          fi
+          echo "Certificate matches the Play upload key ($EXPECTED_CERT_SHA256)."
+
+      - name: Name the bundle and mapping
+        id: files
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          AAB="servix-${VERSION}-play-build${{ github.run_number }}.aab"
+          MAPPING="servix-${VERSION}-mapping-play-build${{ github.run_number }}.txt"
+          cp app/build/outputs/bundle/release/app-release.aab "$AAB"
+          test -f app/build/outputs/mapping/release/mapping.txt || { echo "::error::mapping.txt missing — cannot retrace Play crash reports"; exit 1; }
+          cp app/build/outputs/mapping/release/mapping.txt "$MAPPING"
+          echo "aab=$AAB" >> "$GITHUB_OUTPUT"
+          echo "mapping=$MAPPING" >> "$GITHUB_OUTPUT"
+          echo "tag=play-v${VERSION}-b${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "size=$(du -h "$AAB" | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha256file=$(sha256sum "$AAB" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          ls -l "$AAB" "$MAPPING"
+          sha256sum "$AAB"
+
+      - name: Upload .aab + mapping as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.files.outputs.aab }}
+          path: |
+            ${{ steps.files.outputs.aab }}
+            ${{ steps.files.outputs.mapping }}
+          retention-days: 90
+
+      - name: Publish GitHub pre-release with the .aab
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.files.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Play upload bundle v${{ steps.version.outputs.version }} (${{ steps.files.outputs.tag }})
+          prerelease: true
+          files: |
+            ${{ steps.files.outputs.aab }}
+            ${{ steps.files.outputs.mapping }}
+          body: |
+            **Upload this .aab in Play Console → Testing → Internal testing**
+
+            Android App Bundle for Servix ${{ steps.version.outputs.version }} (versionCode ${{ steps.version.outputs.code }}),
+            built from commit `${{ github.sha }}` by workflow run #${{ github.run_number }}.
+
+            | | |
+            | --- | --- |
+            | File | `${{ steps.files.outputs.aab }}` |
+            | Bundle versionName / versionCode | ${{ steps.version.outputs.version }} / ${{ steps.version.outputs.code }} |
+            | Upload-key certificate SHA-256 | `${{ steps.cert.outputs.sha256 }}` |
+            | Bundle file size | ${{ steps.files.outputs.size }} |
+            | Bundle file SHA-256 | `${{ steps.files.outputs.sha256file }}` |
+
+            `${{ steps.files.outputs.mapping }}` is the R8 mapping for this exact bundle — keep it, Play
+            needs it to deobfuscate stack traces. It is attached here and as a workflow artifact.
+
+            This bundle is signed with the **upload key** (`servix-upload`). With Play App Signing,
+            Google re-signs the delivered app with the app signing key, so this fingerprint is the one
+            Play Console shows under *App integrity → Upload key certificate*, **not** the one users'
+            devices see.
+
+            Nothing was uploaded to Play automatically — this pre-release is the hand-off artifact.
+            The app does not self-update on this build (`SELF_UPDATE_CHANNEL = "none"`).
+
+      - name: Surface Gradle errors
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p docs/ci
+          {
+            grep -vE "kotlin metadata" gradle-build.log 2>/dev/null \
+              | grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:|What went wrong|> Task .*FAILED" \
+              | head -40
+            grep -vE "kotlin metadata" gradle-test.log 2>/dev/null \
+              | grep -E "^e: |error:|FAILED|Execution failed|Caused by" \
+              | head -20
+          } > docs/ci/last-failure.txt || true
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
+          git add docs/ci/last-failure.txt
+          git commit -m "chore: CI failure log [play-bundle]" || true
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
+          exit 0
