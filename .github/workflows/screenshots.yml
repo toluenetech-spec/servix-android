@@ -221,6 +221,14 @@ jobs:
           mkdir -p docs/ci
           { grep -vE "kotlin metadata" gradle-play-assets.log 2>/dev/null \
               | grep -E "^e: |error:|expected |Execution failed|Caused by|PLAY_ASSET|FAILED|AssertionError|IllegalStateException" | head -40; } > docs/ci/last-failure.txt || true
+          # JUnit XML carries the real assertion message and run logs are not always reachable,
+          # so turn each failure into a check-run annotation.
+          for f in app/build/test-results/testDebugUnitTest/TEST-*.xml; do
+            [ -f "$f" ] || continue
+            tr '>' '>\n' < "$f" | grep -o 'failure message="[^"]*"' | head -5 \
+              | sed 's/failure message="//; s/"$//' | cut -c1-300 \
+              | while IFS= read -r msg; do echo "::error::${msg}"; done
+          done
           # Test failures never reach a check-run annotation on their own; surface the first few.
           grep -E "FAILED$|AssertionError|expected a .* window" gradle-play-assets.log 2>/dev/null | head -8 \
             | while IFS= read -r line; do echo "::error::$line"; done || true

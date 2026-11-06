@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
-import android.graphics.drawable.AdaptiveIconDrawable
 import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
@@ -267,20 +266,18 @@ class PlayAssetsTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val icon = ResourcesCompat.getDrawable(context.resources, R.mipmap.ic_launcher, context.theme)
-        if (icon is AdaptiveIconDrawable) {
-            icon.setBounds(0, 0, 512, 512)
-            icon.draw(canvas)
-        } else {
-            // Same layers the adaptive icon declares: @color/deep_forest + the SX foreground.
-            canvas.drawColor(DEEP_FOREST)
-            val foreground = ResourcesCompat.getDrawable(
-                context.resources, R.drawable.ic_launcher_foreground, context.theme,
-            )
-            checkNotNull(foreground) { "ic_launcher_foreground is missing" }
-            foreground.setBounds(64, 64, 448, 448)
-            foreground.draw(canvas)
-        }
+        // The adaptive icon (mipmap-anydpi-v26/ic_launcher.xml) declares exactly two layers:
+        // @color/deep_forest as the background and @drawable/ic_launcher_foreground as the SX mark.
+        // Paint them directly rather than going through AdaptiveIconDrawable: the mask/inset maths of
+        // that drawable is the part that is least reliable outside a real device, and Play wants a
+        // flat, fully opaque 512 square anyway (the launcher applies its own mask).
+        canvas.drawColor(DEEP_FOREST)
+        val foreground = ResourcesCompat.getDrawable(
+            context.resources, R.drawable.ic_launcher_foreground, context.theme,
+        )
+        checkNotNull(foreground) { "ic_launcher_foreground is missing" }
+        foreground.setBounds(0, 0, 512, 512)
+        foreground.draw(canvas)
 
         // Play requires a 512 x 512 32-bit PNG with no transparency.
         listOf(0 to 0, 511 to 0, 0 to 511, 511 to 511, 256 to 256).forEach { (x, y) ->
