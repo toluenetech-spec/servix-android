@@ -1,4 +1,5 @@
-Execution failed for task ':app:checkDebugAarMetadata'.
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:checkDebugAarMetadata'.
-Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing com.android.build.gradle.internal.tasks.CheckAarMetadataWorkAction
-Caused by: java.lang.RuntimeException: 22 issues were found when checking AAR metadata:
+e: file:///home/runner/work/servix-android/servix-android/app/src/test/java/ng/name/servix/app/release/ReleaseSmokeTest.kt:6:35 Unresolved reference 'decodeFromString'.
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugUnitTestKotlin'.
+Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
