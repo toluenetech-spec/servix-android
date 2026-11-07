@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Chat
@@ -130,6 +132,13 @@ class IaPrototypesTest {
         ServixTab("Account", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle, "nav_tab_account"),
     )
 
+    /** Guests can only browse and sign in (plan §2), so Bookings and Chats are not rendered for them. */
+    private val guestTabs = listOf(
+        ServixTab("Home", Icons.Filled.Home, Icons.Outlined.Home, "nav_tab_home"),
+        ServixTab("Explore", Icons.Filled.Search, Icons.Outlined.Search, "nav_tab_search"),
+        ServixTab("Account", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle, "nav_tab_account"),
+    )
+
     private val afterTabs = listOf(
         ServixTab("Home", Icons.Filled.Home, Icons.Outlined.Home, "nav_tab_home"),
         ServixTab("Explore", Icons.Filled.Search, Icons.Outlined.Search, "nav_tab_search"),
@@ -220,6 +229,8 @@ class IaPrototypesTest {
 
     @Composable
     private fun AfterHome(role: Role) {
+        // Professional sees 1 unread, customer 3: the card and the bar must agree.
+        val unread = if (role == Role.PROFESSIONAL) 1 else 3
         val user = when (role) {
             Role.CUSTOMER -> Fixtures.user
             Role.PROFESSIONAL -> Fixtures.userProfessional
@@ -272,14 +283,14 @@ class IaPrototypesTest {
                 if (role == Role.PROFESSIONAL) {
                     // Work-side first: the two things a professional opens the app for.
                     ProtoRow(
-                        icon = Icons.Filled.Search,
+                        icon = Icons.Filled.Assignment,
                         title = "Requests",
                         subtitle = "4 new requests match your work · 1 proposal accepted",
                         action = "Browse",
                         tone = SoftSand,
                     )
                     ProtoRow(
-                        icon = Icons.Filled.AccountCircle,
+                        icon = Icons.Filled.Group,
                         title = "Network",
                         subtitle = "2 connection requests waiting",
                         action = "Review",
@@ -291,10 +302,10 @@ class IaPrototypesTest {
                     ProtoRow(
                         icon = Icons.Filled.Chat,
                         title = "Chats",
-                        subtitle = if (role == Role.PROFESSIONAL) "1 unread · Servix AI is here" else "3 unread · Servix AI is here",
+                        subtitle = "$unread unread · Servix AI is here",
                         action = "Open",
                         tone = WarmIvory,
-                        badge = if (role == Role.PROFESSIONAL) 1 else 3,
+                        badge = unread,
                     )
                 }
 
@@ -352,11 +363,11 @@ class IaPrototypesTest {
                 }
             }
             ServixBottomBar(
-                tabs = afterTabs.map { tab ->
-                    if (tab.testTag == "nav_tab_chats" && role == Role.GUEST) {
-                        tab.copy(badgeCount = null)
-                    } else {
-                        tab
+                tabs = if (role == Role.GUEST) {
+                    guestTabs
+                } else {
+                    afterTabs.map { tab ->
+                        if (tab.testTag == "nav_tab_chats") tab.copy(badgeCount = unread) else tab
                     }
                 },
                 selectedIndex = 0,
