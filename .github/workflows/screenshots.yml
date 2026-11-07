@@ -132,6 +132,8 @@ jobs:
           fi
           # ScreenshotHarness already writes 50 % copies, so the repository only ever sees the
           # half-size set (the full-size renders stay in the workflow artifact).
+          git config user.name "servix-ci"
+          git config user.email "ci@servix.name.ng"
           rm -f docs/screenshots/*.png
           cp app/build/reports/screenshots/screens/*.png docs/screenshots/
           ls -1 docs/screenshots/*.png | wc -l
