@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentSize
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
@@ -75,7 +77,13 @@ internal fun ServixBottomBar(
                     selected = selected,
                     onClick = { onSelect(index) },
                     icon = {
-                        Box(contentAlignment = Alignment.Center) {
+                        // Fixed 34 dp icon slot for every tab: without it the 34 dp disc on the
+                        // prominent tab pushes its label ~5 dp below the other four (reported on
+                        // ia_01/ia_04). The disc fills the slot, so it can only grow upward.
+                        Box(
+                            modifier = Modifier.height(34.dp).fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             if (tab.prominent) {
                                 Box(
                                     modifier = Modifier

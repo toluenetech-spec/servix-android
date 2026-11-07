@@ -9,7 +9,11 @@ import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.AuthRepository
 import ng.name.servix.app.data.repository.BookingRepository
+import ng.name.servix.app.data.realtime.ChatEventStream
 import ng.name.servix.app.data.repository.CatalogueRepository
+import ng.name.servix.app.data.repository.ChatRepository
+import ng.name.servix.app.data.repository.FeaturesRepository
+import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.util.ConnectivityObserver
 
 class AppContainer(context: Context) {
@@ -47,6 +51,19 @@ class AppContainer(context: Context) {
 
     val bookingRepository: BookingRepository = BookingRepository(
         apiProvider = { networkModule.apiService }
+    )
+
+    val featuresRepository: FeaturesRepository = FeaturesRepository(networkModule.apiService)
+
+    val chatRepository: ChatRepository = ChatRepository(networkModule.apiService)
+
+    /**
+     * One event stream per app session. The URL is the documented SSE route; the client is the app's
+     * authenticated one, so the bearer token and refresh flow apply unchanged.
+     */
+    val chatEventStream: ChatEventStream = ChatEventStream(
+        client = networkModule.okHttpClient,
+        eventsUrl = BuildConfig.API_BASE_URL.trimEnd('/') + "/community/events",
     )
 
     val accountRepository: AccountRepository = AccountRepository(

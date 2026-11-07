@@ -83,6 +83,9 @@ class MainActivity : ComponentActivity() {
                         bookingRepository = container.bookingRepository,
                         accountRepository = container.accountRepository,
                         aiRepository = container.aiRepository,
+                        chatRepository = container.chatRepository,
+                        featuresRepository = container.featuresRepository,
+                        chatEventStream = container.chatEventStream,
                         isOnline = isOnline,
                     )
                 }

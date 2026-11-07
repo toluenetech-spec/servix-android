@@ -60,6 +60,7 @@
     <string name="explore_clear_filters">Clear filters</string>
 
     <string name="nav_bookings">Bookings</string>
+    <string name="nav_chats">Chats</string>
     <string name="nav_ai">Servix AI</string>
     <string name="nav_account">Account</string>
 

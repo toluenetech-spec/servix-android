@@ -329,4 +329,50 @@ interface ServixApiService {
 
     @GET("account/payments")
     suspend fun getAccountPaymentsRaw(): kotlinx.serialization.json.JsonElement
+
+    /* ---------------------------------------------------------------- Release 1.1: chat + flags */
+
+    /** `GET /features` (marketplace.ts:25 → features.ts featureSnapshot). */
+    @GET("features")
+    suspend fun getFeatures(): ng.name.servix.app.data.model.FeaturesDto
+
+    /** `GET /community/threads` — a bare array, newest activity first (community.ts:100-115). */
+    @GET("community/threads")
+    suspend fun getChatThreads(): List<ng.name.servix.app.data.model.ChatThreadDto>
+
+    /** `GET /community/threads/:id/messages?before=<id>` — newest 50, reversed by the API. */
+    @GET("community/threads/{id}/messages")
+    suspend fun getChatMessages(
+        @Path("id") threadId: String,
+        @Query("before") before: String? = null,
+    ): ng.name.servix.app.data.model.ChatMessagesResponse
+
+    /** `POST /community/threads { bookingId | connectionId }` → `{ id }`. */
+    @POST("community/threads")
+    suspend fun createChatThread(
+        @Body body: ng.name.servix.app.data.model.CreateChatThreadRequest,
+    ): ng.name.servix.app.data.model.CreateChatThreadResponse
+
+    /** `POST /community/threads/:id/messages` → the saved message (idempotent on `senderId + clientId`). */
+    @POST("community/threads/{id}/messages")
+    suspend fun sendChatMessage(
+        @Path("id") threadId: String,
+        @Body body: ng.name.servix.app.data.model.SendChatMessageRequest,
+    ): ng.name.servix.app.data.model.ChatMessageDto
+
+    @POST("community/threads/{id}/read")
+    suspend fun markChatThreadRead(@Path("id") threadId: String): OkResponse
+
+    @POST("community/threads/{id}/delivered")
+    suspend fun markChatThreadDelivered(@Path("id") threadId: String): OkResponse
+
+    /** `POST /community/threads/:id/block` — used from the contact card. */
+    @POST("community/threads/{id}/block")
+    suspend fun blockChatThread(@Path("id") threadId: String): OkResponse
+
+    @POST("community/threads/{id}/typing")
+    suspend fun sendChatTyping(
+        @Path("id") threadId: String,
+        @Body body: ng.name.servix.app.data.model.ChatTypingRequest,
+    ): OkResponse
 }
