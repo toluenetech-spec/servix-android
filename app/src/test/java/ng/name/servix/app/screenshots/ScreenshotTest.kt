@@ -291,7 +291,6 @@ class ScreenshotTest {
         )
     }
 
-    @Test
     /** Home header avatar: the signed-in user's photo, not the "AO" letter tile. */
     @Test
     fun homeAvatar() = rule.capture(

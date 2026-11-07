@@ -88,9 +88,9 @@ object TestAvatarImages {
     class Factory(
         private val context: Context,
         private val resourceId: Int,
-    ) : Fetcher.Factory {
-        override fun create(data: Any, options: Options, imageLoader: ImageLoader): Fetcher? {
-            if (data !is String || !data.contains(MATCHES)) return null
+    ) : Fetcher.Factory<String> {
+        override fun create(data: String, options: Options, imageLoader: ImageLoader): Fetcher? {
+            if (!data.contains(MATCHES)) return null
             val drawable = ContextCompat.getDrawable(context, resourceId) ?: return null
             return FixtureFetcher(drawable, context)
         }
