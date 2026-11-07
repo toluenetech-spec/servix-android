@@ -535,6 +535,7 @@ private fun SignInCard(
             }
         }
     }
+}
 
 
 /** Home shortcut into Chats — same unread number as the tab badge, same source. */
@@ -667,5 +668,4 @@ private fun ProfileStrengthCard(strength: Int, onOpenPublicProfile: (() -> Unit)
             }
         }
     }
-}
 }
