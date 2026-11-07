@@ -45,6 +45,7 @@ jobs:
           gradle :app:testDebugUnitTest \
             --tests "ng.name.servix.app.screenshots.ScreenshotTest" \
             --tests "ng.name.servix.app.screenshots.TypographyTest" \
+            --tests "ng.name.servix.app.screenshots.IaPrototypesTest" \
             --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
 
       - name: Collect failure diagnostics
@@ -135,9 +136,19 @@ jobs:
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
           rm -f docs/screenshots/*.png
-          cp app/build/reports/screenshots/screens/*.png docs/screenshots/
+          mkdir -p docs/ia/screens
+          rm -f docs/ia/screens/*.png
+          # IA prototypes live with the audit that explains them, not in the app render set.
+          for f in app/build/reports/screenshots/screens/*.png; do
+            base=$(basename "$f")
+            case "$base" in
+              ia_*) cp "$f" "docs/ia/screens/$base" ;;
+              *) cp "$f" "docs/screenshots/$base" ;;
+            esac
+          done
           ls -1 docs/screenshots/*.png | wc -l
-          git add -A docs/screenshots
+          ls -1 docs/ia/screens/*.png | wc -l
+          git add -A docs/screenshots docs/ia
           if git diff --cached --quiet; then
             echo "Renders are byte-identical to the committed set; nothing to publish."
             exit 0

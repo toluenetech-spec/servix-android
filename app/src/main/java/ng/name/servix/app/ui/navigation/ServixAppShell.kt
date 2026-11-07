@@ -54,9 +54,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -374,66 +371,48 @@ fun ServixAppShell(
         },
         bottomBar = {
             if (!isAuthDestination) {
-                Column {
-                    HorizontalDivider(color = BorderSand, thickness = 1.dp)
-                    NavigationBar(
-                        containerColor = WarmIvory,
-                        contentColor = Charcoal,
-                        tonalElevation = 0.dp,
-                    ) {
-                        BOTTOM_TABS.forEach { tab ->
-                            val selected = when (tab.route) {
-                                is ServixRoute.Search -> {
-                                    currentDest?.hasRoute(ServixRoute.Search::class) == true ||
-                                        currentDest?.hasRoute(ServixRoute.ProfessionalProfile::class) == true ||
-                                        currentDest?.hasRoute(ServixRoute.ServiceDetail::class) == true
-                                }
-                                is ServixRoute.Bookings -> {
-                                    currentDest?.hasRoute(ServixRoute.Bookings::class) == true ||
-                                        currentDest?.hasRoute(ServixRoute.BookingDetail::class) == true
-                                }
-                                else -> currentDest?.hasRoute(tab.route::class) == true
-                            }
-                            val label = stringResource(tab.labelRes)
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    if (tab.route is ServixRoute.Search && currentDest?.hasRoute(ServixRoute.Search::class) != true) {
-                                        searchViewModel.ensureInitialized()
-                                    }
-                                    navController.navigate(tab.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                        contentDescription = label,
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = label,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1,
-                                    )
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = DeepForest,
-                                    selectedTextColor = DeepForest,
-                                    indicatorColor = SoftSand,
-                                    unselectedIconColor = MutedGray,
-                                    unselectedTextColor = MutedGray,
-                                ),
-                                modifier = Modifier.testTag(tab.testTag),
-                            )
+                val tabs = BOTTOM_TABS.map { tab ->
+                    ServixTab(
+                        label = stringResource(tab.labelRes),
+                        selectedIcon = tab.selectedIcon,
+                        unselectedIcon = tab.unselectedIcon,
+                        testTag = tab.testTag,
+                        // Release 1.1 fills these in for Chats; the bar itself is already built for it.
+                        badgeCount = null,
+                        prominent = false,
+                    )
+                }
+                val selectedIndex = BOTTOM_TABS.indexOfFirst { tab ->
+                    when (tab.route) {
+                        is ServixRoute.Search -> {
+                            currentDest?.hasRoute(ServixRoute.Search::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.ProfessionalProfile::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.ServiceDetail::class) == true
                         }
+                        is ServixRoute.Bookings -> {
+                            currentDest?.hasRoute(ServixRoute.Bookings::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.BookingDetail::class) == true
+                        }
+                        else -> currentDest?.hasRoute(tab.route::class) == true
                     }
                 }
+                ServixBottomBar(
+                    tabs = tabs,
+                    selectedIndex = selectedIndex,
+                    onSelect = { index ->
+                        val tab = BOTTOM_TABS.getOrNull(index) ?: return@ServixBottomBar
+                        if (tab.route is ServixRoute.Search && currentDest?.hasRoute(ServixRoute.Search::class) != true) {
+                            searchViewModel.ensureInitialized()
+                        }
+                        navController.navigate(tab.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
         }
     ) { innerPadding ->

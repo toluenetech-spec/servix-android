@@ -233,7 +233,7 @@ private fun AccountHeader(user: UserDto, onVerifyEmailClick: () -> Unit) {
 }
 
 @Composable
-private fun AccountGroup(title: String, content: @Composable () -> Unit) {
+internal fun AccountGroup(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.labelMedium, color = ForestGreen, modifier = Modifier.padding(start = 4.dp))
         ServixCard(contentPadding = PaddingValues(vertical = 4.dp)) {
@@ -243,7 +243,7 @@ private fun AccountGroup(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun AccountRow(
+internal fun AccountRow(
     label: String,
     detail: String,
     testTag: String,
