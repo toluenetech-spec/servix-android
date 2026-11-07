@@ -161,20 +161,6 @@ jobs:
           gradle :app:testDebugUnitTest --tests "ng.name.servix.app.screenshots.PlayAssetsTest" \
             --no-daemon --stacktrace 2>&1 | tee gradle-play-assets.log
 
-      - name: Install the brand-art renderer
-        run: |
-          set -euo pipefail
-          python3 -m pip install --quiet --break-system-packages \
-            "svglib==1.5.1" "reportlab==3.6.13" pillow
-
-      - name: Render the icon and feature graphic from the real brand artwork
-        shell: bash
-        run: |
-          set -euo pipefail
-          # public/brand/servix-logo-dark.svg is the wordmark; ic_launcher_foreground.xml must carry
-          # its monogram path, which the script asserts before drawing anything.
-          python3 tools/play/render_store_art.py
-
       - name: Verify asset dimensions
         shell: bash
         run: |
