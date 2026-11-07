@@ -75,7 +75,10 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
         while (!verify(bitmap) && System.currentTimeMillis() < deadline) {
             Thread.sleep(50)
             waitForIdle()
-            shadowOf(Looper.getMainLooper()).idle()
+            // idleFor, not idle: Coil's crossfade is a ValueAnimator on the main looper, and a paused
+            // Robolectric looper never advances the clock, so the fade would stay at alpha 0 and the
+            // photo would never become visible.
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(120))
             bitmap.eraseColor(0)
             decor.draw(Canvas(bitmap))
         }
