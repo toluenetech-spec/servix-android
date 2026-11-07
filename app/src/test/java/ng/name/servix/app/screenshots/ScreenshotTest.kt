@@ -296,6 +296,7 @@ class ScreenshotTest {
     fun homeAvatar() = rule.capture(
         "03b_home_avatar",
         verify = { bitmap -> TestAvatarImages.countFixturePixels(bitmap) >= 500 },
+        describe = { "fixture pixels on screen; Coil said: " + (TestAvatarImages.lastError ?: "nothing") },
     ) {
         HomeTabScreen(
             user = Fixtures.userWithAvatar,
@@ -315,6 +316,7 @@ class ScreenshotTest {
     fun accountAvatar() = rule.capture(
         "15b_account_avatar",
         verify = { bitmap -> TestAvatarImages.countFixturePixels(bitmap) >= 1500 },
+        describe = { "fixture pixels on screen; Coil said: " + (TestAvatarImages.lastError ?: "nothing") },
     ) {
         AccountHubScreen(
             user = Fixtures.userWithAvatar,

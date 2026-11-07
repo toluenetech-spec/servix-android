@@ -35,6 +35,8 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
      * cannot go green.
      */
     verify: ((Bitmap) -> Boolean)? = null,
+    /** Extra context for the failure message when [verify] never passes (e.g. Coil's error). */
+    describe: () -> String = { "" },
     content: @Composable () -> Unit,
 ) {
     activity.setContent {
@@ -77,7 +79,9 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
             bitmap.eraseColor(0)
             decor.draw(Canvas(bitmap))
         }
-        check(verify(bitmap)) { "Render $name never met the pixel requirement (images did not load?)" }
+        check(verify(bitmap)) {
+            "Render $name never met the pixel requirement. " + describe().ifBlank { "Images did not load." }
+        }
     }
     // Renders are committed at 50% scale to keep the repository small.
     val half = Bitmap.createScaledBitmap(bitmap, width / 2, height / 2, true)

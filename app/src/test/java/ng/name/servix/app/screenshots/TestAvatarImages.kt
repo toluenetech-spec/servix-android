@@ -29,15 +29,29 @@ object TestAvatarImages {
     /** Any URL containing this is answered locally. Matches the API path `/media/avatar/…`. */
     const val MATCHES = "/media/avatar/"
 
+    /** Last load error Coil reported, so a failed render says why instead of "did not load". */
+    @Volatile
+    var lastError: String? = null
+        private set
+
     /** Install a Coil loader whose fetcher resolves [MATCHES] to the bundled fixture. */
     fun install(context: Context) {
         // Compose tests share the process: drop any loader created by an earlier test.
         Coil.reset()
+        lastError = null
         Coil.setImageLoader(
             ImageLoader.Builder(context)
+                // Robolectric draws into a software Canvas, and a hardware bitmap cannot be drawn
+                // there: without this the photo loads and then silently paints nothing.
+                .allowHardware(false)
                 .components {
                     add(Factory(context.applicationContext, R.drawable.servix_avatar_fixture))
                 }
+                .eventListener(object : coil.EventListener {
+                    override fun onError(request: coil.request.ImageRequest, result: coil.request.ErrorResult) {
+                        lastError = "${request.data} -> ${result.throwable.javaClass.simpleName}: ${result.throwable.message}"
+                    }
+                })
                 .build(),
         )
     }
