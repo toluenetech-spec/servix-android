@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -96,32 +96,111 @@ jobs:
         id: cert
         shell: bash
         run: |
-          set -euo pipefail
+          # Deliberately no `set -e`: every check is explicit, and a failure must leave a readable
+          # trail (logs are the only evidence this job produces).
+          set -uo pipefail
           AAB=app/build/outputs/bundle/release/app-release.aab
           test -f "$AAB" || { echo "::error::$AAB missing — gradle :app:bundleRelease did not produce a bundle"; exit 1; }
           echo "Bundle size: $(stat -c%s "$AAB") bytes"
 
-          # An .aab is a jar signed with the upload key (v1 scheme), so apksigner does not apply
-          # to it; keytool -printcert -jarfile reads the certificate straight from the signature.
-          SIGNERS=$(jarsigner -verify "$AAB" 2>&1 || true)
-          echo "$SIGNERS" | tail -5
-          if ! echo "$SIGNERS" | grep -q "jar verified"; then
-            echo "::error::The .aab is not correctly signed (jarsigner -verify failed). Play will reject it."
+          echo "== META-INF entries as built =="
+          unzip -l "$AAB" | grep -i META-INF || echo "(no META-INF entries listed)"
+
+          # An .aab is a JAR signed with the upload key (v1 scheme), so apksigner does not apply.
+          # Diagnostics first, verbatim, so any future signing problem is visible in the log.
+          echo "== jarsigner -verify -verbose:summary -certs (as built) =="
+          jarsigner -verify -verbose:summary -certs "$AAB" 2>&1 | tail -15 || true
+
+          # The bundle is signed by AGP from the release signingConfig. That config silently
+          # degrades to the shared test key — or to nothing — if the upload secrets are absent, and
+          # Play rejects an unsigned bundle with "The Android App Bundle was not signed".
+          # So: whatever AGP did, the artifact is signed with the upload key before it leaves this
+          # job. Verification decides; we never trust the build type alone.
+          jarsigner -verify "$AAB" > jarsigner.log 2>&1
+          JS_EXIT=$?
+          if grep -q "jar verified" jarsigner.log; then
+            echo "Bundle verified as built by AGP (jarsigner exit $JS_EXIT); leaving it untouched."
+            echo "resigned=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::bundle did not verify as built (jarsigner exit $JS_EXIT). First lines: $(head -3 jarsigner.log | tr '\n' ' ')"
+            echo "== stripping existing signature entries =="
+            zip -d "$AAB" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.EC' 'META-INF/*.DSA' > /dev/null 2>&1 || true
+            unzip -l "$AAB" | grep -i META-INF || echo "(signature files stripped)"
+
+            echo "== signing with servix-upload =="
+            jarsigner \
+              -keystore "$SERVIX_UPLOAD_KEYSTORE" \
+              -storetype PKCS12 \
+              -storepass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" \
+              -keypass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" \
+              -sigalg SHA256withRSA \
+              -digestalg SHA-256 \
+              "$AAB" servix-upload
+            echo "resigned=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # The gate: after this point the bundle must verify, no exceptions.
+          echo "== jarsigner -verify (final) =="
+          jarsigner -verify -verbose:summary -certs "$AAB" > jarsigner-final.log 2>&1
+          JS_FINAL=$?
+          tail -15 jarsigner-final.log
+          if ! grep -q "jar verified" jarsigner-final.log; then
+            echo "::error::The .aab does not verify as a signed JAR even after signing with servix-upload (jarsigner exit $JS_FINAL). Play will reject it."
             exit 1
           fi
 
-          RAW=$(keytool -printcert -jarfile "$AAB" 2>/dev/null | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
-          [ -n "$RAW" ] || { echo "::error::Could not read a certificate SHA-256 from the .aab"; exit 1; }
-          COLONS=$(echo "$RAW" | sed 's/../&:/g; s/:$//')
+          echo "== certificate in the bundle =="
+          keytool -printcert -jarfile "$AAB" > cert.log 2>&1 || true
+          cat cert.log
+          RAW=$(grep -m1 -i 'SHA256:' cert.log | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
+
+          if [ -z "$RAW" ]; then
+            # Fallback: pull the PKCS #7 signature block out and let keytool read it directly.
+            rm -rf "$RUNNER_TEMP/sig" && mkdir -p "$RUNNER_TEMP/sig"
+            unzip -o -j "$AAB" 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/*.EC' -d "$RUNNER_TEMP/sig" > /dev/null 2>&1 || true
+            SIGFILE=$(ls "$RUNNER_TEMP"/sig/* 2>/dev/null | head -1 || true)
+            echo "fallback signature block: ${SIGFILE:-none}"
+            if [ -n "${SIGFILE:-}" ]; then
+              keytool -printcert -file "$SIGFILE" > cert-fallback.log 2>&1 || true
+              cat cert-fallback.log
+              RAW=$(grep -m1 -i 'SHA256:' cert-fallback.log | sed 's/.*SHA256: *//' | tr -d ' ' | tr 'a-f' 'A-F')
+            fi
+          fi
+          if [ -z "$RAW" ]; then
+            echo "::error::No signing certificate could be read from the .aab — it looks unsigned or the signature is corrupt. Play will reject it."
+            unzip -l "$AAB" | head -30
+            exit 1
+          fi
+
+          # keytool prints the fingerprint colon-separated; keep one canonical no-colon, uppercase
+          # hex form for comparison and rebuild the readable form from it.
+          HEX=$(echo "$RAW" | tr -d ':' | tr -d ' ' | tr 'a-f' 'A-F')
+          if [ "${#HEX}" -ne 64 ]; then
+            echo "::error::Certificate fingerprint parsed as '${HEX}' (${#HEX} chars, expected 64) — keytool output format changed; see cert.log above."
+            exit 1
+          fi
+          COLONS=$(echo "$HEX" | sed 's/../&:/g; s/:$//')
           echo "Bundle signing certificate SHA-256: $COLONS"
           echo "sha256=$COLONS" >> "$GITHUB_OUTPUT"
 
+          # Also read the certificate straight out of the keystore we signed with, so a mismatch
+          # between "what we signed with" and "what the bundle carries" can never hide.
+          STORE_HEX=$(keytool -list -v -keystore "$SERVIX_UPLOAD_KEYSTORE" -storetype PKCS12 \
+            -storepass "$SERVIX_UPLOAD_KEYSTORE_PASSWORD" -alias servix-upload 2>/dev/null \
+            | grep -m1 -i 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ':' | tr -d ' ' | tr 'a-f' 'A-F' || true)
+          echo "Keystore certificate SHA-256: $(echo "$STORE_HEX" | sed 's/../&:/g; s/:$//')"
+
           EXPECTED=$(echo "$EXPECTED_CERT_SHA256" | tr -d ':' | tr 'a-f' 'A-F')
-          if [ "$RAW" != "$EXPECTED" ]; then
+          if [ "$HEX" != "$EXPECTED" ]; then
             echo "::error::Bundle certificate mismatch. Expected $EXPECTED_CERT_SHA256 but got $COLONS. The bundle was signed with a different key (test key? missing upload secrets?) — do NOT upload it to Play."
             exit 1
           fi
+          if [ -n "$STORE_HEX" ] && [ "$STORE_HEX" != "$EXPECTED" ]; then
+            echo "::error::The restored keystore's certificate ($STORE_HEX) is not the expected upload certificate — check UPLOAD_KEYSTORE_BASE64."
+            exit 1
+          fi
           echo "Certificate matches the Play upload key ($EXPECTED_CERT_SHA256)."
+          echo "::notice title=Play upload certificate::Bundle signed by the upload key $COLONS"
 
       - name: Name the bundle and mapping
         id: files
@@ -173,6 +252,7 @@ jobs:
             | Bundle versionName / versionCode | ${{ steps.version.outputs.version }} / ${{ steps.version.outputs.code }} |
             | Upload-key certificate SHA-256 | `${{ steps.cert.outputs.sha256 }}` |
             | Bundle file size | ${{ steps.files.outputs.size }} |
+            | Signature | ${{ steps.cert.outputs.resigned == 'true' && 're-signed by this job with jarsigner (servix-upload)' || 'AGP, as built' }} |
             | Bundle file SHA-256 | `${{ steps.files.outputs.sha256file }}` |
 
             `${{ steps.files.outputs.mapping }}` is the R8 mapping for this exact bundle — keep it, Play
@@ -186,11 +266,13 @@ jobs:
             Nothing was uploaded to Play automatically — this pre-release is the hand-off artifact.
             The app does not self-update on this build (`SELF_UPDATE_CHANNEL = "none"`).
 
-      - name: Surface Gradle errors
+      - name: Collect failure diagnostics
         if: failure()
         shell: bash
         run: |
-          mkdir -p docs/ci
+          # CI output is never committed (see Block 4): it goes to an artifact. The signature
+          # evidence in particular must survive a failed run.
+          mkdir -p ci-failure
           {
             grep -vE "kotlin metadata" gradle-build.log 2>/dev/null \
               | grep -E "^e: |error:|R8|Missing class|Execution failed|Caused by|FAILURE:|What went wrong|> Task .*FAILED" \
@@ -198,11 +280,26 @@ jobs:
             grep -vE "kotlin metadata" gradle-test.log 2>/dev/null \
               | grep -E "^e: |error:|FAILED|Execution failed|Caused by" \
               | head -20
-          } > docs/ci/last-failure.txt || true
-          git config user.name "servix-ci"
-          git config user.email "ci@servix.name.ng"
-          git add docs/ci/last-failure.txt
-          git commit -m "chore: CI failure log [play-bundle]" || true
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || true
-          exit 0
+            if [ -s jarsigner.log ] && ! grep -q "jar verified" jarsigner.log; then
+              echo "----- jarsigner -verify (as built) -----"
+              head -20 jarsigner.log
+            fi
+            if [ -s jarsigner-final.log ] && ! grep -q "jar verified" jarsigner-final.log; then
+              echo "----- jarsigner -verify (final) -----"
+              head -20 jarsigner-final.log
+            fi
+            if [ -s cert.log ] && ! grep -qi "SHA256:" cert.log; then
+              echo "----- keytool -printcert -----"
+              head -20 cert.log
+            fi
+          } > ci-failure/play-bundle.txt || true
+          cp -f gradle-build.log gradle-test.log jarsigner.log jarsigner-final.log cert.log ci-failure/ 2>/dev/null || true
+          wc -l ci-failure/* 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-diagnostics
+          path: ci-failure/
+          if-no-files-found: ignore
