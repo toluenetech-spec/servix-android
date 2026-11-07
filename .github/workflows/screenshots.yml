@@ -130,21 +130,11 @@ jobs:
             echo "docs/screenshots/COMMIT_RENDERS is absent: renders stay in the artifact only."
             exit 0
           fi
-          # 50 % copies only: the full-size set is tens of megabytes and would bloat the repo every
-          # time a single pixel of one screen changes.
-          if command -v magick >/dev/null 2>&1; then SCALER=magick
-          elif command -v convert >/dev/null 2>&1; then SCALER=convert
-          else
-            echo "::notice::ImageMagick is unavailable: renders stay in the artifact only."
-            exit 0
-          fi
-          git config user.name "servix-ci"
-          git config user.email "ci@servix.name.ng"
+          # ScreenshotHarness already writes 50 % copies, so the repository only ever sees the
+          # half-size set (the full-size renders stay in the workflow artifact).
           rm -f docs/screenshots/*.png
-          for f in app/build/reports/screenshots/screens/*.png; do
-            "$SCALER" "$f" -resize 50% "docs/screenshots/$(basename "$f")"
-          done
-          ls -l docs/screenshots/*.png | wc -l
+          cp app/build/reports/screenshots/screens/*.png docs/screenshots/
+          ls -1 docs/screenshots/*.png | wc -l
           git add -A docs/screenshots
           if git diff --cached --quiet; then
             echo "Renders are byte-identical to the committed set; nothing to publish."

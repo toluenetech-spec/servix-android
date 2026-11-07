@@ -73,7 +73,12 @@ class ServixFormattersMediaUrlTest {
         val origin = java.net.URI(BuildConfig.API_BASE_URL.trim()).let { "${it.scheme}://${it.authority}" }
         assertEquals("$origin/api/v1", apiBase)
         assertTrue("api base must not end with a slash", !apiBase.endsWith("/"))
-        assertTrue("api base must not double the slash", !apiBase.contains("//api"))
+        // Careful: "https://api.servix.name.ng/api/v1" does contain "//api" — the host starts with
+        // "api.". The repeated-slash check has to look at the path, not the whole URL.
+        assertTrue(
+            "api base must not repeat a slash after the scheme",
+            !apiBase.substringAfter("://").contains("//"),
+        )
         // The website host and the API host are different in the shipped configuration.
         assertTrue(apiBase.startsWith("https://"))
     }
