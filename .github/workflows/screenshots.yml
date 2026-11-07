@@ -141,8 +141,18 @@ jobs:
             exit 0
           fi
           git commit -m "chore: screen renders for ${GITHUB_SHA::7} [shots]"
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          # actions/checkout leaves a detached HEAD, where `git pull` refuses to run (exit 128):
+          # fetch and rebase explicitly, and never fail the run if the branch moved underneath us.
+          git fetch origin "${GITHUB_REF_NAME}"
+          if ! git rebase --autostash "origin/${GITHUB_REF_NAME}"; then
+            git rebase --abort || true
+            echo "::notice::renders not published: the branch moved during the run."
+            exit 0
+          fi
+          if ! git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            echo "::notice::renders not published: push was rejected (branch moved)."
+            exit 0
+          fi
 
       - name: Upload gradle log
         if: always()
