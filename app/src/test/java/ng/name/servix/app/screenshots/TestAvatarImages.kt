@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import androidx.core.content.ContextCompat
 import coil.Coil
 import coil.ImageLoader
@@ -102,9 +103,10 @@ object TestAvatarImages {
     class Factory(
         private val context: Context,
         private val resourceId: Int,
-    ) : Fetcher.Factory<String> {
-        override fun create(data: String, options: Options, imageLoader: ImageLoader): Fetcher? {
-            if (!data.contains(MATCHES)) return null
+    ) : Fetcher.Factory<Uri> {
+        // Coil maps String data to Uri before factories are consulted, so this must claim Uri.
+        override fun create(data: Uri, options: Options, imageLoader: ImageLoader): Fetcher? {
+            if (!data.toString().contains(MATCHES)) return null
             val drawable = ContextCompat.getDrawable(context, resourceId) ?: return null
             return FixtureFetcher(drawable, context)
         }
