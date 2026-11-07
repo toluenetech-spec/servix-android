@@ -17,7 +17,6 @@ import ng.name.servix.app.data.model.ChatPersonDto
 import ng.name.servix.app.data.model.ChatPersonProfileDto
 import ng.name.servix.app.data.model.ChatThreadDto
 import ng.name.servix.app.data.realtime.ChatConnection
-import ng.name.servix.app.ui.chat.ChatContactCard
 import ng.name.servix.app.ui.chat.ChatTimeline
 import ng.name.servix.app.ui.chat.ChatsScreen
 import ng.name.servix.app.ui.chat.ChatsUiState
@@ -198,17 +197,6 @@ class ChatScreensTest {
             onRetry = {},
             onLoadOlder = {},
             onOpenContactCard = {},
-        )
-    }
-
-    @Test
-    fun contactCard() = rule.capture("43_chat_contact_card") {
-        ChatContactCard(
-            thread = threads.first(),
-            messages = conversationMessages(),
-            onDismiss = {},
-            onViewProfile = {},
-            onBlock = {},
         )
     }
 }
