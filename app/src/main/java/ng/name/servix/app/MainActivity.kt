@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
             // A photo that fails to load is otherwise invisible: the UI quietly falls back to
             // initials. Log the URL and the reason at WARN so `adb logcat -s ServixCoil:W` answers
             // "why is my avatar still letters?" without a debugger.
-            .eventListener(object : coil.EventListener() {
+            .eventListener(object : coil.EventListener {
                 override fun onError(request: coil.request.ImageRequest, result: coil.request.ErrorResult) {
                     Log.w(
                         COIL_LOG_TAG,
