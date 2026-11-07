@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -76,6 +77,7 @@ import ng.name.servix.app.ui.navigation.ServixBottomBar
 import ng.name.servix.app.ui.navigation.ServixTab
 import ng.name.servix.app.ui.theme.Coral
 import ng.name.servix.app.ui.theme.DeepForest
+import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
@@ -327,11 +329,59 @@ class IaPrototypesTest {
                         }
                         Text("Logo suite", style = MaterialTheme.typography.titleMedium, color = DeepForest)
                         Text(
-                            "Tunde Bakare · Sat 7 Nov · 10:00",
+                            // The counterparty, not the viewer: a professional's job card names the customer.
+                            if (role == Role.PROFESSIONAL) "Chika Obi · Sat 7 Nov · 10:00" else "Tunde Bakare · Sat 7 Nov · 10:00",
                             style = MaterialTheme.typography.bodySmall,
                             color = MutedGray,
                         )
                     }
+                    }
+                }
+
+                if (role == Role.PROFESSIONAL) {
+                    // Decision 4: what a professional acts on replaces hire-side category browsing.
+                    ServixCard(contentPadding = PaddingValues(16.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("This week", style = MaterialTheme.typography.labelMedium, color = ForestGreen)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("3", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+                                    Text("Jobs scheduled", style = MaterialTheme.typography.labelSmall, color = MutedGray)
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("₦120,000", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+                                    Text("Awaiting payout", style = MaterialTheme.typography.labelSmall, color = MutedGray)
+                                }
+                            }
+                        }
+                    }
+                    ServixCard(contentPadding = PaddingValues(16.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Profile strength", style = MaterialTheme.typography.titleSmall, color = DeepForest)
+                                Text("78%", style = MaterialTheme.typography.titleSmall, color = ForestGreen)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SoftSand),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.78f)
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(ForestGreen),
+                                )
+                            }
+                            Text(
+                                "Photos, a clear title and three portfolio pieces get more bookings.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MutedGray,
+                            )
+                        }
                     }
                 }
 
