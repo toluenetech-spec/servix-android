@@ -2,10 +2,9 @@ package ng.name.servix.app.screenshots
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.Drawable
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
-import androidx.core.content.ContextCompat
 import coil.Coil
 import coil.ImageLoader
 import coil.decode.DataSource
@@ -13,15 +12,15 @@ import coil.fetch.DrawableResult
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.request.Options
-import ng.name.servix.app.R
 
 /**
- * Serves profile photos in tests from a **local debug resource** instead of the network.
+ * Serves profile photos in tests from a **local image file** instead of the network.
  *
  * The screenshot harness must never reach the network, but the avatar path is exactly what these
  * renders are supposed to prove, so a fetch that always fails would make every "avatar" render a
  * letter tile and hide the bug. Any request whose URL contains [MATCHES] is answered with
- * `res/drawable-nodpi/servix_avatar_fixture.png` (debug source set only — never in a release APK).
+ * `src/test/resources/servix_avatar_fixture.png` — a test resource, so nothing ships in the app and
+ * the release unit-test source set still compiles (it never sees a debug-only `R` id).
  */
 object TestAvatarImages {
     /** The distinguishing colour of the fixture, used by [countFixturePixels]. */
@@ -30,10 +29,21 @@ object TestAvatarImages {
     /** Any URL containing this is answered locally. Matches the API path `/media/avatar/…`. */
     const val MATCHES = "/media/avatar/"
 
+    private const val FIXTURE_RESOURCE = "servix_avatar_fixture.png"
+
     /** Last load error Coil reported, so a failed render says why instead of "did not load". */
     @Volatile
     var lastError: String? = null
         private set
+
+    private val fixtureBitmap: Bitmap by lazy {
+        val stream = TestAvatarImages::class.java.classLoader?.getResourceAsStream(FIXTURE_RESOURCE)
+            ?: error("$FIXTURE_RESOURCE missing from app/src/test/resources")
+        stream.use {
+            BitmapFactory.decodeStream(it)
+                ?: error("$FIXTURE_RESOURCE could not be decoded as an image")
+        }
+    }
 
     /** Install a Coil loader whose fetcher resolves [MATCHES] to the bundled fixture. */
     fun install(context: Context) {
@@ -45,9 +55,7 @@ object TestAvatarImages {
                 // Robolectric draws into a software Canvas, and a hardware bitmap cannot be drawn
                 // there: without this the photo loads and then silently paints nothing.
                 .allowHardware(false)
-                .components {
-                    add(Factory(context.applicationContext, R.drawable.servix_avatar_fixture))
-                }
+                .components { add(Factory()) }
                 .eventListener(object : coil.EventListener {
                     override fun onError(request: coil.request.ImageRequest, result: coil.request.ErrorResult) {
                         lastError = "${request.data} -> ${result.throwable.javaClass.simpleName}: ${result.throwable.message}"
@@ -83,32 +91,20 @@ object TestAvatarImages {
         return count
     }
 
-    private class FixtureFetcher(private val drawable: Drawable, private val context: Context) : Fetcher {
-        override suspend fun fetch(): FetchResult {
-            // Rasterise at a size that comfortably covers the largest avatar we draw (64 dp @ 3x).
-            val size = 256
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, size, size)
-            drawable.draw(canvas)
-            return DrawableResult(
-                drawable = android.graphics.drawable.BitmapDrawable(context.resources, bitmap),
-                isSampled = false,
-                dataSource = DataSource.DISK,
-            )
-        }
+    private class FixtureFetcher(private val context: Context, private val bitmap: Bitmap) : Fetcher {
+        override suspend fun fetch(): FetchResult = DrawableResult(
+            drawable = BitmapDrawable(context.resources, bitmap),
+            isSampled = false,
+            dataSource = DataSource.DISK,
+        )
     }
 
     /** Claims only URLs under [MATCHES]; everything else falls through to Coil's real fetchers. */
-    class Factory(
-        private val context: Context,
-        private val resourceId: Int,
-    ) : Fetcher.Factory<Uri> {
+    class Factory : Fetcher.Factory<Uri> {
         // Coil maps String data to Uri before factories are consulted, so this must claim Uri.
         override fun create(data: Uri, options: Options, imageLoader: ImageLoader): Fetcher? {
             if (!data.toString().contains(MATCHES)) return null
-            val drawable = ContextCompat.getDrawable(context, resourceId) ?: return null
-            return FixtureFetcher(drawable, context)
+            return FixtureFetcher(options.context, fixtureBitmap)
         }
     }
 }
