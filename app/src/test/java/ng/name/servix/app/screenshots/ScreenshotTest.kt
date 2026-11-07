@@ -1,10 +1,13 @@
 package ng.name.servix.app.screenshots
 
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import okhttp3.OkHttpClient
 import okhttp3.MediaType.Companion.toMediaType
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,6 +71,16 @@ class ScreenshotTest {
             .addConverterFactory(ApiErrorParser.json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(ServixApiService::class.java)
+    }
+
+    /**
+     * Every render in this class gets a Coil loader whose fetcher answers `/media/avatar/…` from a
+     * bundled debug resource, so avatar renders show a photo instead of quietly falling back to
+     * initials. Nothing else is claimed: any other URL still goes through Coil's normal fetch path.
+     */
+    @Before
+    fun installTestImageLoader() {
+        TestAvatarImages.install(ApplicationProvider.getApplicationContext<Context>())
     }
 
     private fun aiState() = AiUiState(
@@ -275,6 +288,45 @@ class ScreenshotTest {
             state = aiState().copy(turns = emptyList()),
             viewModel = AiViewModel(AiRepository(api, OkHttpClient()), CatalogueRepository { api }),
             onSignIn = {},
+        )
+    }
+
+    /** Home header avatar: the signed-in user's photo, not the "AO" letter tile. */
+    @Test
+    fun homeAvatar() = rule.capture(
+        "03b_home_avatar",
+        verify = { bitmap -> TestAvatarImages.countFixturePixels(bitmap) >= 500 },
+        describe = { "fixture pixels on screen; Coil said: " + (TestAvatarImages.lastError ?: "nothing") },
+    ) {
+        HomeTabScreen(
+            user = Fixtures.userWithAvatar,
+            city = "Lagos",
+            uiState = HomeUiState(
+                loading = false,
+                categories = Fixtures.categories,
+                professionals = Fixtures.professionals,
+                overview = AccountOverviewDto(emailVerified = true),
+            ),
+            aiUsage = Fixtures.usage,
+        )
+    }
+
+    /** Account header avatar: 64 dp, so the requirement is correspondingly higher. */
+    @Test
+    fun accountAvatar() = rule.capture(
+        "15b_account_avatar",
+        verify = { bitmap -> TestAvatarImages.countFixturePixels(bitmap) >= 1500 },
+        describe = { "fixture pixels on screen; Coil said: " + (TestAvatarImages.lastError ?: "nothing") },
+    ) {
+        AccountHubScreen(
+            user = Fixtures.userWithAvatar,
+            accountRepository = AccountRepository { api },
+            updateState = ng.name.servix.app.updates.UpdateUiState(
+                context = ApplicationProvider.getApplicationContext(),
+                scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+            ),
+            city = "Lagos",
+            unreadNotifications = 2,
         )
     }
 

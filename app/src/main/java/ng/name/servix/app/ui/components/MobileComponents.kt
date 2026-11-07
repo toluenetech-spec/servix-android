@@ -38,8 +38,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -49,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.Coral
@@ -63,6 +67,7 @@ import ng.name.servix.app.ui.theme.ServixNumericStyle
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.ServixFormatters
+import ng.name.servix.app.util.MediaCacheBust
 
 /** Slim top bar. Back arrow is a 48 dp target; title is titleLarge, never a tracked all-caps label. */
 @Composable
@@ -172,11 +177,18 @@ fun AvatarImage(
         contentAlignment = Alignment.Center,
     ) {
         val label = avatarLabel(initials)
-        if (image.isNullOrBlank()) {
+        val resolvedUrl = ServixFormatters.resolveServixMediaUrl(image)
+        if (resolvedUrl.isNullOrBlank()) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = DeepForest)
         } else {
+            val cacheStamps by MediaCacheBust.versions.collectAsState()
+            val cacheKey = MediaCacheBust.cacheKey(resolvedUrl, cacheStamps[resolvedUrl])
             SubcomposeAsyncImage(
-                model = image,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(resolvedUrl)
+                    .memoryCacheKey(cacheKey)
+                    .diskCacheKey(cacheKey)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier.size(size),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,

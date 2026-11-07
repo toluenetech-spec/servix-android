@@ -61,7 +61,29 @@ jobs:
           gradle-version: '8.14.3'
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle-build.log
+
+      # Compile errors must be readable from the API: run logs live on a host this environment
+      # cannot reach, but check-run annotations are plain JSON on api.github.com.
+      - name: Annotate Kotlin compile errors
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f gradle-build.log ]; then
+            grep -E "^e: file:" gradle-build.log | head -9 | while IFS= read -r line; do
+              file=$(printf '%s' "$line" | sed -E 's|^e: file://([^:]+):([0-9]+):([0-9]+).*|\1|')
+              lineno=$(printf '%s' "$line" | sed -E 's|^e: file://[^:]+:([0-9]+):.*|\1|')
+              msg=$(printf '%s' "$line" | sed -E 's|^e: file://[^ ]+ ||' | cut -c1-380)
+              echo "::error file=$file,line=$lineno::$msg"
+            done
+            grep -E "^e: |error: |Execution failed|What went wrong|> Task .*FAILED" gradle-build.log \
+              | grep -v "^e: file:" | head -6 | while IFS= read -r line; do
+              echo "::error::$(printf '%s' "$line" | cut -c1-380)"
+            done
+          fi
 
       - name: Print APK signing certificate
         id: cert
@@ -81,7 +103,49 @@ jobs:
           gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee gradle-build.log
 
       - name: Release-variant smoke tests (DI graph + DTO decoding)
-        run: gradle testReleaseUnitTest --tests 'ng.name.servix.app.release.*' --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle testReleaseUnitTest --tests 'ng.name.servix.app.release.*' --no-daemon --stacktrace 2>&1 | tee gradle-release-tests.log
+
+      - name: Name the failing release smoke test
+        if: failure()
+        shell: bash
+        run: |
+          # Annotations are the only CI output readable from a dev sandbox, so spell out the cause.
+          if [ -f gradle-release-tests.log ]; then
+            grep -E "^e: |error:|Execution failed|AssertionError|Caused by" gradle-release-tests.log \
+              | head -10 | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
+              | while IFS= read -r line; do echo "::error::${line}"; done || true
+          fi
+          python3 - <<'PY' || true
+          import glob
+          import re
+
+          found = []
+          for path in glob.glob("app/build/test-results/testReleaseUnitTest/TEST-*.xml"):
+              try:
+                  data = open(path, encoding="utf-8", errors="replace").read()
+              except OSError:
+                  continue
+              for case in re.finditer(r"<testcase\b[^>]*>", data):
+                  head = case.group(0)
+                  name = re.search(r"name=\"([^\"]+)\"", head)
+                  if not name:
+                      continue
+                  tail = data[case.end():case.end() + 4000].lstrip()
+                  if not (tail.startswith("<failure") or tail.startswith("<error")):
+                      continue
+                  msg = re.search(r"<(?:failure|error)\b[^>]*message=\"([^\"]*)\"", tail)
+                  detail = msg.group(1) if msg else re.sub(r"<[^>]+>", " ", tail[:600])
+                  for entity, char in (("&quot;", '"'), ("&gt;", ">"), ("&lt;", "<"), ("&amp;", "&")):
+                      detail = detail.replace(entity, char)
+                  found.append((name.group(1), " ".join(detail.split())[:350]))
+          for name, detail in found[:10]:
+              print("::error::" + name + " - " + detail)
+          print("::notice::failing release test cases: " + str(len(found)))
+          PY
+
 
       - name: Verify R8 kept kotlinx.serialization generated code
         shell: bash
@@ -132,7 +196,12 @@ jobs:
             ${{ steps.releaseapk.outputs.mapping }}
 
       - name: Run offline feature tests only
-        run: gradle testDebugUnitTest --tests 'ng.name.servix.app.OfflineFeaturesTest' --tests 'ng.name.servix.app.AiOfflineTest' --no-daemon --stacktrace
+        run: |
+          gradle testDebugUnitTest \
+            --tests 'ng.name.servix.app.OfflineFeaturesTest' \
+            --tests 'ng.name.servix.app.AiOfflineTest' \
+            --tests 'ng.name.servix.app.util.*' \
+            --no-daemon --stacktrace
 
       - name: Collect failure diagnostics
         if: failure()

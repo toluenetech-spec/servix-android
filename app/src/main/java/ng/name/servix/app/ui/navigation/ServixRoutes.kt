@@ -42,6 +42,13 @@ sealed interface ServixRoute {
         val openBookingSheet: Boolean = false,
     ) : ServixRoute
 
+    /** Release 1.1 — the Chats tab (centre of the bar). */
+    @Serializable
+    data object Chats : ServixRoute
+
+    @Serializable
+    data class ChatConversation(val threadId: String) : ServixRoute
+
     @Serializable
     data object Bookings : ServixRoute
 

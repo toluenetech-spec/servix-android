@@ -28,6 +28,15 @@ const val PIXEL_7_QUALIFIERS = "w411dp-h914dp-xxhdpi"
 fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentActivity>.capture(
     name: String,
     fontScale: Float = 1f,
+    /**
+     * Optional requirement on the drawn pixels, e.g. "the avatar photo is on screen". Coil loads
+     * asynchronously, so when this is supplied the harness re-draws and re-checks for up to ten
+     * seconds and fails the test if it never passes: a render that silently fell back to initials
+     * cannot go green.
+     */
+    verify: ((Bitmap) -> Boolean)? = null,
+    /** Extra context for the failure message when [verify] never passes (e.g. Coil's error). */
+    describe: () -> String = { "" },
     content: @Composable () -> Unit,
 ) {
     activity.setContent {
@@ -61,6 +70,22 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
 
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     decor.draw(Canvas(bitmap))
+    if (verify != null) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!verify(bitmap) && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50)
+            waitForIdle()
+            // idleFor, not idle: Coil's crossfade is a ValueAnimator on the main looper, and a paused
+            // Robolectric looper never advances the clock, so the fade would stay at alpha 0 and the
+            // photo would never become visible.
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(120))
+            bitmap.eraseColor(0)
+            decor.draw(Canvas(bitmap))
+        }
+        check(verify(bitmap)) {
+            "Render $name never met the pixel requirement. " + describe().ifBlank { "Images did not load." }
+        }
+    }
     // Renders are committed at 50% scale to keep the repository small.
     val half = Bitmap.createScaledBitmap(bitmap, width / 2, height / 2, true)
 

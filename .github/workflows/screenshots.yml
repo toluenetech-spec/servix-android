@@ -45,6 +45,8 @@ jobs:
           gradle :app:testDebugUnitTest \
             --tests "ng.name.servix.app.screenshots.ScreenshotTest" \
             --tests "ng.name.servix.app.screenshots.TypographyTest" \
+            --tests "ng.name.servix.app.screenshots.IaPrototypesTest" \
+            --tests "ng.name.servix.app.screenshots.ChatScreensTest" \
             --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
 
       - name: Collect failure diagnostics
@@ -53,13 +55,38 @@ jobs:
         run: |
           # CI output is never committed: it goes to an artifact.
           mkdir -p ci-failure
-          grep -E "^e: |error:|Execution failed|Caused by" gradle-screenshots.log > ci-failure/gradle-errors.txt 2>/dev/null || true
-          # 40, not 10: a Kotlin parse error cascades into dozens of "unresolved reference" errors for
-          # everything declared after it, and the first ten are almost never the cause.
-          grep -E "^e: " gradle-screenshots.log 2>/dev/null | head -40 | sed 's#file:///home/runner/work/servix-android/servix-android/##' | while IFS= read -r line; do echo "::error::$line"; done
-          cp -f gradle-screenshots.log ci-failure/ 2>/dev/null || true
-          wc -l ci-failure/* 2>/dev/null || true
+          if [ -f gradle-screenshots.log ]; then
+            grep -E "^e: |error:|Execution failed|Caused by|AssertionError|IllegalStateException|FAILED" \
+              gradle-screenshots.log | head -40 > ci-failure/screenshots.txt || true
+          fi
+          # JUnit XML is the only channel readable from a dev sandbox, so name each failing test.
+          python3 - <<'PY' || true
+          import glob
+          import re
 
+          found = []
+          for path in glob.glob("app/build/test-results/testDebugUnitTest/TEST-*.xml"):
+              try:
+                  data = open(path, encoding="utf-8", errors="replace").read()
+              except OSError:
+                  continue
+              for case in re.finditer(r"<testcase\b[^>]*>", data):
+                  head = case.group(0)
+                  name = re.search(r"name=\"([^\"]+)\"", head)
+                  if not name:
+                      continue
+                  tail = data[case.end():case.end() + 4000].lstrip()
+                  if not (tail.startswith("<failure") or tail.startswith("<error")):
+                      continue
+                  msg = re.search(r"<(?:failure|error)\b[^>]*message=\"([^\"]*)\"", tail)
+                  detail = msg.group(1) if msg else re.sub(r"<[^>]+>", " ", tail[:600])
+                  for entity, char in (("&quot;", '"'), ("&gt;", ">"), ("&lt;", "<"), ("&amp;", "&")):
+                      detail = detail.replace(entity, char)
+                  found.append((name.group(1), " ".join(detail.split())[:350]))
+          for name, detail in found[:10]:
+              print("::error::" + name + " - " + detail)
+          print("::notice::failing test cases: " + str(len(found)))
+          PY
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -72,18 +99,24 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          # GitHub caps workflow-command annotations per step, so a long cascade needs another step.
-          grep -E "^e: " gradle-screenshots.log 2>/dev/null | sed -n '11,20p' \
-            | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
-            | while IFS= read -r line; do echo "::error::$line"; done
-
+          # GitHub caps annotations per step, so a long cascade needs a second step.
+          if [ -f gradle-screenshots.log ]; then
+            grep -E "^e: " gradle-screenshots.log | sed -n '11-20' \
+              | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
+              | while IFS= read -r line; do echo "::error::${line}"; done || true
+          fi
+          true
       - name: Report compile errors, continued (21-30)
         if: failure()
         shell: bash
         run: |
-          grep -E "^e: " gradle-screenshots.log 2>/dev/null | sed -n '21,30p' \
-            | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
-            | while IFS= read -r line; do echo "::error::$line"; done
+          # GitHub caps annotations per step, so a long cascade needs a second step.
+          if [ -f gradle-screenshots.log ]; then
+            grep -E "^e: " gradle-screenshots.log | sed -n '21-30' \
+              | sed 's#file:///home/runner/work/servix-android/servix-android/##' \
+              | while IFS= read -r line; do echo "::error::${line}"; done || true
+          fi
+          true
       - name: Upload renders artifact
         if: success()
         uses: actions/upload-artifact@v4
@@ -99,19 +132,41 @@ jobs:
             echo "docs/screenshots/COMMIT_RENDERS is absent: renders stay in the artifact only."
             exit 0
           fi
+          # ScreenshotHarness already writes 50 % copies, so the repository only ever sees the
+          # half-size set (the full-size renders stay in the workflow artifact).
           git config user.name "servix-ci"
           git config user.email "ci@servix.name.ng"
-          rm -rf docs/screenshots
-          mkdir -p docs/screenshots
-          cp app/build/reports/screenshots/screens/*.png docs/screenshots/
-          git add -A docs/screenshots
+          rm -f docs/screenshots/*.png
+          mkdir -p docs/ia/screens
+          rm -f docs/ia/screens/*.png
+          # IA prototypes live with the audit that explains them, not in the app render set.
+          for f in app/build/reports/screenshots/screens/*.png; do
+            base=$(basename "$f")
+            case "$base" in
+              ia_*) cp "$f" "docs/ia/screens/$base" ;;
+              *) cp "$f" "docs/screenshots/$base" ;;
+            esac
+          done
+          ls -1 docs/screenshots/*.png | wc -l
+          ls -1 docs/ia/screens/*.png | wc -l
+          git add -A docs/screenshots docs/ia
           if git diff --cached --quiet; then
             echo "Renders are byte-identical to the committed set; nothing to publish."
             exit 0
           fi
           git commit -m "chore: screen renders for ${GITHUB_SHA::7} [shots]"
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          # actions/checkout leaves a detached HEAD, where `git pull` refuses to run (exit 128):
+          # fetch and rebase explicitly, and never fail the run if the branch moved underneath us.
+          git fetch origin "${GITHUB_REF_NAME}"
+          if ! git rebase --autostash "origin/${GITHUB_REF_NAME}"; then
+            git rebase --abort || true
+            echo "::notice::renders not published: the branch moved during the run."
+            exit 0
+          fi
+          if ! git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            echo "::notice::renders not published: push was rejected (branch moved)."
+            exit 0
+          fi
 
       - name: Upload gradle log
         if: always()

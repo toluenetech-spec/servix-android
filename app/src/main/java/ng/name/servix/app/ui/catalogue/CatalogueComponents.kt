@@ -39,6 +39,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +76,7 @@ import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
+import ng.name.servix.app.util.MediaCacheBust
 import ng.name.servix.app.util.ServixFormatters
 import java.util.Locale
 
@@ -92,6 +95,8 @@ fun ServixAvatarImage(
     val resolvedUrl = ServixFormatters.resolveServixMediaUrl(rawImageUrl)
     val initials = ServixFormatters.extractInitials(name)
     val context = LocalContext.current
+    val cacheStamps by MediaCacheBust.versions.collectAsState()
+    val cacheKey = resolvedUrl?.let { MediaCacheBust.cacheKey(it, cacheStamps[it]) }
 
     if (resolvedUrl.isNullOrBlank()) {
         InitialsAvatarFallback(
@@ -107,6 +112,8 @@ fun ServixAvatarImage(
     SubcomposeAsyncImage(
         model = ImageRequest.Builder(context)
             .data(resolvedUrl)
+            .memoryCacheKey(cacheKey)
+            .diskCacheKey(cacheKey)
             .crossfade(true)
             .build(),
         contentDescription = "Portrait of $name",
@@ -177,6 +184,8 @@ fun ServixMediaImage(
 ) {
     val resolvedUrl = ServixFormatters.resolveServixMediaUrl(rawImageUrl)
     val context = LocalContext.current
+    val cacheStamps by MediaCacheBust.versions.collectAsState()
+    val cacheKey = resolvedUrl?.let { MediaCacheBust.cacheKey(it, cacheStamps[it]) }
 
     if (resolvedUrl.isNullOrBlank()) {
         Box(
@@ -199,6 +208,8 @@ fun ServixMediaImage(
     SubcomposeAsyncImage(
         model = ImageRequest.Builder(context)
             .data(resolvedUrl)
+            .memoryCacheKey(cacheKey)
+            .diskCacheKey(cacheKey)
             .crossfade(true)
             .build(),
         contentDescription = contentDescription,

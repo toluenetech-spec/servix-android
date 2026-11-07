@@ -525,6 +525,8 @@ fun BookingDetailScreen(
     onContinueRebook: (serviceSlug: String, rebookedFromId: String, initialNotes: String) -> Unit,
     onOpenProfessional: (slug: String) -> Unit,
     onOpenService: (slug: String) -> Unit,
+    /** Release 1.1: opens (or creates) the chat thread for this booking. Null when chats are gated off. */
+    onMessageClick: (() -> Unit)? = null,
 ) {
     BackHandler(onBack = onBackClick)
 
@@ -1074,6 +1076,17 @@ fun BookingDetailScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = DeepForest,
                     )
+                    if (onMessageClick != null) {
+                        ServixSecondaryButton(
+                            text = "Message",
+                            onClick = {
+                                moreSheetOpen = false
+                                onMessageClick()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "booking_message_button",
+                        )
+                    }
                     barActions.filter { it.secondary }.forEach { action ->
                         ServixSecondaryButton(
                             text = action.label,

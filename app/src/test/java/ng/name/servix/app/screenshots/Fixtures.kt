@@ -19,6 +19,22 @@ object Fixtures {
         emailVerified = true,
     )
 
+    /**
+     * The same customer, but with the avatar the API returns after an upload: a root-relative
+     * `/media/…` path, which must resolve against the API origin (not the website).
+     */
+    val userWithAvatar = user.copy(avatarUrl = "/media/avatar/adaeze-okonkwo.jpg")
+
+    /**
+     * A professional. The app renders the same Home and Account for every role today, so this exists
+     * to render the *missing* "before" state for the IA audit (docs/ia/IA_AUDIT.md).
+     */
+    val userProfessional = user.copy(
+        email = "tunde@example.com",
+        fullName = "Tunde Bakare",
+        role = "professional",
+    )
+
     val categories = listOf(
         CategoryDto("graphic-design", "Graphic Design", "Logos, brand systems and print.", 124, "palette"),
         CategoryDto("web-development", "Web Development", "Websites and web apps.", 98, "code"),

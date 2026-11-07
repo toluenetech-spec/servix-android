@@ -22,6 +22,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import ng.name.servix.app.ui.components.ServixBottomSheet
+import ng.name.servix.app.data.model.AccountPaymentsResponse
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +67,7 @@ import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.updates.UpdateCard
 import ng.name.servix.app.updates.UpdateUiState
 import ng.name.servix.app.util.CustomTabLauncher
+import ng.name.servix.app.util.MediaCacheBust
 
 /** Panels reachable from the Account list. */
 enum class AccountPanel { NONE, PROFILE, SAVED, PLAN, SECURITY, DEVICE, UPDATES, LEGAL }
@@ -85,8 +88,20 @@ fun AccountHubScreen(
     onCreateAccountClick: () -> Unit = {},
     onVerifyEmailClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
+    /** Re-reads GET /me and republishes the shared session state after a profile write. */
+    onRefreshSessionUser: suspend () -> Unit = {},
+    /** Opening a payment row in the read-only history. */
+    onOpenBooking: (String) -> Unit = {},
 ) {
     var panel by remember { mutableStateOf(AccountPanel.NONE) }
+    var paymentsOpen by remember { mutableStateOf(false) }
+    var payments by remember { mutableStateOf<AccountPaymentsResponse?>(null) }
+    LaunchedEffect(paymentsOpen) {
+        if (paymentsOpen && payments == null) {
+            // GET /account/payments — built before 1.1 but had no entry point (IA audit F3).
+            accountRepository.getPayments().onSuccess { payments = it }
+        }
+    }
     val context = LocalContext.current
 
     Column(
@@ -139,13 +154,13 @@ fun AccountHubScreen(
             AccountGroup(title = "Account") {
                 AccountRow("Profile", "Name and photo", "account_row_profile") { panel = AccountPanel.PROFILE }
                 AccountRow("Saved", "Professionals you kept", "account_row_saved") { panel = AccountPanel.SAVED }
-                AccountRow(
-                    label = "Notifications",
-                    detail = if (unreadNotifications > 0) "$unreadNotifications unread" else "Booking and account updates",
-                    testTag = "account_row_notifications",
-                    badge = unreadNotifications,
-                ) { onOpenNotifications() }
+                AccountRow("Payments", "Every charge and refund, read-only", "account_row_payments") { paymentsOpen = true }
                 AccountRow("Plan", "What your account includes", "account_row_plan") { panel = AccountPanel.PLAN }
+                if (user.role == "professional" || user.role == "admin") {
+                    AccountRow("Professional tools", "Services and availability on the website", "account_row_protools") {
+                        CustomTabLauncher.launchWebPath(context, "/dashboard/services")
+                    }
+                }
                 AccountRow("Security", "Sign-in protection", "account_row_security") { panel = AccountPanel.SECURITY }
             }
             AccountGroup(title = "This device") {
@@ -153,7 +168,10 @@ fun AccountHubScreen(
                 AccountRow("Updates", "App version ${BuildConfig.VERSION_NAME}", "account_row_updates") { panel = AccountPanel.UPDATES }
             }
             AccountGroup(title = "Legal") {
-                AccountRow("Privacy and terms", "How Servix handles your data", "account_row_legal") { panel = AccountPanel.LEGAL }
+                AccountRow("Terms and privacy", "Both documents in one place", "account_row_legal") { panel = AccountPanel.LEGAL }
+                AccountRow("Delete account", "Email support — deletions are confirmed by a person", "account_row_delete") {
+                    CustomTabLauncher.launchUrl(context, "mailto:toluenetech@gmail.com?subject=Delete%20my%20Servix%20account")
+                }
             }
             ServixSecondaryButton(
                 text = stringResourceText(R.string.sign_out),
@@ -161,18 +179,14 @@ fun AccountHubScreen(
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "account_sign_out_button",
             )
-            Text(
-                text = "Deleting your account is handled on the website so support can confirm it with you.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedGray,
-            )
-            ServixTextButton(text = "Manage account on the website", onClick = {
-                CustomTabLauncher.launchWebPath(context, "/dashboard/settings")
-            })
         } else {
             ServixTextButton(text = "← Back to account") { panel = AccountPanel.NONE }
             when (panel) {
-                AccountPanel.PROFILE -> ProfilePanel(user = user, repository = accountRepository)
+                AccountPanel.PROFILE -> ProfilePanel(
+                    user = user,
+                    repository = accountRepository,
+                    onRefreshSessionUser = onRefreshSessionUser,
+                )
                 AccountPanel.SAVED -> SavedPanel(repository = accountRepository)
                 AccountPanel.PLAN -> PlanPanel(repository = accountRepository)
                 AccountPanel.SECURITY -> SecurityPanel(repository = accountRepository)
@@ -192,6 +206,19 @@ fun AccountHubScreen(
             }
         }
     }
+
+    if (paymentsOpen) {
+        ServixBottomSheet(title = "Payments", onDismiss = { paymentsOpen = false }) {
+            AccountPaymentsSheetContent(
+                payments = payments,
+                onOpenBooking = { bookingId ->
+                    paymentsOpen = false
+                    onOpenBooking(bookingId)
+                },
+                onDismiss = { paymentsOpen = false },
+            )
+        }
+    }
 }
 
 @Composable
@@ -204,7 +231,7 @@ private fun AccountHeader(user: UserDto, onVerifyEmailClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        ServixAvatarImage(rawImageUrl = null, name = user.fullName, size = 64.dp)
+        ServixAvatarImage(rawImageUrl = user.avatarUrl, name = user.fullName, size = 64.dp)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(user.fullName, style = MaterialTheme.typography.titleLarge, color = DeepForest, modifier = Modifier.testTag("account_name"))
             Text(user.email, style = MaterialTheme.typography.bodySmall, color = MutedGray)
@@ -226,7 +253,7 @@ private fun AccountHeader(user: UserDto, onVerifyEmailClick: () -> Unit) {
 }
 
 @Composable
-private fun AccountGroup(title: String, content: @Composable () -> Unit) {
+internal fun AccountGroup(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = MaterialTheme.typography.labelMedium, color = ForestGreen, modifier = Modifier.padding(start = 4.dp))
         ServixCard(contentPadding = PaddingValues(vertical = 4.dp)) {
@@ -236,7 +263,7 @@ private fun AccountGroup(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun AccountRow(
+internal fun AccountRow(
     label: String,
     detail: String,
     testTag: String,
@@ -268,12 +295,17 @@ private fun AccountRow(
 }
 
 @Composable
-private fun ProfilePanel(user: UserDto, repository: AccountRepository) {
+private fun ProfilePanel(
+    user: UserDto,
+    repository: AccountRepository,
+    onRefreshSessionUser: suspend () -> Unit,
+) {
     var name by remember(user.id) { mutableStateOf(user.fullName) }
     var saving by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    var avatarUrl by remember(user.id) { mutableStateOf<String?>(null) }
+    // Start from the account the session already holds, so an existing photo shows immediately.
+    var avatarUrl by remember(user.id, user.avatarUrl) { mutableStateOf(user.avatarUrl) }
     var uploading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val invalid = name.trim().length < 2
@@ -304,6 +336,12 @@ private fun ProfilePanel(user: UserDto, repository: AccountRepository) {
                             onSuccess = {
                                 avatarUrl = url
                                 message = "Photo updated."
+                                // Same URL, new bytes: key Coil off a fresh stamp so every avatar
+                                // (header, Home, this panel) reloads instead of hitting its cache.
+                                MediaCacheBust.bump(url)
+                                // Then re-read /me so the shared session carries the new avatar and
+                                // Home + the Account header update without a restart.
+                                onRefreshSessionUser()
                             },
                             onFailure = { error = it.message ?: "We could not save that photo." },
                         )

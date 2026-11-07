@@ -54,9 +54,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,6 +63,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,7 +121,22 @@ import ng.name.servix.app.ui.components.ServixLogoMark
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
+import ng.name.servix.app.ui.chat.ChatContactCard
+import ng.name.servix.app.ui.chat.ChatsScreen
+import ng.name.servix.app.ui.chat.ChatsSignedOut
+import ng.name.servix.app.ui.chat.ChatsViewModel
+import ng.name.servix.app.ui.chat.ConversationScreen
+import ng.name.servix.app.ui.chat.ConversationViewModel
+import ng.name.servix.app.data.realtime.ChatEventStream
+import ng.name.servix.app.data.repository.ChatRepository
+import ng.name.servix.app.data.repository.FeaturesRepository
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.outlined.Chat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import ng.name.servix.app.ui.home.HomeTabScreen
+import ng.name.servix.app.util.ServixFormatters
 import ng.name.servix.app.ui.home.HomeViewModel
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
@@ -186,8 +200,28 @@ private fun accountTab() = BottomTabItem(
     testTag = "nav_tab_account",
 )
 
-/** Plan §2: exactly five tabs, identical for guests and signed-in customers — no sixth Dashboard. */
-private val BOTTOM_TABS = listOf(homeTab(), exploreTab(), bookingsTab(), aiTab(), accountTab())
+private fun chatsTab() = BottomTabItem(
+    route = ServixRoute.Chats,
+    labelRes = R.string.nav_chats,
+    selectedIcon = Icons.Filled.Chat,
+    unselectedIcon = Icons.Outlined.Chat,
+    testTag = "nav_tab_chats",
+)
+
+/**
+ * Release 1.1 IA: `Home · Explore · Chats · Bookings · Account`.
+ *
+ * Chats is the centre item and only exists when `GET /features` says `community` is on — no empty tab.
+ * Guests get `Home · Explore · Account` only: they have no threads and no bookings, and a tab whose
+ * only content is a sign-in wall is a dead end (approved in `docs/ia/IA_AUDIT.md`, decision 6).
+ */
+private fun bottomTabsFor(signedIn: Boolean, chatsEnabled: Boolean): List<BottomTabItem> = buildList {
+    add(homeTab())
+    add(exploreTab())
+    if (signedIn && chatsEnabled) add(chatsTab())
+    if (signedIn) add(bookingsTab())
+    add(accountTab())
+}
 
 @Composable
 fun ServixAppShell(
@@ -196,6 +230,9 @@ fun ServixAppShell(
     bookingRepository: BookingRepository,
     accountRepository: AccountRepository,
     aiRepository: AiRepository,
+    chatRepository: ChatRepository,
+    featuresRepository: FeaturesRepository,
+    chatEventStream: ChatEventStream,
     isOnline: Boolean,
 ) {
     val context = LocalContext.current
@@ -224,6 +261,42 @@ fun ServixAppShell(
     val bookingsViewModel: BookingsViewModel = viewModel(
         factory = BookingsViewModel.factory(bookingRepository)
     )
+
+    // Release 1.1: flags decide what exists at all; the chat store owns the unread number.
+    val featuresState by featuresRepository.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { featuresRepository.refresh() }
+    val sessionUserId = (sessionState as? SessionState.Authenticated)?.user?.id
+    val chatsViewModel: ChatsViewModel = viewModel(
+        factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream) { sessionUserId }
+    )
+    val chatsState by chatsViewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val shellScope = rememberCoroutineScope()
+    // Chat entry point from a booking; the API creates or returns the one thread per booking.
+    fun openChatForBooking(bookingId: String) {
+        shellScope.launch {
+            chatRepository.startFromBooking(bookingId).onSuccess { threadId ->
+                navController.navigate(ServixRoute.ChatConversation(threadId))
+            }
+        }
+    }
+    DisposableEffect(lifecycleOwner, sessionUserId) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> if (sessionUserId != null) chatsViewModel.startStream()
+                Lifecycle.Event.ON_STOP -> chatsViewModel.stopStream()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && sessionUserId != null) {
+            chatsViewModel.startStream()
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            chatsViewModel.stopStream()
+        }
+    }
 
     fun navigateAfterAuthComplete() {
         val target = pendingPostAuthRoute ?: ServixRoute.Home
@@ -374,66 +447,59 @@ fun ServixAppShell(
         },
         bottomBar = {
             if (!isAuthDestination) {
-                Column {
-                    HorizontalDivider(color = BorderSand, thickness = 1.dp)
-                    NavigationBar(
-                        containerColor = WarmIvory,
-                        contentColor = Charcoal,
-                        tonalElevation = 0.dp,
-                    ) {
-                        BOTTOM_TABS.forEach { tab ->
-                            val selected = when (tab.route) {
-                                is ServixRoute.Search -> {
-                                    currentDest?.hasRoute(ServixRoute.Search::class) == true ||
-                                        currentDest?.hasRoute(ServixRoute.ProfessionalProfile::class) == true ||
-                                        currentDest?.hasRoute(ServixRoute.ServiceDetail::class) == true
-                                }
-                                is ServixRoute.Bookings -> {
-                                    currentDest?.hasRoute(ServixRoute.Bookings::class) == true ||
-                                        currentDest?.hasRoute(ServixRoute.BookingDetail::class) == true
-                                }
-                                else -> currentDest?.hasRoute(tab.route::class) == true
-                            }
-                            val label = stringResource(tab.labelRes)
-                            NavigationBarItem(
-                                selected = selected,
-                                onClick = {
-                                    if (tab.route is ServixRoute.Search && currentDest?.hasRoute(ServixRoute.Search::class) != true) {
-                                        searchViewModel.ensureInitialized()
-                                    }
-                                    navController.navigate(tab.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                        contentDescription = label,
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = label,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1,
-                                    )
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = DeepForest,
-                                    selectedTextColor = DeepForest,
-                                    indicatorColor = SoftSand,
-                                    unselectedIconColor = MutedGray,
-                                    unselectedTextColor = MutedGray,
-                                ),
-                                modifier = Modifier.testTag(tab.testTag),
-                            )
+                val visibleTabs = bottomTabsFor(
+                    signedIn = sessionState is SessionState.Authenticated,
+                    chatsEnabled = featuresState.flags.community,
+                )
+                val tabs = visibleTabs.map { tab ->
+                    val isChats = tab.route is ServixRoute.Chats
+                    ServixTab(
+                        label = stringResource(tab.labelRes),
+                        selectedIcon = tab.selectedIcon,
+                        unselectedIcon = tab.unselectedIcon,
+                        testTag = tab.testTag,
+                        // One source: Σ unreadCount from GET /community/threads, kept fresh by the stream.
+                        badgeCount = if (isChats) chatsState.unreadTotal else null,
+                        prominent = isChats,
+                    )
+                }
+                val selectedIndex = visibleTabs.indexOfFirst { tab ->
+                    when (tab.route) {
+                        is ServixRoute.Search -> {
+                            currentDest?.hasRoute(ServixRoute.Search::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.ProfessionalProfile::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.ServiceDetail::class) == true
                         }
+                        is ServixRoute.Bookings -> {
+                            currentDest?.hasRoute(ServixRoute.Bookings::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.BookingDetail::class) == true
+                        }
+                        is ServixRoute.Chats -> {
+                            currentDest?.hasRoute(ServixRoute.Chats::class) == true ||
+                                currentDest?.hasRoute(ServixRoute.ChatConversation::class) == true
+                        }
+                        else -> currentDest?.hasRoute(tab.route::class) == true
                     }
                 }
+                ServixBottomBar(
+                    tabs = tabs,
+                    selectedIndex = selectedIndex,
+                    onSelect = { index ->
+                        val tab = visibleTabs.getOrNull(index)
+                        if (tab != null) {
+                            if (tab.route is ServixRoute.Search && currentDest?.hasRoute(ServixRoute.Search::class) != true) {
+                                searchViewModel.ensureInitialized()
+                            }
+                            navController.navigate(tab.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
+                )
             }
         }
     ) { innerPadding ->
@@ -659,6 +725,25 @@ fun ServixAppShell(
                     uiState = homeUiState,
                     aiUsage = aiUiState.usage,
                     onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
+                    // Chats card: same unread number as the tab badge (one source), AI is inside Chats now.
+                    chatsEnabled = featuresState.flags.community,
+                    chatsUnread = chatsState.unreadTotal,
+                    onOpenChats = { navController.navigate(ServixRoute.Chats) },
+                    requestsEnabled = featuresState.flags.requests,
+                    // Stage 3 replaces this with the native Requests form; until then the assistant takes the brief.
+                    onPostRequest = { navController.navigate(ServixRoute.ServixAi) },
+                    thisWeekJobs = homeUiState.bookings.count { booking ->
+                        booking.status == "accepted" || booking.status == "in_progress"
+                    },
+                    payoutsPendingLabel = homeUiState.bookings
+                        .filter { it.status == "completed" }
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { done -> ServixFormatters.formatNaira(done.sumOf { it.amount }) },
+                    profileStrength = listOf(
+                        user?.avatarUrl != null,
+                        user?.fullName?.isNotBlank() == true,
+                        user?.emailVerified == true,
+                    ).count { it } * 33,
                     onOpenSearch = { openExplore(query = null, categorySlug = null) },
                     onOpenCategory = { slug -> openExplore(query = null, categorySlug = slug) },
                     onOpenProfessional = { slug ->
@@ -963,6 +1048,12 @@ fun ServixAppShell(
                     onOpenService = { serviceSlug ->
                         navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug))
                     },
+                    // Only offered while the server has messaging switched on.
+                    onMessageClick = if (featuresState.flags.community) {
+                        { openChatForBooking(route.id) }
+                    } else {
+                        null
+                    },
                 )
             }
 
@@ -1021,6 +1112,8 @@ fun ServixAppShell(
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
+                    onOpenBooking = { bookingId -> navController.navigate(ServixRoute.BookingDetail(id = bookingId)) },
+                    onRefreshSessionUser = { authViewModel.refreshSessionUser() },
                     onSignOutClick = {
                         authViewModel.logout {
                             navController.navigate(ServixRoute.Welcome) {
@@ -1029,6 +1122,73 @@ fun ServixAppShell(
                         }
                     }
                 )
+            }
+
+            composable<ServixRoute.Chats>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
+                val user = (sessionState as? SessionState.Authenticated)?.user
+                if (user == null) {
+                    ChatsSignedOut(onSignIn = { navController.navigate(ServixRoute.Login) })
+                } else {
+                    ChatsScreen(
+                        uiState = chatsState,
+                        myUserId = user.id,
+                        onOpenThread = { threadId -> navController.navigate(ServixRoute.ChatConversation(threadId)) },
+                        onOpenAi = { navController.navigate(ServixRoute.ServixAi) },
+                        onRetry = { chatsViewModel.refresh() },
+                    )
+                }
+            }
+
+            composable<ServixRoute.ChatConversation>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<ServixRoute.ChatConversation>()
+                val conversationViewModel: ConversationViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = ConversationViewModel.factory(
+                        chatRepository = chatRepository,
+                        stream = chatEventStream,
+                        threadId = route.threadId,
+                        myUserId = sessionUserId.orEmpty(),
+                    ),
+                )
+                val conversationState by conversationViewModel.uiState.collectAsStateWithLifecycle()
+                val thread = chatsState.threads.firstOrNull { it.id == route.threadId }
+                var contactCardOpen by remember { mutableStateOf(false) }
+                LaunchedEffect(route.threadId) { chatsViewModel.markReadLocally(route.threadId) }
+                ConversationScreen(
+                    uiState = conversationState,
+                    thread = thread,
+                    onBack = { navController.popBackStack() },
+                    onInput = conversationViewModel::onInputChange,
+                    onSend = conversationViewModel::send,
+                    onRetry = conversationViewModel::retry,
+                    onLoadOlder = conversationViewModel::loadOlder,
+                    onOpenContactCard = { contactCardOpen = true },
+                )
+                if (contactCardOpen && thread != null) {
+                    ChatContactCard(
+                        thread = thread,
+                        messages = conversationState.messages,
+                        onDismiss = { contactCardOpen = false },
+                        onViewProfile = { slug ->
+                            contactCardOpen = false
+                            navController.navigate(ServixRoute.ProfessionalProfile(slug))
+                        },
+                        onBlock = {
+                            conversationViewModel.block()
+                            contactCardOpen = false
+                        },
+                    )
+                }
             }
         }
     }

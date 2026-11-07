@@ -1,6 +1,7 @@
 package ng.name.servix.app
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +25,8 @@ import ng.name.servix.app.ui.theme.ServixTheme
 import ng.name.servix.app.util.AppLinkBus
 import ng.name.servix.app.util.OAuthReturnBus
 
+private const val COIL_LOG_TAG = "ServixCoil"
+
 class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
@@ -45,6 +48,18 @@ class MainActivity : ComponentActivity() {
         // Images use their own client: never attach account tokens to third-party URLs.
         Coil.setImageLoader(ImageLoader.Builder(applicationContext)
             .okHttpClient(OkHttpClient.Builder().addInterceptor(servixUserAgentInterceptor).build())
+            // A photo that fails to load is otherwise invisible: the UI quietly falls back to
+            // initials. Log the URL and the reason at WARN so `adb logcat -s ServixCoil:W` answers
+            // "why is my avatar still letters?" without a debugger.
+            .eventListener(object : coil.EventListener {
+                override fun onError(request: coil.request.ImageRequest, result: coil.request.ErrorResult) {
+                    Log.w(
+                        COIL_LOG_TAG,
+                        "image failed: url=${request.data} key=${request.memoryCacheKey ?: request.data} " +
+                            "reason=${result.throwable.javaClass.simpleName}: ${result.throwable.message}",
+                    )
+                }
+            })
             .build())
 
         setContent {
@@ -68,6 +83,9 @@ class MainActivity : ComponentActivity() {
                         bookingRepository = container.bookingRepository,
                         accountRepository = container.accountRepository,
                         aiRepository = container.aiRepository,
+                        chatRepository = container.chatRepository,
+                        featuresRepository = container.featuresRepository,
+                        chatEventStream = container.chatEventStream,
                         isOnline = isOnline,
                     )
                 }

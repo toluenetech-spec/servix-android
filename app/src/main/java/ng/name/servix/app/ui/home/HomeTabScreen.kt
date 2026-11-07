@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -64,6 +65,11 @@ import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.ServixTextButton
 import ng.name.servix.app.ui.components.StatusChip
 import ng.name.servix.app.ui.theme.BorderSand
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.AutoAwesome
+import ng.name.servix.app.ui.theme.SoftSand
+import ng.name.servix.app.ui.theme.Coral
 import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
@@ -96,8 +102,23 @@ fun HomeTabScreen(
     onCreateAccountClick: () -> Unit = {},
     unreadNotifications: Int = 0,
     onOpenNotifications: () -> Unit = {},
+    /** Release 1.1: the chat store owns this number (Σ unreadCount) — same value as the tab badge. */
+    chatsEnabled: Boolean = false,
+    chatsUnread: Int = 0,
+    onOpenChats: () -> Unit = {},
+    /** `features.requests` from GET /features; never hardcoded. */
+    requestsEnabled: Boolean = false,
+    onPostRequest: () -> Unit = {},
+    /** Professional-only, read-only strip above the jobs list. */
+    thisWeekJobs: Int = 0,
+    payoutsPendingLabel: String? = null,
+    /** Professional-only profile completion nudge (0-100). */
+    profileStrength: Int = 0,
+    /** Null until the app can resolve the professional's own slug (Stage 3 profile work). */
+    onOpenPublicProfile: (() -> Unit)? = null,
 ) {
     val signedIn = user != null
+    val isProfessional = user?.role == "professional"
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -142,10 +163,14 @@ fun HomeTabScreen(
             }
         }
 
+        if (signedIn && chatsEnabled) {
+            HomeChatsCard(unread = chatsUnread, onClick = onOpenChats)
+        }
+
         if (signedIn && !(uiState.loading && uiState.bookings.isEmpty())) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionHeader(
-                    title = stringResource(R.string.home_your_bookings),
+                    title = if (isProfessional) "Your jobs" else stringResource(R.string.home_your_bookings),
                     action = stringResource(R.string.home_see_all),
                     onAction = onOpenBookingsTab,
                 )
@@ -167,6 +192,7 @@ fun HomeTabScreen(
                     ) {
                         items(uiState.upcomingBookings, key = { it.id }) { booking ->
                             UpcomingBookingCard(
+                                counterparty = if (isProfessional) booking.customerName else booking.professionalName,
                                 booking = booking,
                                 onClick = { onOpenBookingDetail(booking.id) },
                             )
@@ -177,12 +203,21 @@ fun HomeTabScreen(
             }
         }
 
-        if (uiState.loading && uiState.categories.isEmpty()) {
+        if (signedIn && isProfessional) {
+            ThisWeekStrip(jobsThisWeek = thisWeekJobs, payoutsPending = payoutsPendingLabel)
+            ProfileStrengthCard(strength = profileStrength, onOpenPublicProfile = onOpenPublicProfile)
+        }
+
+        if (signedIn && requestsEnabled && !isProfessional) {
+            PostRequestCard(onClick = onPostRequest)
+        }
+
+        if (!(signedIn && isProfessional) && uiState.loading && uiState.categories.isEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionHeader(title = stringResource(R.string.home_recommended))
                 ListSkeleton(rows = 4)
             }
-        } else {
+        } else if (!(signedIn && isProfessional)) {
             if (uiState.error != null) {
                 ErrorCard(message = uiState.error, onRetry = onRefresh)
             }
@@ -243,7 +278,10 @@ fun HomeTabScreen(
             }
         }
 
-        AiCard(onOpenAi = onOpenAi)
+        // The assistant lives inside Chats now; Home only keeps it when chats are not available.
+        if (!(signedIn && chatsEnabled)) {
+            AiCard(onOpenAi = onOpenAi)
+        }
 
         if (signedIn) {
             PlanLine(
@@ -317,7 +355,7 @@ private fun HomeTopBar(
                 onClick = onOpenAccount,
                 modifier = Modifier.size(48.dp).testTag("home_account_avatar"),
             ) {
-                AvatarImage(size = 36.dp, initials = user.fullName, image = null)
+                AvatarImage(size = 36.dp, initials = user.fullName, image = user.avatarUrl)
             }
         } else {
             ServixTextButton(text = stringResource(R.string.sign_in), onClick = onSignIn)
@@ -329,6 +367,8 @@ private fun HomeTopBar(
 private fun UpcomingBookingCard(
     booking: BookingDto,
     onClick: () -> Unit,
+    /** The person on the other side: a customer sees the professional, a professional the customer. */
+    counterparty: String? = null,
 ) {
     ServixCard(
         modifier = Modifier
@@ -359,7 +399,8 @@ private fun UpcomingBookingCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = booking.professionalName.orEmpty().ifBlank { stringResource(R.string.home_professional_fallback) },
+                text = counterparty.orEmpty()
+                    .ifBlank { stringResource(R.string.home_professional_fallback) },
                 style = MaterialTheme.typography.bodySmall,
                 color = MutedGray,
                 maxLines = 1,
@@ -497,5 +538,137 @@ private fun SignInCard(
     }
 }
 
-/** Tabular grouping for the AI word counts in the plan line. */
+
+/** Home shortcut into Chats — same unread number as the tab badge, same source. */
+@Composable
+private fun HomeChatsCard(unread: Int, onClick: () -> Unit) {
+    ServixCard(
+        modifier = Modifier.clickable(onClick = onClick).testTag("home_chats_card"),
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(SoftSand),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Chat, contentDescription = null, tint = DeepForest, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Chats", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                Text(
+                    text = if (unread > 0) "$unread unread · Servix AI is here" else "Servix AI is here",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedGray,
+                )
+            }
+            if (unread > 0) {
+                Box(
+                    modifier = Modifier.clip(CircleShape).background(Coral).padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = if (unread > 9) "9+" else unread.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = WarmIvory,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Customers only, and only while `features.requests` is true. */
+@Composable
+private fun PostRequestCard(onClick: () -> Unit) {
+    ServixCard(
+        modifier = Modifier.clickable(onClick = onClick).testTag("home_post_request"),
+        containerColor = SoftSand,
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = DeepForest, modifier = Modifier.size(20.dp))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Post a request", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                Text(
+                    "Describe the job once, get proposals from professionals",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedGray,
+                )
+            }
+            Text("Post", style = MaterialTheme.typography.labelLarge, color = DeepForest)
+        }
+    }
+}
+
+/** Read-only work strip: what is scheduled this week and what is still waiting to be paid out. */
+@Composable
+private fun ThisWeekStrip(jobsThisWeek: Int, payoutsPending: String?) {
+    ServixCard(contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("This week", style = MaterialTheme.typography.labelMedium, color = ForestGreen)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                WeekStat(label = "Jobs scheduled", value = jobsThisWeek.toString(), modifier = Modifier.weight(1f))
+                WeekStat(label = "Payouts pending", value = payoutsPending ?: "—", modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(value, style = MaterialTheme.typography.titleLarge, color = DeepForest)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MutedGray)
+    }
+}
+
+/** Completion nudge for professionals: percentage + the one action that raises it. */
+@Composable
+private fun ProfileStrengthCard(strength: Int, onOpenPublicProfile: (() -> Unit)?) {
+    val clamped = strength.coerceIn(0, 100)
+    ServixCard(contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Profile strength", style = MaterialTheme.typography.titleSmall, color = DeepForest)
+                Text("$clamped%", style = MaterialTheme.typography.titleSmall, color = ForestGreen)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SoftSand),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(clamped / 100f)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(ForestGreen),
+                )
+            }
+            Text(
+                "Professionals with photos, a clear title and three portfolio pieces get more bookings.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedGray,
+            )
+            if (onOpenPublicProfile != null) {
+                ServixSecondaryButton(
+                    text = "View public profile",
+                    onClick = onOpenPublicProfile,
+                    modifier = Modifier.fillMaxWidth(),
+                    testTag = "home_profile_strength_cta",
+                )
+            }
+        }
+    }
+}
+
 private fun Long.grouped(): String = NumberFormat.getIntegerInstance(Locale.UK).format(this)

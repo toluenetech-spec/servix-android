@@ -122,6 +122,32 @@ class AuthRepository(
         }
     }
 
+    /**
+     * Re-reads `GET /me` and republishes it on [sessionState].
+     *
+     * This is the single source of truth the whole shell collects, so after a profile write (a new
+     * avatar, a renamed account) Home, the Account header and the Profile panel all recompose with the
+     * new user without a restart. Failures are returned, never thrown: a stale avatar is not worth
+     * breaking the screen that was just saved from.
+     */
+    suspend fun refreshSessionUser(): Result<UserDto> = withContext(Dispatchers.IO) {
+        try {
+            val me = api.getMe()
+            tokenStore.setCachedUser(me.user)
+            _sessionState.value = SessionState.Authenticated(me.user)
+            Result.success(me.user)
+        } catch (t: Throwable) {
+            val error = ApiErrorParser.toServixException(t)
+            if (error.status == 401 || error.status == 403) {
+                // The session really is gone; do not keep showing an authenticated shell.
+                tokenStore.clear()
+                cookieJar.clear()
+                _sessionState.value = SessionState.Unauthenticated
+            }
+            Result.failure(error)
+        }
+    }
+
     suspend fun register(fullName: String, email: String, password: String): Result<AuthOutcome> =
         withContext(Dispatchers.IO) {
             try {
