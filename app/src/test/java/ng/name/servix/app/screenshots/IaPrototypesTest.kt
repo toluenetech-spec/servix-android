@@ -77,7 +77,7 @@ import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
-import ng.name.servix.app.ui.updates.UpdateUiState
+import ng.name.servix.app.updates.UpdateUiState
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
