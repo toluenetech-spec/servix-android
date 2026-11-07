@@ -16,7 +16,7 @@ harness. **Nothing was uploaded to Play** — these are files the owner drags in
 | `docs/play/phone/07_notifications.png` | 1080×1920 | 95,895 | Notifications: booking accepted, ₦350,000 held in escrow |
 | `docs/play/phone/08_account.png` | 1080×1920 | 149,865 | Account hub: profile, saved, notifications, plan, security, this device |
 | `docs/play/icon-512.png` | 512×512 | 13,753 | Full-bleed Deep Forest square with the SX mark — opaque, no rounded corners |
-| `docs/play/feature-graphic-1024x500.png` | 1024×500 | 27,978 | Deep Forest canvas, SX mark, "Servix", tagline "Hire trusted Nigerian professionals.", coral rule |
+| `docs/play/feature-graphic-1024x500.png` | 1024×500 | 27,978 | Deep Forest canvas, the real brand wordmark (`servix-logo-dark.svg`: SX monogram + custom "Servix" lettering), tagline "Hire trusted Nigerian professionals.", coral rule |
 | `docs/play/ASSETS_COMMITTED` | — | 286 | Sentinel: keeps the art out of every subsequent run |
 
 Total repository cost: **1.3 MB** for all eleven files.
@@ -50,18 +50,35 @@ commits `docs/play/` **once** behind the `ASSETS_COMMITTED` sentinel.
 
 ## Brand assets — what is real and what is not
 
-* The **SX mark** is the app's own launcher vector (`res/drawable/ic_launcher_foreground.xml`), the
-  same path data as `docs/servix-app-logo.png`. Not redrawn.
-* The **icon** is painted from exactly the two layers the adaptive icon declares —
-  `@color/deep_forest` (#12372A) and that foreground vector. `AdaptiveIconDrawable` is deliberately
-  *not* used: its mask/inset maths is the least reliable part outside a real device, and Play wants a
-  flat opaque square anyway (the launcher applies the mask). The first attempt used it and failed CI.
+Everything here is the owner's real artwork. There is nothing hand-drawn left in `docs/play/`.
+
+* The **wordmark** in the feature graphic is `public/brand/servix-logo-dark.svg` from
+  `toluenetech-spec/servix` (ref `arena/01a0dc4c-servix`), rendered as **vectors**, not typeset. The
+  test reads the SVG, parses every `<path>` with `androidx.core.graphics.PathParser`, scales the whole
+  lockup and draws it in Warm Ivory. It is the same file the website serves, byte-identical to
+  `reference/web/public/brand/servix-logo-dark.svg` (sha256 `6609217108d675ea…`, 3,779 B).
+* The **SX mark** in `icon-512.png` is the app's own launcher vector
+  (`res/drawable/ic_launcher_foreground.xml`), and the test now proves it: it extracts the vector's
+  `android:pathData` and asserts it equals path 0 of the brand SVG (whitespace-normalised). If anyone
+  ever replaces the launcher mark with a lookalike, `playIcon512` fails.
+* The **icon** is painted from exactly the two layers the adaptive icon declares — `@color/deep_forest`
+  (#12372A) and that foreground vector. `AdaptiveIconDrawable` is deliberately *not* used: its
+  mask/inset maths is the least reliable part outside a real device, and Play wants a flat opaque
+  square anyway (the launcher applies the mask).
 * The **palette** is `ui/theme/Color.kt`: Deep Forest `#12372A`, Warm Ivory `#F7F4EC`, Coral `#E56B5D`.
-* **Flagged, not silent:** the *wordmark* in the feature graphic is typeset in **Inter 700** — the
-  app's own bundled typeface (`res/font/inter_700.ttf`) — not the custom lettering in
-  `reference/web/public/brand/servix-logo-dark.svg`. There is no SVG rasteriser in the unit-test JVM,
-  so the test cannot draw that file. It is honest typography in the app's real font, not a
-  hand-drawn imitation, but it is not the marketing wordmark. Tracked as follow-up #7.
+  The coral rule under the tagline is the only coral in the graphic.
+* **Geometry, checked numerically before the render:** the SVG's `viewBox` is `0 0 403.4 76.7` but its
+  path bounds exceed it, and `servix-logo-dark.svg` nests the lettering group
+  (`translate(143.1 -13.8)`) *inside* the monogram group (`translate(2 73.7)`). A flat reading of the
+  transforms puts the wordmark off-canvas, so `brandPaths()` walks `<g>`/`</g>`/`<path>` in document
+  order with a stack and composes nested translates: `(2.0, 73.7)` for the monogram and `(145.1, 59.9)`
+  for the lettering. At `markWidth = 620` the scale is 1.5369, the artwork is 117.9 px tall, and the
+  resolved bounds are monogram x[210.5, 381.3] y[135.3, 250.1], wordmark x[429.0, 816.6]
+  y[157.1, 228.4] — inside the 1024×500 canvas, centred to 1.6 px, with the tagline baseline at 336.7
+  and the coral rule at 358.7–364.7. `check(paths.size == 2)` would fail if a reader flattened the
+  groups into three.
+* The **tagline** ("Hire trusted Nigerian professionals.") is still Inter 500, the app's own
+  `res/font/inter_500.ttf`. That is a sentence, not brand lettering.
 
 ## CI history
 
@@ -71,14 +88,23 @@ commits `docs/play/` **once** behind the `ASSETS_COMMITTED` sentinel.
 | 42225005610 | failed | Window assertion caught the `xxxhdpi` mistake (1440×2560, not 1080×1920) |
 | 42225414418 | failed | Only `playIcon512`: `AdaptiveIconDrawable` did not paint reliably under Robolectric |
 | **42225827800** | **green** | First good set; committed `docs/play/` |
-| **42226236157** | **green** | Polish pass: home shot shows live bookings, mark enlarged for optical balance against the wordmark; re-committed |
+| **42226236157** | **green** | Polish pass: home shot shows live bookings, mark enlarged for optical balance; re-committed |
+| 42280296822, 42280853421 | failed | The brand-aware rewrite did not compile. Ten annotations said only *"Unresolved reference 'capturePlayPhone'"* — a cascade, never the root cause |
+| 42281315965 | failed | Raised the diagnostics to 30 annotations across three steps; that finally showed the real error: `Syntax error: Missing '}'` at the end of `playFeatureGraphic1024x500` |
+| 42355041266 | failed | Root cause: a KDoc line containing `public/brand/*.svg` — the `*/` **closed the comment early**, so prose was parsed as code and one brace went missing. Rewritten, and the whole asset section was rebuilt on the last green file rather than patched again |
+| **42355410630** | **green** | Real brand artwork rendered, both jobs green; committed `3cec86d` and re-created the `ASSETS_COMMITTED` sentinel |
 
-The renders job and the Play-assets job share the test source set, so a compile error breaks both —
-that is how the first failure surfaced. The job now also converts JUnit `<failure message=…>` into
-check-run annotations, because run logs are served from storage that is not always reachable.
+Two CI lessons worth keeping:
+
+* **GitHub caps workflow-command annotations at ten per step.** A long Kotlin cascade therefore hides
+  the one error that matters; the workflow now reports errors 1–10, 11–20 and 21–30 in three separate
+  steps. That is what turned "unresolved reference" noise into the actual syntax error.
+* **A `*/` inside a KDoc is code, not prose.** Any comment that quotes a glob like `public/brand/*.svg`
+  silently truncates itself. Look for the earliest *syntax* error, not the first unresolved reference.
 
 Verification was repeated locally on the committed files: all eight phone PNGs read `1080x1920`, the
-icon `512x512`, the feature graphic `1024x500`, straight from the IHDR chunk.
+icon `512x512`, the feature graphic `1024x500`, straight from the IHDR chunk. The committed bytes are
+what CI rendered in run 42355410630 (`docs/play/ASSETS_COMMITTED` records the run and commit).
 
 ## Not in this block
 
