@@ -381,8 +381,8 @@ class PlayAssetsTest {
 
     /**
      * The brand SVGs live in the website snapshot under `reference/web/public/brand/`, byte-identical
-     * to `public/brand/*.svg` in toluenetech-spec/servix at ref arena/01a0dc4c-servix. Unit tests run
-     * with the module directory as the working directory.
+     * to the SVG files in `public/brand/` of toluenetech-spec/servix at ref arena/01a0dc4c-servix.
+     * Unit tests run with the module directory as the working directory.
      */
     private fun readBrandAsset(name: String): String {
         val candidates = listOf(
