@@ -260,9 +260,14 @@ class IaPrototypesTest {
                         )
                         Text("Saturday, 7 November", style = MaterialTheme.typography.bodySmall, color = MutedGray)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon15(Icons.Filled.Notifications)
-                        ServixAvatarImage(rawImageUrl = user?.avatarUrl, name = user?.fullName ?: "Guest", size = 36.dp)
+                    if (role != Role.GUEST) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon15(Icons.Filled.Notifications)
+                            ServixAvatarImage(rawImageUrl = user?.avatarUrl, name = user?.fullName ?: "", size = 36.dp)
+                        }
                     }
                 }
 
@@ -309,7 +314,8 @@ class IaPrototypesTest {
                     )
                 }
 
-                SectionHeader(title = if (role == Role.PROFESSIONAL) "Your jobs" else "Your bookings", action = "See all")
+                if (role != Role.GUEST) {
+                    SectionHeader(title = if (role == Role.PROFESSIONAL) "Your jobs" else "Your bookings", action = "See all")
                 ServixCard(contentPadding = PaddingValues(16.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
@@ -325,6 +331,7 @@ class IaPrototypesTest {
                             style = MaterialTheme.typography.bodySmall,
                             color = MutedGray,
                         )
+                    }
                     }
                 }
 

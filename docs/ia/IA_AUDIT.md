@@ -202,7 +202,7 @@ navigation logic.
 |---|---|---|---|
 | Home — customer | `docs/screenshots/03_home_signed_in.png` | `docs/ia/screens/ia_04_home_customer_after.png` | Servix AI card → folded into the Chats card; nothing else lost. Additions: Chats, Post a request. |
 | Home — professional | `docs/ia/screens/ia_02_home_professional_before.png` | `docs/ia/screens/ia_05_home_professional_after.png` | Category chips and "Recommended for you" — hiring-side content a professional does not act on. Additions: Requests, Network, "Your jobs" label. |
-| Home — guest | `docs/screenshots/04_home_guest.png` | `docs/ia/screens/ia_06_home_guest_after.png` | Nothing removed; the bar drops to three items (Home · Explore · Account) and Chats is not rendered at all. |
+| Home — guest | `docs/screenshots/04_home_guest.png` | `docs/ia/screens/ia_06_home_guest_after.png` | Nothing removed; the bar drops to three items (Home · Explore · Account), and Chats, the bell and the bookings block are not rendered at all — a guest has no threads and no bookings. |
 | Account — customer | `docs/screenshots/15_account.png` | `docs/ia/screens/ia_07_account_customer_after.png` | Notifications row (bell already does it), "Manage account on the website" (the app does it), deletion paragraph (moved into Legal), "Privacy and terms" panel → one row. Additions: Chats, My network, Payments. |
 | Account — professional | `docs/ia/screens/ia_03_account_professional_before.png` | `docs/ia/screens/ia_08_account_professional_after.png` | Same removals, plus the dead "pro tools" card is replaced by one honest Work row. Additions: Requests, Network. |
 
