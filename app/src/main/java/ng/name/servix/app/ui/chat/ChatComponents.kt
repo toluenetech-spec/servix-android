@@ -146,34 +146,41 @@ fun ChatThreadRow(
     }
 }
 
-/** ✓ sent, ✓✓ delivered (grey), ✓✓ seen (green-blue), clock while pending. */
+/**
+ * ✓ sent, ✓✓ delivered, ✓✓ seen (accent), clock while pending.
+ *
+ * [onDark] is for the Deep-Forest bubble: Forest Green on forest is invisible, so on my own bubbles
+ * the states step from translucent ivory to full ivory to Coral instead of relying on hue alone.
+ */
 @Composable
-fun TickGlyph(state: TickState?, modifier: Modifier = Modifier) {
+fun TickGlyph(state: TickState?, modifier: Modifier = Modifier, onDark: Boolean = false) {
+    val base = if (onDark) WarmIvory else MutedGray
     when (state) {
         null -> Unit
         TickState.PENDING -> Icon(
             imageVector = Icons.Filled.Schedule,
             contentDescription = "Sending",
-            tint = MutedGray,
+            tint = base.copy(alpha = 0.6f),
             modifier = modifier.size(12.dp),
         )
         TickState.SENT -> Icon(
             imageVector = Icons.Filled.Check,
             contentDescription = "Sent",
-            tint = MutedGray,
+            tint = base.copy(alpha = 0.7f),
             modifier = modifier.size(14.dp),
         )
         TickState.DELIVERED -> Icon(
             imageVector = Icons.Filled.DoneAll,
             contentDescription = "Delivered",
-            tint = MutedGray,
+            tint = base.copy(alpha = 0.7f),
             modifier = modifier.size(14.dp),
         )
         TickState.READ -> Icon(
             imageVector = Icons.Filled.DoneAll,
             contentDescription = "Seen",
-            // Forest Green reads as "seen" on the ivory bubble and stays inside the palette.
-            tint = ForestGreen,
+            // Coral on the forest bubble, Forest Green on ivory: both are palette colours with
+            // real contrast against what is behind them.
+            tint = if (onDark) Coral else ForestGreen,
             modifier = modifier.size(14.dp),
         )
     }
@@ -267,7 +274,7 @@ fun ChatBubble(
                             style = MaterialTheme.typography.labelSmall,
                             color = if (mine) WarmIvory.copy(alpha = 0.7f) else MutedGray,
                         )
-                        if (mine) TickGlyph(tick)
+                        if (mine) TickGlyph(tick, onDark = true)
                     }
                 }
             }

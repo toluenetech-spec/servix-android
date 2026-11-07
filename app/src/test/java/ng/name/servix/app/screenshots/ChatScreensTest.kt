@@ -155,7 +155,8 @@ class ChatScreensTest {
             hasMore = true,
             online = false,
             lastSeenAt = "2026-11-07T09:45:00.000Z",
-            otherReadAt = "2026-11-07T09:44:30.000Z",
+            // Later than the last message, so the render shows the seen state, not just sent.
+            otherReadAt = "2026-11-07T09:45:00.000Z",
             otherDeliveredAt = "2026-11-07T09:44:10.000Z",
             myUserId = me,
         )
