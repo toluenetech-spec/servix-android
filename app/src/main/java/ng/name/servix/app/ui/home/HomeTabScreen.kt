@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -669,3 +670,5 @@ private fun ProfileStrengthCard(strength: Int, onOpenPublicProfile: (() -> Unit)
         }
     }
 }
+
+private fun Long.grouped(): String = NumberFormat.getIntegerInstance(Locale.UK).format(this)

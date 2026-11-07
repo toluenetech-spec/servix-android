@@ -814,12 +814,6 @@ fun ServixAppShell(
                     onOpenService = { slug ->
                         navController.navigate(ServixRoute.ServiceDetail(slug = slug))
                     },
-                    // Only offered when the server has messaging switched on.
-                    onMessageClick = if (featuresState.flags.community) {
-                        { openChatForBooking(route.id) }
-                    } else {
-                        null
-                    },
                 )
             }
 
@@ -1053,6 +1047,12 @@ fun ServixAppShell(
                     },
                     onOpenService = { serviceSlug ->
                         navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug))
+                    },
+                    // Only offered while the server has messaging switched on.
+                    onMessageClick = if (featuresState.flags.community) {
+                        { openChatForBooking(route.id) }
+                    } else {
+                        null
                     },
                 )
             }
