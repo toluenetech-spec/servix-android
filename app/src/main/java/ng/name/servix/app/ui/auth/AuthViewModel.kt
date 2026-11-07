@@ -1005,6 +1005,14 @@ class AuthViewModel(
     }
 
     // ---- Sign out ----
+    /**
+     * Re-reads the signed-in user and republishes it on [sessionState]. Used after a profile write so
+     * every screen showing the account (Home, Account header, Profile) updates in one emission.
+     */
+    suspend fun refreshSessionUser() {
+        authRepository.refreshSessionUser()
+    }
+
     fun logout(onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             authRepository.logout()

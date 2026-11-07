@@ -27,23 +27,40 @@ object ServixFormatters {
     }
 
     /**
-     * Resolves catalogue image URLs.
-     * Uploaded media from the backend is an absolute URL (https://api.servix.name.ng/media/...).
-     * Catalogue seed assets are root-relative paths (/images/professionals/..., /images/services/...)
-     * served from https://www.servix.name.ng.
+     * Resolves an image path the backend hands us into a URL Coil can load.
+     *
+     *  * absolute `http(s)` URLs are returned unchanged — object storage already hands us those;
+     *  * `/media/…` and `/uploads/…` are served by the **API**, so they resolve against
+     *    `API_BASE_URL`'s origin plus `/api/v1`, never against the marketing site;
+     *  * every other root-relative path is a website asset (`/images/professionals/…`, `/brand/…`)
+     *    and resolves against `WEB_BASE_URL`.
      */
     fun resolveServixMediaUrl(rawUrl: String?): String? {
         val trimmed = rawUrl?.trim().orEmpty()
         if (trimmed.isEmpty()) return null
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            return trimmed
-        }
-        val base = BuildConfig.WEB_BASE_URL.trimEnd('/')
-        return if (trimmed.startsWith("/")) {
-            "$base$trimmed"
-        } else {
-            "$base/$trimmed"
-        }
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+        val path = if (trimmed.startsWith("/")) trimmed else "/$trimmed"
+        val base = if (isApiServedMediaPath(path)) apiMediaBase() else BuildConfig.WEB_BASE_URL.trimEnd('/')
+        return "$base$path"
+    }
+
+    /** Paths the API serves: uploaded avatars/portfolios and the upload redirect. */
+    fun isApiServedMediaPath(path: String): Boolean =
+        path == "/media" || path == "/uploads" ||
+            path.startsWith("/media/") || path.startsWith("/uploads/")
+
+    /**
+     * `API_BASE_URL`'s origin plus `/api/v1`. The origin is taken from the configured URL rather than
+     * string-replaced, so a build pointed at a different host (or at `/api/v1/` with or without the
+     * trailing slash) still resolves to `<origin>/api/v1`.
+     */
+    fun apiMediaBase(): String {
+        val raw = BuildConfig.API_BASE_URL.trim()
+        val fallback = raw.trimEnd('/')
+        val uri = runCatching { java.net.URI(raw) }.getOrNull()
+        val origin = uri?.takeIf { it.scheme != null && it.authority != null }
+            ?.let { "${it.scheme}://${it.authority}" }
+        return if (origin != null) "$origin/api/v1" else "$fallback/api/v1"
     }
 
     fun extractInitials(name: String?): String {

@@ -65,6 +65,7 @@ import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.updates.UpdateCard
 import ng.name.servix.app.updates.UpdateUiState
 import ng.name.servix.app.util.CustomTabLauncher
+import ng.name.servix.app.util.MediaCacheBust
 
 /** Panels reachable from the Account list. */
 enum class AccountPanel { NONE, PROFILE, SAVED, PLAN, SECURITY, DEVICE, UPDATES, LEGAL }
@@ -85,6 +86,8 @@ fun AccountHubScreen(
     onCreateAccountClick: () -> Unit = {},
     onVerifyEmailClick: () -> Unit = {},
     onSignOutClick: () -> Unit = {},
+    /** Re-reads GET /me and republishes the shared session state after a profile write. */
+    onRefreshSessionUser: suspend () -> Unit = {},
 ) {
     var panel by remember { mutableStateOf(AccountPanel.NONE) }
     val context = LocalContext.current
@@ -172,7 +175,11 @@ fun AccountHubScreen(
         } else {
             ServixTextButton(text = "← Back to account") { panel = AccountPanel.NONE }
             when (panel) {
-                AccountPanel.PROFILE -> ProfilePanel(user = user, repository = accountRepository)
+                AccountPanel.PROFILE -> ProfilePanel(
+                    user = user,
+                    repository = accountRepository,
+                    onRefreshSessionUser = onRefreshSessionUser,
+                )
                 AccountPanel.SAVED -> SavedPanel(repository = accountRepository)
                 AccountPanel.PLAN -> PlanPanel(repository = accountRepository)
                 AccountPanel.SECURITY -> SecurityPanel(repository = accountRepository)
@@ -204,7 +211,7 @@ private fun AccountHeader(user: UserDto, onVerifyEmailClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        ServixAvatarImage(rawImageUrl = null, name = user.fullName, size = 64.dp)
+        ServixAvatarImage(rawImageUrl = user.avatarUrl, name = user.fullName, size = 64.dp)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(user.fullName, style = MaterialTheme.typography.titleLarge, color = DeepForest, modifier = Modifier.testTag("account_name"))
             Text(user.email, style = MaterialTheme.typography.bodySmall, color = MutedGray)
@@ -268,12 +275,17 @@ private fun AccountRow(
 }
 
 @Composable
-private fun ProfilePanel(user: UserDto, repository: AccountRepository) {
+private fun ProfilePanel(
+    user: UserDto,
+    repository: AccountRepository,
+    onRefreshSessionUser: suspend () -> Unit,
+) {
     var name by remember(user.id) { mutableStateOf(user.fullName) }
     var saving by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    var avatarUrl by remember(user.id) { mutableStateOf<String?>(null) }
+    // Start from the account the session already holds, so an existing photo shows immediately.
+    var avatarUrl by remember(user.id, user.avatarUrl) { mutableStateOf(user.avatarUrl) }
     var uploading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val invalid = name.trim().length < 2
@@ -304,6 +316,12 @@ private fun ProfilePanel(user: UserDto, repository: AccountRepository) {
                             onSuccess = {
                                 avatarUrl = url
                                 message = "Photo updated."
+                                // Same URL, new bytes: key Coil off a fresh stamp so every avatar
+                                // (header, Home, this panel) reloads instead of hitting its cache.
+                                MediaCacheBust.bump(url)
+                                // Then re-read /me so the shared session carries the new avatar and
+                                // Home + the Account header update without a restart.
+                                onRefreshSessionUser()
                             },
                             onFailure = { error = it.message ?: "We could not save that photo." },
                         )

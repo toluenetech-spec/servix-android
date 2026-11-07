@@ -317,7 +317,7 @@ private fun HomeTopBar(
                 onClick = onOpenAccount,
                 modifier = Modifier.size(48.dp).testTag("home_account_avatar"),
             ) {
-                AvatarImage(size = 36.dp, initials = user.fullName, image = null)
+                AvatarImage(size = 36.dp, initials = user.fullName, image = user.avatarUrl)
             }
         } else {
             ServixTextButton(text = stringResource(R.string.sign_in), onClick = onSignIn)

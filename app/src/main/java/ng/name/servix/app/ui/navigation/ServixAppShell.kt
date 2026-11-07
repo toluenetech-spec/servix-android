@@ -1021,6 +1021,7 @@ fun ServixAppShell(
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onCreateAccountClick = { navController.navigate(ServixRoute.Register) },
                     onVerifyEmailClick = { navController.navigate(ServixRoute.VerifyEmail) },
+                    onRefreshSessionUser = { authViewModel.refreshSessionUser() },
                     onSignOutClick = {
                         authViewModel.logout {
                             navController.navigate(ServixRoute.Welcome) {
