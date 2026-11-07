@@ -7,7 +7,7 @@ harness. **Nothing was uploaded to Play** — these are files the owner drags in
 
 | File | Size | Bytes | What it shows |
 | --- | --- | --- | --- |
-| `docs/play/phone/01_home.png` | 1080×1920 | 168,842 | Home signed in: "Needs your attention" (pay / confirm / review) plus the bookings list with an *Awaiting payment* card |
+| `docs/play/phone/01_home.png` | 1080×1920 | 170,791 | Home signed in: "Needs your attention" (pay / confirm / review) plus the bookings list with an *Awaiting payment* card |
 | `docs/play/phone/02_explore.png` | 1080×1920 | 194,529 | Explore in Professionals mode, query "logo designer", Filters·2, "12 professionals found", rated cards with ₦ start prices |
 | `docs/play/phone/03_professional.png` | 1080×1920 | 171,641 | Tunde Bakare's profile: services, reviews, availability summary |
 | `docs/play/phone/04_service.png` | 1080×1920 | 111,996 | Brand Identity Package detail with availability slot selected and Book & pay |
@@ -16,7 +16,7 @@ harness. **Nothing was uploaded to Play** — these are files the owner drags in
 | `docs/play/phone/07_notifications.png` | 1080×1920 | 95,895 | Notifications: booking accepted, ₦350,000 held in escrow |
 | `docs/play/phone/08_account.png` | 1080×1920 | 149,865 | Account hub: profile, saved, notifications, plan, security, this device |
 | `docs/play/icon-512.png` | 512×512 | 13,753 | Full-bleed Deep Forest square with the SX mark — opaque, no rounded corners |
-| `docs/play/feature-graphic-1024x500.png` | 1024×500 | 27,978 | Deep Forest canvas, the real brand wordmark (`servix-logo-dark.svg`: SX monogram + custom "Servix" lettering), tagline "Hire trusted Nigerian professionals.", coral rule |
+| `docs/play/feature-graphic-1024x500.png` | 1024×500 | 23,591 | Deep Forest canvas, the real brand wordmark (`servix-logo-dark.svg`: SX monogram + custom "Servix" lettering), tagline "Hire trusted Nigerian professionals.", coral rule |
 | `docs/play/ASSETS_COMMITTED` | — | 286 | Sentinel: keeps the art out of every subsequent run |
 
 Total repository cost: **1.3 MB** for all eleven files.
