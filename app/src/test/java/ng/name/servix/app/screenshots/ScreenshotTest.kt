@@ -330,6 +330,7 @@ class ScreenshotTest {
         )
     }
 
+    @Test
     fun accountHub() = rule.capture("15_account") {
         AccountHubScreen(
             user = Fixtures.user,
