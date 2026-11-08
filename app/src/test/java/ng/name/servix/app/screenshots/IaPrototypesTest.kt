@@ -349,8 +349,9 @@ class IaPrototypesTest {
                                     Text("Jobs scheduled", style = MaterialTheme.typography.labelSmall, color = MutedGray)
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("₦120,000", style = MaterialTheme.typography.titleLarge, color = DeepForest)
-                                    Text("Awaiting payout", style = MaterialTheme.typography.labelSmall, color = MutedGray)
+                                    // A count, not a Naira figure: there is no payouts API in this release.
+                                    Text("2", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+                                    Text("Completed", style = MaterialTheme.typography.labelSmall, color = MutedGray)
                                 }
                             }
                         }
