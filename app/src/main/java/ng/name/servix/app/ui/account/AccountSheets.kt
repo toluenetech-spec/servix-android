@@ -51,10 +51,6 @@ import ng.name.servix.app.util.ServixFormatters
  */
 
 @Composable
-
-@Composable
-
-@Composable
 internal fun AccountPaymentsSheetContent(
     payments: AccountPaymentsResponse?,
     onOpenBooking: (String) -> Unit,

@@ -374,8 +374,6 @@ fun OfflineBanner(
 }
 
 @Composable
-
-@Composable
 fun SkeletonBox(
     modifier: Modifier = Modifier,
     height: Dp = 18.dp,
