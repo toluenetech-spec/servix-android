@@ -133,36 +133,40 @@ class ChatScreensTest {
         aiEnabled = true,
     )
 
+    /** Minutes ago, so a render always reads "Today" instead of the CI run's yesterday. */
+    private fun ago(minutes: Long): String =
+        java.time.Instant.now().minusSeconds(minutes * 60).toString()
+
     private fun conversationMessages() = listOf(
         ChatMessageDto(
             id = "m1",
             body = "Hi Ada — I've approved the brief and paid the deposit.",
             senderId = me,
-            createdAt = "2026-11-07T09:10:00.000Z",
+            createdAt = ago(30),
         ),
         ChatMessageDto(
             id = "m2",
             body = "Thank you. I'll send the first draft before noon.",
             senderId = ada.id,
-            createdAt = "2026-11-07T09:12:00.000Z",
+            createdAt = ago(28),
         ),
         ChatMessageDto(
             id = "m3",
             body = "Sounds good.",
             senderId = me,
-            createdAt = "2026-11-07T09:40:00.000Z",
+            createdAt = ago(12),
         ),
         ChatMessageDto(
             id = "m4",
             body = "I've shared the first draft of the logo. 📍 12 Bodija Road, Ibadan",
             senderId = ada.id,
-            createdAt = "2026-11-07T09:42:00.000Z",
+            createdAt = ago(10),
         ),
         ChatMessageDto(
             id = "m5",
             body = "Looking now — the mark reads well at small sizes.",
             senderId = me,
-            createdAt = "2026-11-07T09:44:00.000Z",
+            createdAt = ago(8),
         ),
     )
 
@@ -177,8 +181,8 @@ class ChatScreensTest {
             online = false,
             lastSeenAt = "2026-11-07T09:45:00.000Z",
             // Later than the last message, so the render shows the seen state, not just sent.
-            otherReadAt = "2026-11-07T09:45:00.000Z",
-            otherDeliveredAt = "2026-11-07T09:44:10.000Z",
+            otherReadAt = ago(5),
+            otherDeliveredAt = ago(7),
             myUserId = me,
         )
     }
@@ -219,25 +223,25 @@ class ChatScreensTest {
                 id = "t1",
                 body = "Seen: the brief is approved, thank you.",
                 senderId = me,
-                createdAt = "2026-11-07T09:05:00.000Z",
+                createdAt = ago(60),
             ),
             ChatMessageDto(
                 id = "t2",
                 body = "Delivered but not opened yet.",
                 senderId = me,
-                createdAt = "2026-11-07T09:40:00.000Z",
+                createdAt = ago(20),
             ),
             ChatMessageDto(
                 id = "t3",
                 body = "Only sent — still travelling.",
                 senderId = me,
-                createdAt = "2026-11-07T09:50:00.000Z",
+                createdAt = ago(5),
             ),
             ChatMessageDto(
                 id = "",
                 body = "This one hit the 30-a-minute limit.",
                 senderId = me,
-                createdAt = "2026-11-07T09:51:00.000Z",
+                createdAt = ago(3),
                 clientId = "client-failed-1",
             ),
         )
@@ -248,8 +252,8 @@ class ChatScreensTest {
                 rows = ChatTimeline.build(messages, me),
                 online = true,
                 // Read up to 09:30 (t1 only), delivered up to 09:45 (t1 + t2, not t3).
-                otherReadAt = "2026-11-07T09:30:00.000Z",
-                otherDeliveredAt = "2026-11-07T09:45:00.000Z",
+                otherReadAt = ago(30),
+                otherDeliveredAt = ago(10),
                 myUserId = me,
                 failures = mapOf("client-failed-1" to SendFailure.RATE_LIMITED),
             ),

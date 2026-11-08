@@ -234,6 +234,15 @@ fun ConversationScreen(
         }
         HorizontalDivider(color = BorderSand)
 
+        if (uiState.hasMore) {
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
+                ServixTextButton(
+                    text = if (uiState.loadingOlder) "Loading…" else "Load earlier messages",
+                    onClick = onLoadOlder,
+                )
+            }
+        }
+
         Box(modifier = Modifier.weight(1f)) {
             when {
                 uiState.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -250,16 +259,6 @@ fun ConversationScreen(
                     // at the top of an empty screen, and new rows / the IME never leave a gap.
                     verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
                 ) {
-                    if (uiState.hasMore) {
-                        item(key = "older") {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                                ServixTextButton(
-                                    text = if (uiState.loadingOlder) "Loading…" else "Load earlier messages",
-                                    onClick = onLoadOlder,
-                                )
-                            }
-                        }
-                    }
                     items(uiState.rows) { row ->
                         when (row) {
                             is ChatRow.Day -> ChatDaySeparator(row.label)
