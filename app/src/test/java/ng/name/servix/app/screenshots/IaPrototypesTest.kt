@@ -385,16 +385,6 @@ class IaPrototypesTest {
                     }
                 }
 
-                if (role == Role.CUSTOMER) {
-                    ProtoRow(
-                        icon = Icons.Filled.AutoAwesome,
-                        title = "Post a request",
-                        subtitle = "Describe the job once, get proposals from professionals",
-                        action = "Post",
-                        tone = SoftSand,
-                    )
-                }
-
                 if (role != Role.PROFESSIONAL) {
                     SectionHeader(title = "Browse by category", action = "See all")
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

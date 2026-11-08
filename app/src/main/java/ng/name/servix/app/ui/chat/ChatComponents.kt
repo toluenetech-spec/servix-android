@@ -209,7 +209,7 @@ fun ChatDaySeparator(label: String, modifier: Modifier = Modifier) {
 fun ChatBubble(
     row: ChatRow.Message,
     tick: TickState?,
-    failed: Boolean,
+    failure: SendFailure?,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -278,9 +278,13 @@ fun ChatBubble(
                     }
                 }
             }
-            if (failed) {
+            if (failure != null) {
                 Text(
-                    text = "Tap to retry",
+                    text = when (failure) {
+                        // 429 MESSAGE_LIMIT — the API's own limit is 30 messages a minute.
+                        SendFailure.RATE_LIMITED -> "Not sent — too many messages, wait a minute · Tap to retry"
+                        SendFailure.OTHER -> "Not sent · Tap to retry"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = Coral,
                     modifier = Modifier

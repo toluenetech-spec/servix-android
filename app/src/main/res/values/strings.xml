@@ -6,8 +6,6 @@
     <string name="escrow_copy">The price is locked when you book. Payment is held securely and only released after you confirm completion.</string>
     <string name="ai_disclaimer">AI suggestions are drafts — check them before you rely on them. Servix AI never moves money or changes your bookings.</string>
     <string name="ai_quota_exceeded">Your plan\'s AI allowance is used up for this month — upgrade on www.servix.name.ng</string>
-    <string name="pro_tools_on_web">Professional tools are on www.servix.name.ng</string>
-    <string name="pro_tools_on_web_body">Your professional and admin workspaces live on the Servix website. You can continue using the Android app to browse, book services, and chat with Servix AI.</string>
     <string name="open_servix_web">Open www.servix.name.ng</string>
 
     <!-- Navigation tabs -->
@@ -361,9 +359,6 @@
     <string name="dashboard_card_ai_title">Ask Servix anything.</string>
     <string name="dashboard_card_ai_body">Describe what you need, get budget guidance from real listings, and understand every step of a booking.</string>
     <string name="dashboard_card_ai_cta">Open Servix AI →</string>
-    <string name="dashboard_card_security_eyebrow">Account security</string>
-    <string name="dashboard_card_security_title">Stay connected. Stay protected.</string>
-    <string name="dashboard_card_security_cta">Manage sign-in →</string>
     <string name="dashboard_card_payments_eyebrow">Payments</string>
     <string name="dashboard_card_payments_title">Know where every payment stands.</string>
     <string name="dashboard_card_payments_body">Check payment references, refund records and booking details.</string>

@@ -17,6 +17,18 @@ import ng.name.servix.app.data.repository.ChatRepository
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * Why a send did not land. The API separates "you may not" from "not right now", and the bubble says
+ * which one it is instead of a generic failure (community.ts: `429 MESSAGE_LIMIT` = 30/min).
+ */
+enum class SendFailure {
+    /** `429 MESSAGE_LIMIT` — retrying immediately will just fail again. */
+    RATE_LIMITED,
+
+    /** Blocked, unaccepted, offline — retrying may work. */
+    OTHER,
+}
+
 data class ConversationUiState(
     val loading: Boolean = true,
     val loadingOlder: Boolean = false,
@@ -34,14 +46,15 @@ data class ConversationUiState(
     val otherTyping: Boolean = false,
     val myUserId: String = "",
     val pendingClients: Set<String> = emptySet(),
-    val failedClients: Set<String> = emptySet(),
+    /** clientId → why it failed; the message (and its clientId) is kept so retry stays idempotent. */
+    val failures: Map<String, SendFailure> = emptyMap(),
     val error: String? = null,
     val reactions: List<String> = DEFAULT_REACTIONS,
 ) {
     fun tickFor(message: ChatMessageDto): TickState? =
         ChatTicks.state(message, myUserId, otherReadAt, otherDeliveredAt, message.clientId in pendingClients)
 
-    fun failed(message: ChatMessageDto): Boolean = message.clientId?.let { it in failedClients } == true
+    fun failureOf(message: ChatMessageDto): SendFailure? = message.clientId?.let { failures[it] }
 }
 
 /** The reaction set the API accepts (`community.ts:9 CHAT_REACTIONS`) — Stage 2 uses the picker. */
@@ -159,7 +172,7 @@ class ConversationViewModel(
                 messages = messages,
                 rows = ChatTimeline.build(messages, myUserId),
                 pendingClients = it.pendingClients + (client.clientId ?: ""),
-                failedClients = it.failedClients - (client.clientId ?: ""),
+                failures = it.failures - (client.clientId ?: ""),
                 error = null,
             )
         }
@@ -172,7 +185,7 @@ class ConversationViewModel(
         _uiState.update {
             it.copy(
                 pendingClients = it.pendingClients + clientId,
-                failedClients = it.failedClients - clientId,
+                failures = it.failures - clientId,
                 error = null,
             )
         }
@@ -192,17 +205,23 @@ class ConversationViewModel(
                             messages = merged,
                             rows = ChatTimeline.build(merged, myUserId),
                             pendingClients = state.pendingClients - clientId,
-                            failedClients = state.failedClients - clientId,
+                            failures = state.failures - clientId,
                         )
                     }
                 },
                 onFailure = { failure ->
+                    val api = failure as? ng.name.servix.app.data.model.ServixApiException
+                    val reason = if (api != null && (api.status == 429 || api.code == "MESSAGE_LIMIT")) {
+                        SendFailure.RATE_LIMITED
+                    } else {
+                        SendFailure.OTHER
+                    }
                     _uiState.update { state ->
                         state.copy(
                             sending = false,
                             pendingClients = state.pendingClients - clientId,
-                            failedClients = state.failedClients + clientId,
-                            // The API's own message, shown next to "Tap to retry" (plan Stage 2 error rule).
+                            // The clientId stays on the message, so "Tap to retry" is the same idempotency key.
+                            failures = state.failures + (clientId to reason),
                             error = failure.message ?: "Message not sent.",
                         )
                     }
@@ -293,7 +312,7 @@ class ConversationViewModel(
                 rows = ChatTimeline.build(merged, myUserId),
                 // A server echo of my own optimistic message clears its clock immediately.
                 pendingClients = message.clientId?.let { state.pendingClients - it } ?: state.pendingClients,
-                failedClients = message.clientId?.let { state.failedClients - it } ?: state.failedClients,
+                failures = message.clientId?.let { state.failures - it } ?: state.failures,
             )
         }
     }

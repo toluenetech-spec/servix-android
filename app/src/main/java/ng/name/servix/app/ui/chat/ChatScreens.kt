@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.CircularProgressIndicator
@@ -223,6 +224,13 @@ fun ConversationScreen(
                     modifier = Modifier.testTag("conversation_presence"),
                 )
             }
+            // Affordance for the contact card: the whole header is tappable, so say so.
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = "Contact details",
+                tint = MutedGray,
+                modifier = Modifier.size(20.dp).testTag("conversation_contact_cue"),
+            )
         }
         HorizontalDivider(color = BorderSand)
 
@@ -238,7 +246,9 @@ fun ConversationScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize().testTag("conversation_list"),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    // Bottom-anchored: a short conversation sits on the composer instead of floating
+                    // at the top of an empty screen, and new rows / the IME never leave a gap.
+                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
                 ) {
                     if (uiState.hasMore) {
                         item(key = "older") {
@@ -256,7 +266,7 @@ fun ConversationScreen(
                             is ChatRow.Message -> ChatBubble(
                                 row = row,
                                 tick = uiState.tickFor(row.message),
-                                failed = uiState.failed(row.message),
+                                failure = uiState.failureOf(row.message),
                                 onRetry = { row.message.clientId?.let(onRetry) },
                             )
                         }

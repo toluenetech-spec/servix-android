@@ -1,6 +1,27 @@
 package ng.name.servix.app.screenshots
 
 import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import ng.name.servix.app.ui.navigation.ServixBottomBar
+import ng.name.servix.app.ui.navigation.ServixTab
+import ng.name.servix.app.ui.chat.SendFailure
+import ng.name.servix.app.ui.theme.WarmIvory
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -185,6 +206,99 @@ class ChatScreensTest {
             onLoadOlder = {},
             onOpenContactCard = {},
         )
+    }
+
+    /**
+     * One frame, all four states a bubble can be in: seen (coral ✓✓), delivered (muted ✓✓),
+     * sent (single ✓) and a failed optimistic row whose text names the 429 limit.
+     */
+    @Test
+    fun ticksAndFailure() = rule.capture("44_chat_ticks_and_failure") {
+        val messages = listOf(
+            ChatMessageDto(
+                id = "t1",
+                body = "Seen: the brief is approved, thank you.",
+                senderId = me,
+                createdAt = "2026-11-07T09:05:00.000Z",
+            ),
+            ChatMessageDto(
+                id = "t2",
+                body = "Delivered but not opened yet.",
+                senderId = me,
+                createdAt = "2026-11-07T09:40:00.000Z",
+            ),
+            ChatMessageDto(
+                id = "t3",
+                body = "Only sent — still travelling.",
+                senderId = me,
+                createdAt = "2026-11-07T09:50:00.000Z",
+            ),
+            ChatMessageDto(
+                id = "",
+                body = "This one hit the 30-a-minute limit.",
+                senderId = me,
+                createdAt = "2026-11-07T09:51:00.000Z",
+                clientId = "client-failed-1",
+            ),
+        )
+        ConversationScreen(
+            uiState = ConversationUiState(
+                loading = false,
+                messages = messages,
+                rows = ChatTimeline.build(messages, me),
+                online = true,
+                // Read up to 09:30 (t1 only), delivered up to 09:45 (t1 + t2, not t3).
+                otherReadAt = "2026-11-07T09:30:00.000Z",
+                otherDeliveredAt = "2026-11-07T09:45:00.000Z",
+                myUserId = me,
+                failures = mapOf("client-failed-1" to SendFailure.RATE_LIMITED),
+            ),
+            thread = threads.first(),
+            onBack = {},
+            onInput = {},
+            onSend = {},
+            onRetry = {},
+            onLoadOlder = {},
+            onOpenContactCard = {},
+        )
+    }
+
+    /** Shell-level evidence that Chats is the centre, prominent tab and carries the unread badge. */
+    @Test
+    fun shellChatsTab() = rule.capture("43_shell_chats_tab") {
+        Scaffold(
+            containerColor = WarmIvory,
+            bottomBar = {
+                ServixBottomBar(
+                    tabs = listOf(
+                        ServixTab("Home", Icons.Filled.Home, Icons.Outlined.Home, "nav_tab_home"),
+                        ServixTab("Explore", Icons.Filled.Search, Icons.Outlined.Search, "nav_tab_search"),
+                        ServixTab(
+                            label = "Chats",
+                            selectedIcon = Icons.Filled.Chat,
+                            unselectedIcon = Icons.Outlined.Chat,
+                            testTag = "nav_tab_chats",
+                            badgeCount = threads.sumOf { it.unreadCount },
+                            prominent = true,
+                        ),
+                        ServixTab("Bookings", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth, "nav_tab_bookings"),
+                        ServixTab("Account", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle, "nav_tab_account"),
+                    ),
+                    selectedIndex = 2,
+                    onSelect = {},
+                )
+            },
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                ChatsScreen(
+                    uiState = chatsState(),
+                    myUserId = me,
+                    onOpenThread = {},
+                    onOpenAi = {},
+                    onRetry = {},
+                )
+            }
+        }
     }
 
     @Test

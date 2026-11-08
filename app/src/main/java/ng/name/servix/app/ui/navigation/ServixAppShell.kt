@@ -114,7 +114,6 @@ import ng.name.servix.app.ui.catalogue.SearchViewModel
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
 import ng.name.servix.app.ui.catalogue.ServiceDetailViewModel
 import ng.name.servix.app.ui.components.OfflineBanner
-import ng.name.servix.app.ui.components.ProfessionalToolsWebCard
 import ng.name.servix.app.ui.components.ServixBadge
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixLogoMark
@@ -136,7 +135,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import ng.name.servix.app.ui.home.HomeTabScreen
-import ng.name.servix.app.util.ServixFormatters
+import ng.name.servix.app.ui.home.HomeWeek
 import ng.name.servix.app.ui.home.HomeViewModel
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
@@ -729,16 +728,9 @@ fun ServixAppShell(
                     chatsEnabled = featuresState.flags.community,
                     chatsUnread = chatsState.unreadTotal,
                     onOpenChats = { navController.navigate(ServixRoute.Chats) },
-                    requestsEnabled = featuresState.flags.requests,
-                    // Stage 3 replaces this with the native Requests form; until then the assistant takes the brief.
-                    onPostRequest = { navController.navigate(ServixRoute.ServixAi) },
-                    thisWeekJobs = homeUiState.bookings.count { booking ->
-                        booking.status == "accepted" || booking.status == "in_progress"
-                    },
-                    payoutsPendingLabel = homeUiState.bookings
-                        .filter { it.status == "completed" }
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { done -> ServixFormatters.formatNaira(done.sumOf { it.amount }) },
+                    // Both numbers are exactly what their labels say; see HomeWeek.
+                    jobsScheduledThisWeek = HomeWeek.jobsScheduled(homeUiState.bookings),
+                    completedThisWeek = HomeWeek.jobsCompleted(homeUiState.bookings),
                     profileStrength = listOf(
                         user?.avatarUrl != null,
                         user?.fullName?.isNotBlank() == true,
@@ -1187,174 +1179,6 @@ fun ServixAppShell(
                             conversationViewModel.block()
                             contactCardOpen = false
                         },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Stage1AccountTab(
-    user: UserDto?,
-    accountRepository: AccountRepository,
-    updateState: UpdateUiState,
-    city: String?,
-    onSignInClick: () -> Unit,
-    onCreateAccountClick: () -> Unit,
-    onVerifyEmailClick: () -> Unit,
-    onSignOutClick: () -> Unit,
-) {
-    val context = LocalContext.current
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(
-            text = "YOUR ACCOUNT",
-            style = MaterialTheme.typography.labelSmall,
-            color = ForestGreen,
-        )
-        Text(
-            text = stringResource(R.string.nav_account),
-            style = MaterialTheme.typography.headlineMedium,
-            color = DeepForest,
-        )
-
-        if (user == null) {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Sign in to manage your Servix account",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Charcoal,
-                    )
-                    Text(
-                        text = "Access your saved professionals, bookings, payment history, notifications and plan.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MutedGray,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ServixPrimaryButton(
-                            text = stringResource(R.string.sign_in),
-                            onClick = onSignInClick,
-                            modifier = Modifier.weight(1f),
-                            testTag = "account_sign_in_button",
-                        )
-                        ServixSecondaryButton(
-                            text = stringResource(R.string.create_account),
-                            onClick = onCreateAccountClick,
-                            modifier = Modifier.weight(1f),
-                            testTag = "account_create_account_button",
-                        )
-                    }
-                }
-            }
-        } else {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = DeepForest,
-                            modifier = Modifier.size(52.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = user.firstName.take(1).uppercase(),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = WarmIvory,
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = user.fullName,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Charcoal,
-                            )
-                            Text(
-                                text = user.email,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedGray,
-                            )
-                        }
-                        ServixBadge(
-                            text = user.role.replaceFirstChar { it.uppercase() },
-                            containerColor = SoftSand,
-                            contentColor = DeepForest,
-                        )
-                    }
-
-                    if (!user.emailVerified) {
-                        HorizontalDivider(color = SoftSand)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "Email verification needed",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Charcoal,
-                                modifier = Modifier.weight(1f),
-                            )
-                            ServixPrimaryButton(
-                                text = stringResource(R.string.verify_email_cta),
-                                onClick = onVerifyEmailClick,
-                                testTag = "account_verify_email_button",
-                            )
-                        }
-                    }
-                }
-            }
-
-            ProfessionalToolsWebCard(role = user.role)
-
-            ServixSecondaryButton(
-                text = stringResource(R.string.sign_out),
-                onClick = onSignOutClick,
-                modifier = Modifier.fillMaxWidth(),
-                testTag = "account_sign_out_button",
-            )
-        }
-
-        UpdateCard(updateState)
-        if (updateState.enabled) {
-            ServixSecondaryButton(text = "Check for updates", onClick = { updateState.check(force = true) }, testTag = "check_updates")
-        }
-        DeviceCard(repository = accountRepository, userId = user?.id, city = city)
-
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "About Servix",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Charcoal,
-                )
-                Text(
-                    text = "Version ${BuildConfig.VERSION_NAME} · API: api.servix.name.ng",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedGray,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ServixSecondaryButton(
-                        text = "Privacy Policy",
-                        onClick = { CustomTabLauncher.launchWebPath(context, "/privacy") },
-                        modifier = Modifier.weight(1f),
-                        testTag = "account_privacy_button",
-                    )
-                    ServixSecondaryButton(
-                        text = "Terms of Service",
-                        onClick = { CustomTabLauncher.launchWebPath(context, "/terms") },
-                        modifier = Modifier.weight(1f),
-                        testTag = "account_terms_button",
                     )
                 }
             }
