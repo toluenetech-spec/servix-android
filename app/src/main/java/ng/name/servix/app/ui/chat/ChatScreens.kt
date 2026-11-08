@@ -74,6 +74,7 @@ import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.ServixTextButton
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
+import ng.name.servix.app.ui.theme.Coral
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
