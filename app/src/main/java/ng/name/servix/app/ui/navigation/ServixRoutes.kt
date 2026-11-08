@@ -49,6 +49,10 @@ sealed interface ServixRoute {
     @Serializable
     data class ChatConversation(val threadId: String) : ServixRoute
 
+    /** Servix AI pinned as a conversation inside Chats (release 1.1, Stage 2g). */
+    @Serializable
+    data object ChatAi : ServixRoute
+
     @Serializable
     data object Bookings : ServixRoute
 

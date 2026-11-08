@@ -1,6 +1,9 @@
 package ng.name.servix.app.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -204,25 +207,39 @@ fun ChatDaySeparator(label: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** A message bubble. Text only in Stage 1; media bubbles arrive in Stage 2. */
+/**
+ * One message. Text, photo, voice note and file share the same shell; a quote sits above the content
+ * and reaction pills below it. A failed send swaps the clock/tick for an error glyph and keeps the
+ * "Not sent" line inside the bubble's width so the two never disagree.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatBubble(
     row: ChatRow.Message,
     tick: TickState?,
     failure: SendFailure?,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
+    myUserId: String = "",
+    contactName: String = "",
+    uploadProgress: Float? = null,
+    audio: AudioPlayback = AudioPlayback(),
+    onRetry: () -> Unit = {},
+    onToggleReaction: (String) -> Unit = {},
+    onOpenAttachment: (String) -> Unit = {},
+    onQuoteTap: (String) -> Unit = {},
+    onLongPress: () -> Unit = {},
 ) {
     val mine = row.mine
     val message = row.message
+    val attachment = message.attachment
     val shape = when {
         mine && row.grouped -> GroupedMine
         mine -> MineShape
         row.grouped -> GroupedTheirs
         else -> TheirsShape
     }
+    val deleted = message.kind == "deleted" || message.deletedAt != null
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
     ) {
         Column(
@@ -234,60 +251,105 @@ fun ChatBubble(
                     .clip(shape)
                     .background(if (mine) DeepForest else PureWhite)
                     .border(1.dp, if (mine) DeepForest else BorderSand, shape)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .combinedClickable(
+                        onClick = {},
+                        onLongClick = { if (!deleted) onLongPress() },
+                    )
+                    .padding(horizontal = if (attachment != null && !deleted) 6.dp else 12.dp, vertical = if (attachment != null && !deleted) 6.dp else 8.dp)
                     .testTag(if (mine) "bubble_mine" else "bubble_theirs"),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (message.kind == "deleted") {
-                        Text(
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    message.replyTo?.let { reply ->
+                        ReplyQuote(
+                            reply = reply,
+                            mine = mine,
+                            otherName = contactName,
+                            onTap = { reply.id.takeIf { it.isNotBlank() }?.let(onQuoteTap) },
+                        )
+                    }
+                    when {
+                        deleted -> Text(
                             text = "This message was deleted",
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (mine) WarmIvory.copy(alpha = 0.75f) else MutedGray,
                         )
-                    } else if (ChatText.isLocationShare(message.body)) {
-                        val url = ChatText.locationUrl(message.body)
-                        Text(
-                            text = "📍 Shared location",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (mine) WarmIvory else Charcoal,
+                        message.kind == "image" && attachment != null -> ImageBubble(
+                            attachment = attachment,
+                            uploadProgress = uploadProgress,
+                            onClick = { attachment.url.takeIf { it.isNotBlank() }?.let(onOpenAttachment) },
                         )
-                        if (url != null) {
+                        message.kind == "audio" -> AudioBubble(
+                            durationMs = attachment?.durationMs,
+                            playing = audio.playing,
+                            positionMs = audio.positionMs,
+                            mine = mine,
+                            onToggle = audio.onToggle,
+                        )
+                        message.kind == "file" && attachment != null -> FileBubble(
+                            attachment = attachment,
+                            mine = mine,
+                            onOpen = { attachment.url.takeIf { it.isNotBlank() }?.let(onOpenAttachment) },
+                        )
+                        ChatText.isLocationShare(message.body) -> {
+                            val url = ChatText.locationUrl(message.body)
                             Text(
-                                text = url,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (mine) WarmIvory.copy(alpha = 0.85f) else ForestGreen,
+                                text = "📍 Shared location",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (mine) WarmIvory else Charcoal,
                             )
+                            if (url != null) {
+                                Text(
+                                    text = url,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (mine) WarmIvory.copy(alpha = 0.85f) else ForestGreen,
+                                )
+                            }
                         }
-                    } else {
-                        Text(
+                        message.body.isNotBlank() -> Text(
                             text = message.body,
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (mine) WarmIvory else Charcoal,
                         )
+                        else -> Unit
                     }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = if (attachment != null && !deleted) 6.dp else 0.dp),
                     ) {
                         Text(
                             text = ChatTime.clockLabel(message.createdAt),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (mine) WarmIvory.copy(alpha = 0.7f) else MutedGray,
                         )
-                        if (mine) TickGlyph(tick, onDark = true)
+                        when {
+                            // A failed send shows what went wrong, never a "still sending" clock.
+                            failure != null -> Icon(
+                                imageVector = Icons.Filled.ErrorOutline,
+                                contentDescription = "Not sent",
+                                tint = Coral,
+                                modifier = Modifier.size(13.dp).testTag("bubble_error_glyph"),
+                            )
+                            mine -> TickGlyph(tick, onDark = true)
+                        }
                     }
                 }
             }
+            ReactionPills(
+                reactions = message.reactions,
+                myUserId = myUserId,
+                onToggle = onToggleReaction,
+            )
             if (failure != null) {
                 Text(
                     text = when (failure) {
-                        // 429 MESSAGE_LIMIT — the API's own limit is 30 messages a minute.
                         SendFailure.RATE_LIMITED -> "Not sent — too many messages, wait a minute · Tap to retry"
                         SendFailure.OTHER -> "Not sent · Tap to retry"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = Coral,
                     modifier = Modifier
+                        .widthIn(max = 300.dp)
                         .clickable(onClick = onRetry)
                         .padding(top = 2.dp)
                         .testTag("bubble_retry"),
@@ -296,3 +358,10 @@ fun ChatBubble(
         }
     }
 }
+
+/** Playback state for the one voice note that can be playing at a time. */
+data class AudioPlayback(
+    val playing: Boolean = false,
+    val positionMs: Long = 0L,
+    val onToggle: () -> Unit = {},
+)

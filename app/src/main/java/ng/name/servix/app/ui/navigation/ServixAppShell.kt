@@ -121,6 +121,7 @@ import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
 import ng.name.servix.app.ui.chat.ChatContactCard
+import ng.name.servix.app.ui.chat.AiThreadScreen
 import ng.name.servix.app.ui.chat.ChatsScreen
 import ng.name.servix.app.ui.chat.ChatsSignedOut
 import ng.name.servix.app.ui.chat.ChatsViewModel
@@ -129,6 +130,7 @@ import ng.name.servix.app.ui.chat.ConversationViewModel
 import ng.name.servix.app.data.realtime.ChatEventStream
 import ng.name.servix.app.data.repository.ChatRepository
 import ng.name.servix.app.data.repository.FeaturesRepository
+import ng.name.servix.app.data.repository.UploadRepository
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.outlined.Chat
 import androidx.lifecycle.Lifecycle
@@ -230,6 +232,7 @@ fun ServixAppShell(
     accountRepository: AccountRepository,
     aiRepository: AiRepository,
     chatRepository: ChatRepository,
+    uploadRepository: UploadRepository,
     featuresRepository: FeaturesRepository,
     chatEventStream: ChatEventStream,
     isOnline: Boolean,
@@ -1087,6 +1090,22 @@ fun ServixAppShell(
                 )
             }
 
+            composable<ServixRoute.ChatAi>(
+                enterTransition = { fadeIn(tween(tabMs)) },
+                exitTransition = { fadeOut(tween(tabMs)) },
+                popEnterTransition = { fadeIn(tween(tabMs)) },
+                popExitTransition = { fadeOut(tween(tabMs)) },
+            ) {
+                val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
+                AiThreadScreen(
+                    state = aiUiState,
+                    onBack = { navController.popBackStack() },
+                    onInput = aiViewModel::updateInput,
+                    onSend = { aiViewModel.send() },
+                    onRetry = aiViewModel::retry,
+                )
+            }
+
             composable<ServixRoute.Account>(
                 enterTransition = { fadeIn(tween(tabMs)) },
                 exitTransition = { fadeOut(tween(tabMs)) },
@@ -1130,7 +1149,7 @@ fun ServixAppShell(
                         uiState = chatsState,
                         myUserId = user.id,
                         onOpenThread = { threadId -> navController.navigate(ServixRoute.ChatConversation(threadId)) },
-                        onOpenAi = { navController.navigate(ServixRoute.ServixAi) },
+                        onOpenAi = { navController.navigate(ServixRoute.ChatAi) },
                         onRetry = { chatsViewModel.refresh() },
                     )
                 }
@@ -1147,6 +1166,7 @@ fun ServixAppShell(
                     viewModelStoreOwner = backStackEntry,
                     factory = ConversationViewModel.factory(
                         chatRepository = chatRepository,
+                        uploadRepository = uploadRepository,
                         stream = chatEventStream,
                         threadId = route.threadId,
                         myUserId = sessionUserId.orEmpty(),
@@ -1165,6 +1185,19 @@ fun ServixAppShell(
                     onRetry = conversationViewModel::retry,
                     onLoadOlder = conversationViewModel::loadOlder,
                     onOpenContactCard = { contactCardOpen = true },
+                    onSendImage = conversationViewModel::sendImage,
+                    onSendFile = conversationViewModel::sendFile,
+                    onSendVoice = conversationViewModel::sendVoice,
+                    onCancelReply = conversationViewModel::cancelReply,
+                    onOpenActions = conversationViewModel::openActions,
+                    onDismissActions = conversationViewModel::closeActions,
+                    onReply = conversationViewModel::reply,
+                    onToggleReaction = conversationViewModel::toggleReaction,
+                    onDeleteMessage = conversationViewModel::deleteForEveryone,
+                    onOpenViewer = conversationViewModel::openViewer,
+                    onCloseViewer = conversationViewModel::closeViewer,
+                    onOpenAttachment = { url -> CustomTabLauncher.launchUrl(context, url) },
+                    onSystemMessage = conversationViewModel::showNotice,
                 )
                 if (contactCardOpen && thread != null) {
                     ChatContactCard(

@@ -32,7 +32,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ng.name.servix.app.data.model.ChatAttachmentDto
 import ng.name.servix.app.data.model.ChatBookingRefDto
+import ng.name.servix.app.data.model.ChatReplyDto
+import ng.name.servix.app.ui.ai.AiUiState
+import ng.name.servix.app.ui.ai.ChatTurn
+import ng.name.servix.app.ui.chat.AiThreadScreen
+import ng.name.servix.app.ui.chat.ImageViewer
 import ng.name.servix.app.data.model.ChatMessageDto
 import ng.name.servix.app.data.model.ChatPersonDto
 import ng.name.servix.app.data.model.ChatPersonProfileDto
@@ -316,6 +322,118 @@ class ChatScreensTest {
             onRetry = {},
             onLoadOlder = {},
             onOpenContactCard = {},
+        )
+    }
+
+    /** Photos, a voice note, a file, a quote, reaction pills and a tombstone — Stage 2 in one frame. */
+    @Test
+    fun mediaStates() = rule.capture("45_chat_media_states") {
+        val messages = listOf(
+            ChatMessageDto(
+                id = "s1",
+                body = "Here is the shot from the shoot.",
+                senderId = ada.id,
+                createdAt = ago(42),
+                kind = "image",
+                attachment = ChatAttachmentDto(url = "", name = "studio.jpg", mime = "image/jpeg", size = 842_000),
+            ),
+            ChatMessageDto(
+                id = "s2",
+                body = "",
+                senderId = me,
+                createdAt = ago(40),
+                kind = "audio",
+                attachment = ChatAttachmentDto(url = "", name = "voice-note.m4a", mime = "audio/mp4", size = 96_000, durationMs = 7_400),
+                reactions = mapOf("🔥" to listOf(ada.id)),
+            ),
+            ChatMessageDto(
+                id = "s3",
+                body = "Sending the signed brief.",
+                senderId = ada.id,
+                createdAt = ago(20),
+                kind = "file",
+                attachment = ChatAttachmentDto(url = "", name = "brand-brief.pdf", mime = "application/pdf", size = 1_240_000),
+            ),
+            ChatMessageDto(
+                id = "s4",
+                body = "Approved — thanks Ada.",
+                senderId = me,
+                createdAt = ago(15),
+                replyTo = ChatReplyDto(id = "s3", senderId = ada.id, kind = "file", body = "", attachmentName = "brand-brief.pdf"),
+                reactions = mapOf("👍" to listOf(ada.id, me), "❤️" to listOf(ada.id)),
+            ),
+            ChatMessageDto(
+                id = "s5",
+                body = "",
+                senderId = me,
+                createdAt = ago(12),
+                kind = "deleted",
+                deletedAt = ago(11),
+            ),
+        )
+        ConversationScreen(
+            uiState = ConversationUiState(
+                loading = false,
+                messages = messages,
+                rows = ChatTimeline.build(messages, me),
+                online = true,
+                otherReadAt = ago(10),
+                myUserId = me,
+            ),
+            thread = threads.first(),
+            onBack = {}, onInput = {}, onSend = {}, onRetry = {}, onLoadOlder = {}, onOpenContactCard = {},
+        )
+    }
+
+    /** Upload ring on my own photo plus the quote banner waiting in the composer. */
+    @Test
+    fun mediaUploadingAndReply() = rule.capture("46_chat_upload_and_reply") {
+        val pending = ChatMessageDto(
+            id = "",
+            body = "",
+            senderId = me,
+            createdAt = ago(1),
+            clientId = "client-uploading",
+            kind = "image",
+            attachment = ChatAttachmentDto(url = "", name = "receet.jpg", size = 900_000),
+        )
+        val quoted = ChatMessageDto(id = "s9", body = "Can you send the invoice?", senderId = ada.id, createdAt = ago(4))
+        ConversationScreen(
+            uiState = ConversationUiState(
+                loading = false,
+                messages = listOf(quoted, pending),
+                rows = ChatTimeline.build(listOf(quoted, pending), me),
+                myUserId = me,
+                uploadProgress = mapOf("client-uploading" to 0.62f),
+                replyTo = quoted,
+            ),
+            thread = threads.first(),
+            onBack = {}, onInput = {}, onSend = {}, onRetry = {}, onLoadOlder = {}, onOpenContactCard = {},
+        )
+    }
+
+    /** Full-screen viewer reached by tapping a photo bubble. */
+    @Test
+    fun imageViewer() = rule.capture("47_chat_image_viewer") {
+        ImageViewer(url = "", onClose = {})
+    }
+
+    /** Servix AI as a conversation: assistant bubbles, an AI label, and no read ticks. */
+    @Test
+    fun aiThread() = rule.capture("48_chat_ai_thread") {
+        AiThreadScreen(
+            state = AiUiState(
+                ownerId = me,
+                turns = listOf(
+                    ChatTurn(1, "user", "What should a logo suite cost in Lagos?"),
+                    ChatTurn(2, "assistant", "Most identity projects on Servix land between ₦180,000 and ₦450,000. That range buys a primary mark, a small palette and a one-page usage guide; add 30-40% for a full brand book."),
+                ),
+                input = "And a pitch deck?",
+            ),
+            onBack = {},
+            onInput = {},
+            onSend = {},
+            onRetry = {},
         )
     }
 }
