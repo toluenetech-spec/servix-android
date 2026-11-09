@@ -22,6 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.AcUnit
+import androidx.compose.material.icons.rounded.Brush
+import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -94,7 +99,7 @@ fun GuestHomeScreen(
                             Surface(onClick = { onCategory(category.id) }, modifier = Modifier.heightIn(min = 48.dp), shape = CircleShape,
                                 color = PureWhite, border = BorderStroke(1.dp, BorderSand)) {
                                 Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(categoryIconFor(category.icon), contentDescription = null, tint = Charcoal, modifier = Modifier.size(18.dp))
+                                    Icon(guestCategoryIcon(category.icon, category.name), contentDescription = null, tint = Charcoal, modifier = Modifier.size(18.dp))
                                     Text(category.name, style = ServixType.labelLg, color = Charcoal)
                                 }
                             }
@@ -145,5 +150,17 @@ private fun GuestButton(text: String, onClick: () -> Unit, modifier: Modifier = 
         colors = ButtonDefaults.buttonColors(containerColor = if (secondary) PureWhite else DeepForest, contentColor = if (secondary) DeepForest else PureWhite),
         border = if (secondary) BorderStroke(1.dp, BorderStrongSand) else null, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)) {
         Text(text, style = ServixType.labelLg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private fun guestCategoryIcon(icon: String, name: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val key = (icon + " " + name).lowercase()
+    return when {
+        "electric" in key || "bolt" in key -> Icons.Rounded.FlashOn
+        "plumb" in key -> Icons.Rounded.Build
+        "fridge" in key || "conditioning" in key || "fan" in key -> Icons.Rounded.AcUnit
+        "paint" in key || "clean" in key -> Icons.Rounded.Brush
+        "tech" in key || "device" in key -> Icons.Rounded.Computer
+        else -> categoryIconFor(icon)
     }
 }
