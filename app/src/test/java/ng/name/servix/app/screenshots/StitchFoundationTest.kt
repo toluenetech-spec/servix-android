@@ -118,6 +118,33 @@ class StitchFoundationTest {
         }
     }
 
+    @Test fun guestHome() = rule.capture("67_home_guest_stitch") { guestHomePreview() }
+
+    @Test fun guestHomeBottom() = rule.capture("67b_home_guest_bottom", afterContent = {
+        rule.onNodeWithText("Ask Servix AI").performScrollTo()
+    }) { guestHomePreview() }
+
+    @Test fun guestHomeActions() {
+        var opened = ""
+        rule.setContent { ServixTheme { guestHomePreview(onSearch = { opened = "search" }, onCreate = { opened = "register" }) } }
+        rule.onNodeWithTag("home_search_field").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("search", opened) }
+        rule.onNodeWithTag("home_create_account_button").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("register", opened) }
+        rule.onNodeWithText("Chats").assertDoesNotExist()
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun guestHomePreview(onSearch: () -> Unit = {}, onCreate: () -> Unit = {}) {
+        ng.name.servix.app.ui.home.GuestHomeScreen(city = "Lagos", state = ng.name.servix.app.ui.home.HomeUiState(
+            loading = false,
+            categories = listOf(ng.name.servix.app.data.model.CategoryDto(id = "electrical", name = "Electrical", icon = "bolt"),
+                ng.name.servix.app.data.model.CategoryDto(id = "plumbing", name = "Plumbing", icon = "plumbing")),
+            professionals = listOf(ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "emeka", name = "Emeka Nwosu",
+                title = "AC & Fridge technician", rating = 4.9, reviewCount = 128, location = "Ikeja", startingPrice = 15000, verified = true))),
+            onRefresh = {}, onSearch = onSearch, onCategory = {}, onProfessional = {}, onSignIn = {}, onCreateAccount = onCreate, onAi = {})
+    }
+
     @Test fun professionalHome() = rule.capture("66_home_professional_stitch") { professionalHomePreview() }
 
     @Test fun professionalHomeBottom() = rule.capture("66b_home_professional_bottom", afterContent = {

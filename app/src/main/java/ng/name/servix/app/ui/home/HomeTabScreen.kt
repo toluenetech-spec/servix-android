@@ -107,7 +107,13 @@ fun HomeTabScreen(
     chatsUnread: Int = 0,
     onOpenChats: () -> Unit = {},
 ) {
-    val signedIn = user != null
+    if (user == null) {
+        GuestHomeScreen(city = city, state = uiState, onRefresh = onRefresh, onSearch = onOpenSearch,
+            onCategory = onOpenCategory, onProfessional = onOpenProfessional, onSignIn = onSignInClick,
+            onCreateAccount = onCreateAccountClick, onAi = onOpenAi)
+        return
+    }
+    val signedIn = true
     val isProfessional = user?.role == "professional"
     Column(
         modifier = Modifier
@@ -131,13 +137,6 @@ fun HomeTabScreen(
             onClick = onOpenSearch,
             testTag = "home_search_field",
         )
-
-        if (!signedIn) {
-            SignInCard(
-                onSignInClick = onSignInClick,
-                onCreateAccountClick = onCreateAccountClick,
-            )
-        }
 
         if (signedIn && uiState.attention.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -479,46 +478,6 @@ private fun PlanLine(
         ServixTextButton(text = stringResource(R.string.home_manage_plan), onClick = onManage)
     }
 }
-
-@Composable
-private fun SignInCard(
-    onSignInClick: () -> Unit,
-    onCreateAccountClick: () -> Unit,
-) {
-    ServixCard(
-        containerColor = PureWhite,
-        contentPadding = PaddingValues(20.dp),
-        modifier = Modifier.testTag("home_sign_in_card"),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                text = stringResource(R.string.home_sign_in_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = DeepForest,
-            )
-            Text(
-                text = stringResource(R.string.home_sign_in_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MutedGray,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                ServixPrimaryButton(
-                    text = stringResource(R.string.sign_in),
-                    onClick = onSignInClick,
-                    modifier = Modifier.weight(1f),
-                    testTag = "home_sign_in_button",
-                )
-                ServixSecondaryButton(
-                    text = stringResource(R.string.create_account),
-                    onClick = onCreateAccountClick,
-                    modifier = Modifier.weight(1f),
-                    testTag = "home_create_account_button",
-                )
-            }
-        }
-    }
-}
-
 
 /** Home shortcut into Chats — same unread number as the tab badge, same source. */
 @Composable
