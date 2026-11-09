@@ -78,13 +78,19 @@ import androidx.compose.ui.text.style.TextDecoration
 import ng.name.servix.app.ui.components.ServixButtonStyle
 import ng.name.servix.app.ui.components.ServixButton
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
+import ng.name.servix.app.ui.theme.ErrorContainer
+
 import androidx.compose.ui.unit.sp
 import ng.name.servix.app.R
 import ng.name.servix.app.ui.components.ServixBadge
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixLogoMark
 import ng.name.servix.app.ui.components.ServixButton
-import ng.name.servix.app.ui.components.ServixButtonStyle
 import ng.name.servix.app.ui.components.ServixField
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
