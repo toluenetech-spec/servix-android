@@ -157,6 +157,30 @@ class StitchFoundationTest {
     }
 
     @Test
+    fun profileShowsServiceLoadErrorAndRetriesInsteadOfClaimingNoServices() {
+        var retries = 0
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen(
+                    user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.catalogue.ProfessionalProfileUiState(
+                        loading = false, professional = Fixtures.professionalDetail,
+                        servicesError = "Services could not be loaded."),
+                    categoryNameFor = { "" }, onBackClick = {}, onRetry = { retries++ },
+                    onBrowseProfessionalsClick = {}, onToggleSave = {}, onSignInClick = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithText("Services could not be loaded.").assertExists()
+        rule.onNodeWithText("No services listed").assertDoesNotExist()
+        rule.onNodeWithTag("retry_button").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals(1, retries) }
+        rule.onNodeWithTag("profile_request_booking_button").performClick()
+        rule.onNodeWithTag("profile_sheet_services_error").assertExists()
+        rule.onNodeWithText("Booking coming soon").assertDoesNotExist()
+    }
+
+    @Test
     fun exploreResultUsesRealFieldsAndOpensProfile() {
         var opened = ""
         val pro = ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "pro-1", name = "Ada Example",

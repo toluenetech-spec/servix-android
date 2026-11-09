@@ -101,6 +101,7 @@ data class ProfessionalProfileUiState(
     val error: String? = null,
     val professional: ProfessionalDetailDto? = null,
     val services: List<ServiceSummaryDto> = emptyList(),
+    val servicesError: String? = null,
     val reviews: List<ReviewDto> = emptyList(),
     val availability: AvailabilitySummaryDto? = null,
     val isSaved: Boolean? = null,
@@ -151,7 +152,11 @@ class ProfessionalProfileViewModel(
             }
 
             val pro = proRes.getOrThrow()
-            val services = servicesDeferred.await().getOrDefault(emptyList())
+            val servicesResult = servicesDeferred.await()
+            val services = servicesResult.getOrDefault(emptyList())
+            val servicesError = servicesResult.exceptionOrNull()?.let {
+                (it as? ServixApiException)?.message ?: "We couldn't load services. Please try again."
+            }
             val reviews = reviewsDeferred.await().getOrDefault(emptyList())
             val availability = availDeferred.await().getOrNull()
             val savedList = savedDeferred?.await()?.getOrNull()
@@ -164,6 +169,7 @@ class ProfessionalProfileViewModel(
                     error = null,
                     professional = pro,
                     services = services,
+                    servicesError = servicesError,
                     reviews = reviews,
                     availability = availability,
                     isSaved = if (isAuthenticated) (isSaved ?: false) else null,
@@ -246,7 +252,7 @@ fun ProfessionalProfileScreen(
 ) {
     BackHandler(onBack = onBackClick)
 
-    var selectedTab by rememberSaveable { mutableStateOf(ProfileTab.ABOUT) }
+    var selectedTab by rememberSaveable { mutableStateOf(ProfileTab.SERVICES) }
     var bookingSheetOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -289,8 +295,8 @@ fun ProfessionalProfileScreen(
                     stickyHeader(key = "tabs") {
                         ProfileTabStrip(
                             tabs = listOf(
-                                ProfileTab.ABOUT,
                                 ProfileTab.SERVICES,
+                                ProfileTab.ABOUT,
                                 ProfileTab.PORTFOLIO,
                                 ProfileTab.REVIEWS,
                             ),
@@ -313,7 +319,9 @@ fun ProfessionalProfileScreen(
                                     )
                                     pro.trust?.let { trust -> TrustTabSection(trust = trust) }
                                 }
-                                ProfileTab.SERVICES -> ServicesTabSection(
+                                ProfileTab.SERVICES -> if (uiState.servicesError != null) {
+                                    ErrorStateCard(message = uiState.servicesError, onRetry = onRetry)
+                                } else ServicesTabSection(
                                     services = uiState.services,
                                     categoryNameFor = categoryNameFor,
                                     onOpenService = onOpenService,
@@ -354,6 +362,7 @@ fun ProfessionalProfileScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 12.dp)
                     .padding(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -362,12 +371,19 @@ fun ProfessionalProfileScreen(
                     text = if (uiState.services.isNotEmpty()) {
                         "Select a service from ${uiState.professional.name}"
                     } else {
-                        "Booking coming soon"
+                        "Services"
                     },
                     style = MaterialTheme.typography.headlineSmall,
                     color = DeepForest,
                 )
-                if (uiState.services.isNotEmpty()) {
+                if (uiState.servicesError != null) {
+                    Box(Modifier.testTag("profile_sheet_services_error")) {
+                        ErrorStateCard(message = uiState.servicesError, onRetry = {
+                            bookingSheetOpen = false
+                            onRetry()
+                        })
+                    }
+                } else if (uiState.services.isNotEmpty()) {
                     Text(
                         text = stringResource(R.string.payment_protection_copy),
                         style = MaterialTheme.typography.bodySmall,
@@ -412,13 +428,8 @@ fun ProfessionalProfileScreen(
                         }
                     }
                 } else {
-                    ServixBadge(
-                        text = "Pre-launch preview",
-                        containerColor = SoftSand,
-                        contentColor = DeepForest,
-                    )
                     Text(
-                        text = "Direct booking with professionals launches with the full Servix platform. Nothing has been booked and no payment has been taken.",
+                        text = "This professional has no listed services to book.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MutedGray,
                     )
@@ -446,7 +457,7 @@ private fun ProfileHeader(
         !availability?.nextAvailableAt.isNullOrBlank() ->
             "Next: ${ServixFormatters.formatShortDayMonth(availability?.nextAvailableAt)}"
         pro.availability == "available" -> "Available now"
-        else -> "Limited availability"
+        else -> null
     }
     Column(
         modifier = Modifier
@@ -497,7 +508,7 @@ private fun ProfileHeader(
                 )
             }
         }
-        ServixBadge(
+        if (availLabel != null) ServixBadge(
             text = availLabel,
             containerColor = SoftSand,
             contentColor = DeepForest,
@@ -601,7 +612,7 @@ private fun ProfileBookBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
+                if (pro.startingPrice > 0) Text(
                     text = "From ${ServixFormatters.formatNaira(pro.startingPrice)}",
                     style = MaterialTheme.typography.titleMedium,
                     color = DeepForest,
@@ -919,6 +930,7 @@ private fun ServicesTabSection(
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Service offerings & pricing", style = MaterialTheme.typography.titleLarge, color = DeepForest)
         services.forEach { service ->
             ServiceCardItem(
                 service = service,
