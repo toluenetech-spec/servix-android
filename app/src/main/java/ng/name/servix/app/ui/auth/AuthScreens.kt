@@ -38,6 +38,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.VerifiedUser
@@ -99,7 +100,6 @@ import ng.name.servix.app.R
 import ng.name.servix.app.ui.components.ServixBadge
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixLogoMark
-import ng.name.servix.app.ui.components.ServixButton
 import ng.name.servix.app.ui.components.ServixField
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
@@ -726,255 +726,164 @@ fun RegisterScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
-
-    val confirmHint = when {
-        uiState.registerConfirmPassword.isEmpty() -> stringResource(R.string.confirm_password_hint_empty)
-        uiState.registerPassword.isNotEmpty() && uiState.registerPassword == uiState.registerConfirmPassword ->
-            stringResource(R.string.confirm_password_hint_match)
-        else -> stringResource(R.string.confirm_password_hint_mismatch)
-    }
-
-    AuthShellContainer(onBackClick = onBackClick) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                text = stringResource(R.string.register_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = DeepForest,
-            )
-            Text(
-                text = stringResource(R.string.register_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MutedGray,
-            )
-
-            ServixTextField(
-                value = uiState.registerFullName,
-                onValueChange = onNameChange,
-                label = stringResource(R.string.field_full_name),
-                required = true,
-                error = uiState.registerNameError,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Next,
-                ),
-                testTag = "register_name_input",
-            )
-
-            if (providers.isNotEmpty()) {
-                OAuthButtons(
-                    providers = providers,
-                    enabled = uiState.registerTermsAccepted,
-                    disabledHint = "Tick the terms below to continue with a provider.",
-                    busy = uiState.oauthBusy,
-                    onProviderClick = onProviderClick,
-                )
-                OrDivider()
+    var showConfirmation by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBackClick, modifier = Modifier.size(44.dp).testTag("auth_back_button")) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
             }
-
-            ServixTextField(
-                value = uiState.registerEmail,
-                onValueChange = onEmailChange,
-                label = stringResource(R.string.field_email),
-                required = true,
-                error = uiState.registerEmailError,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next,
-                ),
-                testTag = "register_email_input",
-            )
-
-            ServixTextField(
-                value = uiState.registerPassword,
-                onValueChange = onPasswordChange,
-                label = stringResource(R.string.field_password),
-                required = true,
-                hint = stringResource(R.string.password_hint),
-                error = uiState.registerPasswordError,
-                isPassword = true,
-                passwordVisible = showPassword,
-                onTogglePasswordVisibility = { showPassword = !showPassword },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Next,
-                ),
-                testTag = "register_password_input",
-            )
-
-            PasswordChecklist(rules = uiState.passwordRules)
-
-            ServixTextField(
-                value = uiState.registerConfirmPassword,
-                onValueChange = onConfirmPasswordChange,
-                label = stringResource(R.string.field_confirm_password),
-                required = true,
-                hint = confirmHint,
-                error = uiState.registerConfirmError,
-                isPassword = true,
-                passwordVisible = showPassword,
-                onTogglePasswordVisibility = { showPassword = !showPassword },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        if (uiState.registerTermsAccepted) {
-                            onSubmit()
-                        }
-                    }
-                ),
-                testTag = "register_confirm_password_input",
-            )
-
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = SoftSand.copy(alpha = 0.45f),
-                border = BorderStroke(1.dp, BorderSand),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            Text("Register", style = ServixType.titleLg, color = Charcoal, modifier = Modifier.weight(1f))
+            Box(Modifier.size(32.dp).background(DeepForest, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Person, contentDescription = null, tint = PureWhite, modifier = Modifier.size(18.dp))
+            }
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(Modifier.padding(top = 4.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier.padding(bottom = 4.dp).background(SoftSand, CircleShape).padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    Box(Modifier.size(10.dp).background(ForestGreen, CircleShape))
+                    Text("Servix", style = ServixType.titleMd.copy(fontWeight = FontWeight.Bold), color = DeepForest)
+                }
+                Text("Create your account", style = ServixType.headlineMd, color = Charcoal)
+                Text("Join Servix and get started with trusted professionals.", style = ServixType.bodyMd, color = MutedGray)
+            }
+            RegisterField(uiState.registerFullName, onNameChange, "Full name", "e.g. Olumide Adeleke", Icons.Outlined.Person,
+                uiState.registerNameError, "register_name_input", KeyboardType.Text)
+            RegisterField(uiState.registerEmail, onEmailChange, "Email address", "olumide@example.ng", Icons.Outlined.MailOutline,
+                uiState.registerEmailError, "register_email_input", KeyboardType.Email)
+            RegisterField(uiState.registerPassword, { onPasswordChange(it.take(200)) }, "Password", "Create a strong password", Icons.Outlined.Lock,
+                uiState.registerPasswordError, "register_password_input", KeyboardType.Password, showPassword, { showPassword = !showPassword })
+            RegisterField(uiState.registerConfirmPassword, { onConfirmPasswordChange(it.take(200)) }, "Confirm password", "Re-enter your password", Icons.Outlined.Lock,
+                uiState.registerConfirmError, "register_confirm_password_input", KeyboardType.Password, showConfirmation, { showConfirmation = !showConfirmation },
+                onDone = { if (uiState.canSubmitRegistration) { focusManager.clearFocus(); onSubmit() } })
+            RegisterPasswordChecklist(uiState.passwordRules)
+            Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
                     Checkbox(
-                        checked = uiState.registerTermsAccepted,
-                        onCheckedChange = onTermsAcceptedChange,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = DeepForest,
-                            uncheckedColor = MutedGray,
-                            checkmarkColor = PureWhite,
-                        ),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .testTag("register_terms_checkbox"),
+                        checked = uiState.registerTermsAccepted, onCheckedChange = onTermsAcceptedChange,
+                        colors = CheckboxDefaults.colors(checkedColor = ForestGreen, uncheckedColor = MutedGray, checkmarkColor = PureWhite),
+                        modifier = Modifier.size(48.dp).testTag("register_terms_checkbox"),
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.register_terms_checkbox_full),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Charcoal,
-                            modifier = Modifier
-                                .clickable { onTermsAcceptedChange(!uiState.registerTermsAccepted) }
-                                .testTag("register_terms_label"),
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                    val terms = androidx.compose.ui.text.buildAnnotatedString {
+                        append("I agree to the Servix ")
+                        pushStringAnnotation("url", "https://www.servix.name.ng/terms")
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = ForestGreen, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline))
+                        append("Terms of Service"); pop(); pop()
+                        append(" and ")
+                        pushStringAnnotation("url", "https://www.servix.name.ng/privacy")
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = ForestGreen, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline))
+                        append("Privacy Policy"); pop(); pop(); append(".")
+                    }
+                    androidx.compose.foundation.text.ClickableText(
+                        text = terms, style = ServixType.bodySm.copy(color = Charcoal), modifier = Modifier.padding(top = 8.dp),
+                        onClick = { offset -> terms.getStringAnnotations("url", offset, offset).firstOrNull()?.let { CustomTabLauncher.launchUrl(context, it.item) } },
+                    )
+                }
+                Text("You must be at least 18 years of age to register and book services on Servix.",
+                    style = ServixType.bodySm, color = ng.name.servix.app.ui.theme.BorderStrongSand, modifier = Modifier.padding(start = 48.dp))
+            }
+            uiState.registerGeneralError?.let {
+                Text(it, style = ServixType.bodySm, color = DangerRed, modifier = Modifier.fillMaxWidth().background(ErrorContainer, RoundedCornerShape(16.dp)).padding(12.dp))
+            }
+            ServixButton(
+                text = stringResource(if (uiState.registerSubmitting) R.string.creating_account else R.string.create_account),
+                onClick = { focusManager.clearFocus(); onSubmit() }, enabled = uiState.canSubmitRegistration,
+                loading = uiState.registerSubmitting, trailingIcon = Icons.AutoMirrored.Outlined.ArrowForward,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp), testTag = "register_submit_button",
+            )
+            if (providers.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HorizontalDivider(Modifier.weight(1f), color = SoftSand)
+                    Text("or continue with", style = ServixType.labelMd, color = ng.name.servix.app.ui.theme.BorderStrongSand)
+                    HorizontalDivider(Modifier.weight(1f), color = SoftSand)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    providers.forEach { provider ->
+                        Button(
+                            onClick = { onProviderClick(provider) }, enabled = uiState.registerTermsAccepted && !uiState.oauthBusy,
+                            shape = RoundedCornerShape(20.dp), colors = ButtonDefaults.buttonColors(containerColor = SoftSand, contentColor = Charcoal),
+                            contentPadding = PaddingValues(0.dp), modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("oauth_${provider.lowercase()}_button"),
                         ) {
-                            Text(
-                                text = stringResource(R.string.register_terms_link),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    textDecoration = TextDecoration.Underline,
-                                ),
-                                color = DeepForest,
-                                modifier = Modifier
-                                    .clickable {
-                                        CustomTabLauncher.launchUrl(context, "https://www.servix.name.ng/terms")
-                                    }
-                                    .padding(vertical = 4.dp)
-                                    .testTag("register_terms_link"),
-                            )
-                            Text(
-                                text = stringResource(R.string.register_privacy_link),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    textDecoration = TextDecoration.Underline,
-                                ),
-                                color = DeepForest,
-                                modifier = Modifier
-                                    .clickable {
-                                        CustomTabLauncher.launchUrl(context, "https://www.servix.name.ng/privacy")
-                                    }
-                                    .padding(vertical = 4.dp)
-                                    .testTag("register_privacy_link"),
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                ProviderMark(google = provider.equals("google", true))
+                                Text(providerDisplayName(provider), style = ServixType.labelLg)
+                            }
                         }
                     }
                 }
+                if (!uiState.registerTermsAccepted) Text("Tick the terms above to continue with a provider.", style = ServixType.bodySm, color = MutedGray)
             }
-
-            if (!uiState.registerGeneralError.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = DangerRed.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.35f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = uiState.registerGeneralError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = DangerRed,
-                        modifier = Modifier.padding(12.dp),
-                    )
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Text("Already have an account?", style = ServixType.bodyMd, color = MutedGray)
+                TextButton(onClick = onSignInClick, modifier = Modifier.heightIn(min = 48.dp).testTag("go_to_login_button")) {
+                    Text("Sign in", style = ServixType.labelLg.copy(textDecoration = TextDecoration.Underline), color = DeepForest)
                 }
             }
+        }
+    }
+}
 
-            ServixPrimaryButton(
-                text = stringResource(if (uiState.registerSubmitting) R.string.creating_account else R.string.create_account),
-                onClick = {
-                    focusManager.clearFocus()
-                    onSubmit()
-                },
-                enabled = uiState.registerTermsAccepted && !uiState.registerSubmitting,
-                loading = uiState.registerSubmitting,
-                modifier = Modifier.fillMaxWidth(),
-                testTag = "register_submit_button",
-            )
+@Composable
+private fun RegisterField(
+    value: String, onValueChange: (String) -> Unit, label: String, placeholder: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector, error: String?, tag: String,
+    keyboardType: KeyboardType, visible: Boolean = false, onToggle: (() -> Unit)? = null, onDone: () -> Unit = {},
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = ServixType.labelLg, color = Charcoal)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).background(PureWhite, RoundedCornerShape(20.dp)).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = ng.name.servix.app.ui.theme.BorderStrongSand, modifier = Modifier.size(22.dp))
+            Box(Modifier.weight(1f)) {
+                if (value.isEmpty()) Text(placeholder, style = ServixType.bodyLg, color = ng.name.servix.app.ui.theme.BorderStrongSand, maxLines = 1)
+                androidx.compose.foundation.text.BasicTextField(
+                    value = value, onValueChange = onValueChange, singleLine = true,
+                    textStyle = ServixType.bodyLg.copy(color = Charcoal),
+                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = if (onToggle != null && tag.contains("confirm")) ImeAction.Done else ImeAction.Next),
+                    keyboardActions = KeyboardActions(onDone = { onDone() }),
+                    visualTransformation = if (onToggle != null && !visible) PasswordVisualTransformation() else VisualTransformation.None,
+                    modifier = Modifier.fillMaxWidth().testTag(tag),
+                )
+            }
+            if (onToggle != null) IconButton(onClick = onToggle, modifier = Modifier.size(48.dp)) {
+                Icon(if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    contentDescription = if (visible) "Hide $label" else "Show $label", tint = ng.name.servix.app.ui.theme.BorderStrongSand, modifier = Modifier.size(20.dp))
+            }
+        }
+        error?.let { Text(it, style = ServixType.bodySm, color = DangerRed) }
+    }
+}
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clickable {
-                        CustomTabLauncher.launchWebPath(context, "/professionals/join")
+@Composable
+private fun RegisterPasswordChecklist(rules: List<PasswordRuleStatus>) {
+    val labels = listOf("At least 8 chars", "One uppercase", "One lowercase", "One number", "Special character")
+    Column(Modifier.fillMaxWidth().background(SurfaceContainerLow, RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Password requirements", style = ServixType.labelMd.copy(fontWeight = FontWeight.SemiBold), color = Charcoal)
+            val count = rules.count { it.met }
+            Text("$count of 5 met", style = ServixType.labelMd, color = if (count == 5) DeepForest else MutedGray,
+                modifier = Modifier.background(if (count == 5) SoftSand else if (count > 0) BorderSand else SurfaceContainerHigh, CircleShape).padding(horizontal = 8.dp, vertical = 2.dp).testTag("password_rules_count"))
+        }
+        rules.chunked(2).forEachIndexed { rowIndex, row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEachIndexed { col, rule ->
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(if (rule.met) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                            contentDescription = if (rule.met) "Met" else "Not met", tint = if (rule.met) ForestGreen else ng.name.servix.app.ui.theme.BorderStrongSand, modifier = Modifier.size(16.dp))
+                        Text(labels[rowIndex * 2 + col], style = ServixType.bodySm, color = if (rule.met) Charcoal else MutedGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    .padding(vertical = 6.dp)
-                    .testTag("register_pro_apply_link"),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.register_pro_apply_prompt),
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        textDecoration = TextDecoration.Underline,
-                    ),
-                    color = ForestGreen,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            HorizontalDivider(color = SoftSand)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.already_have_account),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-                TextButton(
-                    onClick = onSignInClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("go_to_login_button"),
-                ) {
-                    Text(
-                        text = stringResource(R.string.sign_in),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = DeepForest,
-                    )
                 }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }

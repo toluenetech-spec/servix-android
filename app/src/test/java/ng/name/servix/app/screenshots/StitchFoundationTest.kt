@@ -60,6 +60,15 @@ class StitchFoundationTest {
     val rule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun register() = rule.capture("56_register_stitch") {
+        ng.name.servix.app.ui.auth.RegisterScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(),
+            onNameChange = {}, onEmailChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
+            onSubmit = {}, onSignInClick = {}, onBackClick = {}, providers = listOf("google", "github"),
+        )
+    }
+
+    @Test
     fun buttons() = rule.capture("50_foundation_buttons") {
         Column(
             modifier = Modifier.fillMaxSize().background(WarmIvory).padding(16.dp),

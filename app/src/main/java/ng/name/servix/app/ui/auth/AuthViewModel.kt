@@ -93,7 +93,14 @@ data class AuthUiState(
     val securitySuccessMode: String? = null, // "reset" | "session" | null
 ) {
     val passwordRules: List<PasswordRuleStatus>
-        get() = evaluatePasswordRules(registerPassword, policy = null)
+        get() = evaluatePasswordRules(registerPassword, policy = null).filterNot { it.id == "maximum" }
+
+    val passwordsMatch: Boolean
+        get() = registerPassword.isNotEmpty() && registerPassword == registerConfirmPassword
+
+    val canSubmitRegistration: Boolean
+        get() = registerTermsAccepted && !registerSubmitting && passwordRules.all { it.met } &&
+            passwordsMatch && registerPassword.length <= 200
 
     val securityResetPasswordRules: List<PasswordRuleStatus>
         get() = evaluatePasswordRules(securityNewPassword, policy = securityFlow?.passwordPolicy)
@@ -333,9 +340,11 @@ class AuthViewModel(
         _uiState.update { it.copy(registerPassword = value, registerPasswordError = null, registerGeneralError = null) }
     }
 
-    fun updateRegisterConfirmPassword(value: String) {
+    fun onConfirmPasswordChange(value: String) {
         _uiState.update { it.copy(registerConfirmPassword = value, registerConfirmError = null, registerGeneralError = null) }
     }
+
+    fun updateRegisterConfirmPassword(value: String) = onConfirmPasswordChange(value)
 
     fun updateRegisterTermsAccepted(accepted: Boolean) {
         _uiState.update { it.copy(registerTermsAccepted = accepted, registerGeneralError = null) }
@@ -357,7 +366,7 @@ class AuthViewModel(
 
         if (name.isEmpty()) nameErr = "Please enter your full name."
         if (!EMAIL_REGEX.matches(email)) emailErr = "Please enter a valid email address."
-        if (!current.passwordRules.all { it.met }) pwdErr = "Please meet all the password requirements below."
+        if (!current.passwordRules.all { it.met } || password.length > 200) pwdErr = "Please meet all the password requirements below."
         if (password.isEmpty() || password != confirm) confirmErr = "Enter the same password in both fields."
 
         if (nameErr != null || emailErr != null || pwdErr != null || confirmErr != null) {
