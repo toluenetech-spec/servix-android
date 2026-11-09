@@ -47,6 +47,7 @@ jobs:
             --tests "ng.name.servix.app.screenshots.TypographyTest" \
             --tests "ng.name.servix.app.screenshots.IaPrototypesTest" \
             --tests "ng.name.servix.app.screenshots.ChatScreensTest" \
+            --tests "ng.name.servix.app.screenshots.StitchFoundationTest" \
             --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
 
       - name: Collect failure diagnostics
