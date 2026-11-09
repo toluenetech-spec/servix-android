@@ -37,6 +37,7 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
     verify: ((Bitmap) -> Boolean)? = null,
     /** Extra context for the failure message when [verify] never passes (e.g. Coil's error). */
     describe: () -> String = { "" },
+    afterContent: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     activity.setContent {
@@ -51,6 +52,8 @@ fun AndroidComposeTestRule<ActivityScenarioRule<ComponentActivity>, ComponentAct
             }
         }
     }
+    waitForIdle()
+    afterContent()
     waitForIdle()
     shadowOf(Looper.getMainLooper()).idle()
 

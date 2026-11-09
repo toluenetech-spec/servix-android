@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
@@ -73,6 +74,17 @@ class StitchFoundationTest {
     }
 
     @Test
+    fun registerBottom() = rule.capture("56b_register_stitch_bottom", afterContent = {
+        rule.onNodeWithTag("go_to_login_button").performScrollTo()
+    }) {
+        ng.name.servix.app.ui.auth.RegisterScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(),
+            onNameChange = {}, onEmailChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
+            onSubmit = {}, onSignInClick = {}, onBackClick = {}, providers = listOf("google", "github"),
+        )
+    }
+
+    @Test
     fun verifyEmail() = rule.capture("57_verify_email_stitch") {
         ng.name.servix.app.ui.auth.VerifyEmailScreen(
             userEmail = "olumide@example.ng", isAlreadyVerified = false,
@@ -106,6 +118,10 @@ class StitchFoundationTest {
     }
 
     @Test fun professionalHome() = rule.capture("66_home_professional_stitch") { professionalHomePreview() }
+
+    @Test fun professionalHomeBottom() = rule.capture("66b_home_professional_bottom", afterContent = {
+        rule.onNodeWithText("Ask Servix AI").performScrollTo()
+    }) { professionalHomePreview() }
 
     @Test fun professionalHomeHonoursActionsAndChatFlag() {
         var action = ""
