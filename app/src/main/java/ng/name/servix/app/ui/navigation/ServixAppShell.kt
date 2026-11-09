@@ -261,7 +261,7 @@ fun ServixAppShell(
         factory = SearchViewModel.factory(catalogueRepository)
     )
     val bookingsViewModel: BookingsViewModel = viewModel(
-        factory = BookingsViewModel.factory(bookingRepository)
+        factory = BookingsViewModel.factory(bookingRepository, authViewModel.sessionState)
     )
 
     // Release 1.1: flags decide what exists at all; the chat store owns the unread number.
@@ -279,7 +279,7 @@ fun ServixAppShell(
         }
     }
     val chatsViewModel: ChatsViewModel = viewModel(
-        factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream) { sessionUserId }
+        factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream, authViewModel.sessionState)
     )
     val chatsState by chatsViewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -948,12 +948,6 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(user?.id) {
-                    if (user != null) {
-                        bookingsViewModel.loadBookings(forceRefresh = false)
-                    }
-                }
-
                 BookingsScreen(
                     user = user,
                     uiState = bookingsUiState,
@@ -1114,6 +1108,7 @@ fun ServixAppShell(
                 popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
+                androidx.compose.runtime.key(user?.id) {
                 AccountHubScreen(
                     user = user,
                     accountRepository = accountRepository,
@@ -1134,6 +1129,7 @@ fun ServixAppShell(
                         }
                     }
                 )
+                }
             }
 
             composable<ServixRoute.Chats>(

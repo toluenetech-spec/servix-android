@@ -88,6 +88,10 @@ class ServixNetworkModule(
                         .build()
                 }
 
+                // A request made as a guest must never expire a session that is being established.
+                // If a token appeared above we retry with it once; otherwise there is no session to refresh.
+                if (requestToken.isNullOrBlank()) return null
+
                 // Perform single-flight POST /auth/refresh
                 val refreshResult = executeSyncRefresh()
                 return if (refreshResult != null && !refreshResult.accessToken.isNullOrBlank()) {

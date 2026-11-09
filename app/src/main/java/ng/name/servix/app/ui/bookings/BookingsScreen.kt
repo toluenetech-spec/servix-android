@@ -37,6 +37,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +51,7 @@ import ng.name.servix.app.R
 import ng.name.servix.app.data.model.BookingDto
 import ng.name.servix.app.data.model.UserDto
 import ng.name.servix.app.data.repository.BookingRepository
+import ng.name.servix.app.data.repository.SessionState
 import ng.name.servix.app.ui.catalogue.EmptyStateCard
 import ng.name.servix.app.ui.components.ErrorStateCard
 import ng.name.servix.app.ui.components.ServixCard
@@ -84,17 +90,37 @@ data class BookingsUiState(
 
 class BookingsViewModel(
     private val bookingRepository: BookingRepository,
+    private val session: StateFlow<SessionState>,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookingsUiState())
     val uiState: StateFlow<BookingsUiState> = _uiState.asStateFlow()
+
+    private var ownerId: String? = null
+    private var generation = 0L
+    private var loadJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            session.map { (it as? SessionState.Authenticated)?.user?.id }.distinctUntilChanged().collect { id ->
+                generation++
+                loadJob?.cancel()
+                ownerId = id
+                _uiState.value = BookingsUiState(loading = id != null)
+                if (id != null) loadBookings()
+            }
+        }
+    }
 
     fun selectTab(tab: BookingsListTab) {
         _uiState.update { it.copy(selectedTab = tab) }
     }
 
     fun loadBookings(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
+        val owner = ownerId ?: return
+        val requestGeneration = generation
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 if (forceRefresh && it.bookings.isNotEmpty()) {
                     it.copy(refreshing = true, error = null)
@@ -103,6 +129,8 @@ class BookingsViewModel(
                 }
             }
             val res = bookingRepository.getMyBookings()
+            currentCoroutineContext().ensureActive()
+            if (generation != requestGeneration || ownerId != owner) return@launch
             res.fold(
                 onSuccess = { list ->
                     _uiState.update {
@@ -128,11 +156,11 @@ class BookingsViewModel(
     }
 
     companion object {
-        fun factory(bookingRepository: BookingRepository): ViewModelProvider.Factory =
+        fun factory(bookingRepository: BookingRepository, session: StateFlow<SessionState>): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return BookingsViewModel(bookingRepository) as T
+                    return BookingsViewModel(bookingRepository, session) as T
                 }
             }
     }
