@@ -88,7 +88,7 @@ class ImeInsetsTest {
         val field = rule.onNodeWithTag(fieldTag).getUnclippedBoundsInRoot()
         rule.onNodeWithTag(fieldTag).assertIsDisplayed().assertIsFocused()
         rule.onNodeWithTag("test_bottom_bar").assertDoesNotExist()
-        assertEquals("Keyboard must be 300 dp", 300f, keyboard.height.value, 1f)
+        assertEquals("Keyboard must be 300 dp", 300f, (keyboard.bottom - keyboard.top).value, 1f)
         assertEquals("No extra inset or blank band above the keyboard", keyboard.top.value, content.bottom.value, 1f)
         assertTrue("Focused field must be above the keyboard: $field vs $keyboard", field.bottom <= keyboard.top)
         if (isComposer) assertTrue("Composer must sit directly above keyboard", (keyboard.top - field.bottom) <= 16.dp)
