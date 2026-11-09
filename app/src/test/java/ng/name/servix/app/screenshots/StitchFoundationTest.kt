@@ -134,6 +134,38 @@ class StitchFoundationTest {
         rule.runOnIdle { org.junit.Assert.assertEquals("decline", action) }
     }
 
+    @Test fun professionalWorkspaceSchemasDecode() {
+        val json = ng.name.servix.app.data.network.ApiErrorParser.json
+        val analytics = json.decodeFromString<ng.name.servix.app.data.model.ProfessionalAnalyticsDto>(
+            """{"totals":{"earnings":86000.5,"completed":4,"responseRate":null,"ratingAvg":4.8,"reviewCount":5}}"""
+        )
+        org.junit.Assert.assertEquals(86000.5, analytics.totals!!.earnings!!, 0.001)
+        org.junit.Assert.assertNull(analytics.totals!!.responseRate)
+        val services = json.decodeFromString<List<ng.name.servix.app.data.model.OwnServiceDto>>(
+            """[{"id":"one","title":"Repairs","status":"draft","publishProblems":{"gallery":"Add an image."}},{"id":"two","title":"Done","status":"active","publishProblems":{}}]"""
+        )
+        org.junit.Assert.assertEquals("Add an image.", services[0].publishProblems["gallery"])
+        org.junit.Assert.assertTrue(services[1].publishProblems.isEmpty())
+    }
+
+    @Test fun professionalHomeHidesCompleteServiceAndShowsRetry() {
+        var retried = false
+        rule.setContent { ServixTheme {
+            ng.name.servix.app.ui.home.ProfessionalHomeScreen(
+                user = ng.name.servix.app.data.model.UserDto(id = "pro", role = "professional"),
+                state = ng.name.servix.app.ui.home.ProfessionalHomeState(userId = "pro", loading = false,
+                    services = listOf(ng.name.servix.app.data.model.OwnServiceDto(id = "complete", status = "active")),
+                    jobsError = "Could not load jobs"),
+                unreadNotifications = 0, chatsEnabled = false, onNotifications = {}, onAccount = {}, onSeeAllJobs = {},
+                onViewJob = {}, onJobAction = { _, _ -> }, onMessage = {}, onEditService = {}, onAi = {}, onRetry = { retried = true },
+            )
+        } }
+        rule.onNodeWithText("Finish your service").assertDoesNotExist()
+        rule.onNodeWithText("Could not load jobs").assertExists()
+        rule.onNodeWithText("Try again").performClick()
+        rule.runOnIdle { org.junit.Assert.assertTrue(retried) }
+    }
+
     @Test fun professionalActionStateMachine() {
         val allowed: (String, String) -> Boolean = { status, action -> ng.name.servix.app.ui.home.professionalActionAllowed(status, action) }
         org.junit.Assert.assertTrue(allowed("requested", "accept"))

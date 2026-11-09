@@ -87,8 +87,8 @@ fun ProfessionalHomeScreen(
     val zone = ZoneId.of("Africa/Lagos")
     val greeting = when (LocalTime.now(zone).hour) { in 0..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
     val today = LocalDate.now(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.UK))
-    Column(Modifier.fillMaxSize().background(WarmIvory).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 28.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 72.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(WarmIvory)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("$greeting, ${user.firstName}", style = ServixType.titleLg, color = Charcoal)
                 Text(today, style = ServixType.bodySm, color = MutedGray)
@@ -103,6 +103,7 @@ fun ProfessionalHomeScreen(
                 AvatarImage(size = 36.dp, initials = user.fullName, image = user.avatarUrl)
             }
         }
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 28.dp)) {
         ProSectionHeader("Your jobs", "See all", onSeeAllJobs)
         state.actionError?.let { ProError(it, onRetry) }
         state.jobsError?.let { ProError(it, onRetry) }
@@ -140,7 +141,8 @@ fun ProfessionalHomeScreen(
                 totals.completed?.let { ProStat("Jobs done", it.toString(), Modifier.weight(1f)) }
                 totals.ratingAvg?.let { ProStat("Rating", if ((totals.reviewCount ?: 0) > 0) String.format(Locale.UK, "%.1f★", it) else "No reviews", Modifier.weight(1f)) }
             }
-            totals.responseRate?.let { Text("Response rate: $it%", style = ServixType.bodySm, color = MutedGray, modifier = Modifier.padding(top = 8.dp)) }
+            val rate = totals.responseRate?.let { "Response rate: $it% · " }.orEmpty()
+            Text("${rate}Last 7 days · Rating overall", style = ServixType.bodySm, color = MutedGray, modifier = Modifier.padding(top = 8.dp))
         }
         state.servicesError?.let { ProError(it, onRetry) }
         state.services.filter { it.publishProblems.isNotEmpty() }.forEach { service ->
@@ -163,6 +165,7 @@ fun ProfessionalHomeScreen(
                     ProActionButton("Ask Servix AI", onClick = onAi)
                 }
             }
+        }
         }
     }
 }

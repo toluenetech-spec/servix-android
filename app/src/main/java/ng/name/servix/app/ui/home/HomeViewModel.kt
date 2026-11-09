@@ -148,15 +148,28 @@ class HomeViewModel(
     }
 
     private var lastLoadedUserId: String? = "__uninitialized__"
+    private var homeLoad: kotlinx.coroutines.Job? = null
+    private var homeGeneration = 0
+
+    /** Clear private customer data and cancel any requests when the shell identity changes. */
+    fun clearCustomerHome() {
+        homeGeneration++
+        homeLoad?.cancel()
+        homeLoad = null
+        lastLoadedUserId = "__uninitialized__"
+        _uiState.update { it.copy(overview = null, bookings = emptyList(), loadedForUserId = null, error = null, loading = true, refreshing = false) }
+    }
 
     fun loadHome(userId: String?, forceRefresh: Boolean = false) {
         if (!forceRefresh && lastLoadedUserId == userId && !_uiState.value.loading && _uiState.value.error == null) {
             return
         }
+        if (lastLoadedUserId != userId) clearCustomerHome() else homeLoad?.cancel()
         lastLoadedUserId = userId
+        val generation = ++homeGeneration
         val signedIn = !userId.isNullOrBlank()
 
-        viewModelScope.launch {
+        homeLoad = viewModelScope.launch {
             _uiState.update {
                 if (forceRefresh && (it.categories.isNotEmpty() || it.bookings.isNotEmpty())) {
                     it.copy(refreshing = true, error = null)
@@ -177,6 +190,7 @@ class HomeViewModel(
             val overviewRes = overviewDeferred?.await()
             val bookingsRes = bookingsDeferred?.await()
 
+            if (generation != homeGeneration) return@launch
             val catalogueError = professionalsRes.exceptionOrNull()?.message
                 ?: categoriesRes.exceptionOrNull()?.message
             if (professionalsRes.isFailure && categoriesRes.isFailure) {

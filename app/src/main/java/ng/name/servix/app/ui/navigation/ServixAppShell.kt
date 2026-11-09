@@ -269,9 +269,14 @@ fun ServixAppShell(
     LaunchedEffect(Unit) { featuresRepository.refresh() }
     val sessionUserId = (sessionState as? SessionState.Authenticated)?.user?.id
     val sessionRole = (sessionState as? SessionState.Authenticated)?.user?.role
-    LaunchedEffect(sessionUserId, sessionRole) {
+    val sessionReady = sessionState !is SessionState.Initializing
+    LaunchedEffect(sessionUserId, sessionRole, sessionReady) {
         homeViewModel.clearProfessionalHome()
-        if (sessionUserId != null && sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId)
+        homeViewModel.clearCustomerHome()
+        if (sessionReady) {
+            if (sessionUserId != null && sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId)
+            else homeViewModel.loadHome(sessionUserId)
+        }
     }
     val chatsViewModel: ChatsViewModel = viewModel(
         factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream) { sessionUserId }
@@ -731,10 +736,6 @@ fun ServixAppShell(
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
                 val professionalHome by homeViewModel.professionalState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(user?.id, user?.role, isOnline) {
-                    if (user?.role != "professional") homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
-                }
-
                 if (user?.role == "professional") {
                     ng.name.servix.app.ui.home.ProfessionalHomeScreen(
                         user = user, state = professionalHome.takeIf { it.userId == user.id } ?: ng.name.servix.app.ui.home.ProfessionalHomeState(),
@@ -752,7 +753,7 @@ fun ServixAppShell(
                 } else HomeTabScreen(
                     user = user,
                     city = city,
-                    uiState = homeUiState,
+                    uiState = if (homeUiState.loadedForUserId == user?.id) homeUiState else homeUiState.copy(overview = null, bookings = emptyList()),
                     aiUsage = aiUiState.usage,
                     onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
                     // Chats card: same unread number as the tab badge (one source), AI is inside Chats now.
