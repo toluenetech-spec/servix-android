@@ -313,7 +313,9 @@ private fun AuthShellContainer(
             .background(WarmIvory)
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
+            // One gutter for the whole auth flow: px-margin is 16 dp in every Stitch auth screen, and
+            // the shell is shared by S3, S4, S5, S6 and S7, so they cannot drift apart.
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
