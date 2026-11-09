@@ -337,23 +337,7 @@ fun ServixAppShell(
     } ?: false
 
     if (sessionState is SessionState.Initializing) {
-        Scaffold(
-            contentWindowInsets = WindowInsets.safeDrawing,
-            containerColor = WarmIvory,
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                ServixLogoMark()
-                Spacer(modifier = Modifier.height(24.dp))
-                SkeletonBox(modifier = Modifier.widthIn(max = 220.dp).fillMaxWidth(0.6f), height = 16.dp)
-            }
-        }
+        ng.name.servix.app.ui.auth.SessionSplashScreen()
         return
     }
 

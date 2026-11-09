@@ -65,6 +65,10 @@ class StitchFoundationTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun sessionSplash() = rule.capture("49_session_splash_stitch") {
+        ng.name.servix.app.ui.auth.SessionSplashScreen()
+    }
+
     @Test
     fun register() = rule.capture("56_register_stitch") {
         ng.name.servix.app.ui.auth.RegisterScreen(
