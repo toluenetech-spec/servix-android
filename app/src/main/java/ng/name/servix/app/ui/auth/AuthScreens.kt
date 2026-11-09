@@ -248,8 +248,7 @@ fun WelcomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // The HTML's hero: a soft ring behind a Forest-Green shield with a check, pulsing gently on a
-            // two-second cycle, then the SERVIX wordmark beneath. With animations off it is a still mark.
+            // The HTML emblem and wordmark, with motion disabled when the system requests it.
             val pulse = if (reducedMotion()) 1f else {
                 val transition = rememberInfiniteTransition(label = "shieldPulse")
                 transition.animateFloat(
@@ -267,43 +266,19 @@ fun WelcomeScreen(
                             .scale(pulse)
                             .background(SoftSand.copy(alpha = 0.55f), CircleShape),
                     )
-                    Canvas(modifier = Modifier.size(64.dp).testTag("welcome_shield")) {
-                        val w = size.width
-                        val h = size.height
-                        // Shield outline with a check, drawn rather than approximated by an icon.
-                        val shield = Path().apply {
-                            moveTo(w * 0.5f, h * 0.06f)
-                            lineTo(w * 0.92f, h * 0.24f)
-                            lineTo(w * 0.92f, h * 0.52f)
-                            cubicTo(w * 0.92f, h * 0.78f, w * 0.72f, h * 0.92f, w * 0.5f, h * 0.97f)
-                            cubicTo(w * 0.28f, h * 0.92f, w * 0.08f, h * 0.78f, w * 0.08f, h * 0.52f)
-                            lineTo(w * 0.08f, h * 0.24f)
-                            close()
-                        }
-                        drawPath(shield, color = ForestGreen)
-                        val check = Path().apply {
-                            moveTo(w * 0.30f, h * 0.50f)
-                            lineTo(w * 0.45f, h * 0.65f)
-                            lineTo(w * 0.72f, h * 0.34f)
-                        }
-                        drawPath(
-                            check,
-                            color = WarmIvory,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = w * 0.09f,
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                                join = androidx.compose.ui.graphics.StrokeJoin.Round,
-                            ),
-                        )
-                    }
+                    Image(
+                        painter = painterResource(R.drawable.welcome_emblem),
+                        contentDescription = null,
+                        modifier = Modifier.size(112.dp).scale(pulse).testTag("welcome_shield"),
+                    )
                 }
                 Row(
                     modifier = Modifier.padding(top = 20.dp),
                     verticalAlignment = Alignment.Bottom,
                 ) {
                     Text(
-                        text = "SERVIX",
-                        style = ServixType.headlineLg.copy(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 30.sp),
+                        text = "Servix",
+                        style = ServixType.headlineLg.copy(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 34.sp),
                         color = DeepForest,
                         modifier = Modifier.testTag("welcome_wordmark"),
                     )
