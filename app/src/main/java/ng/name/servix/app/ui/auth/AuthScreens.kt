@@ -12,10 +12,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import ng.name.servix.app.ui.theme.ServixButtonRadius
 import androidx.compose.ui.draw.clip
@@ -47,6 +46,7 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockClock
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,6 +70,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -182,45 +183,14 @@ fun OAuthButtons(
     }
 }
 
-/** Officially recognised brand marks, drawn as vectors so no image assets are needed. */
+/** Provider vectors reproduce the two marks in the corrected registration export. */
 @Composable
 private fun ProviderMark(google: Boolean) {
-    if (google) {
-        Canvas(modifier = Modifier.size(18.dp)) {
-            val r = size.minDimension / 2f
-            val c = Offset(size.width / 2f, size.height / 2f)
-            drawCircle(color = Color(0xFF4285F4), radius = r, center = c)
-            drawArc(
-                color = Color(0xFF34A853),
-                startAngle = 45f,
-                sweepAngle = 90f,
-                useCenter = true,
-                topLeft = Offset(c.x - r, c.y - r),
-                size = Size(r * 2, r * 2),
-            )
-            drawArc(
-                color = Color(0xFFFBBC05),
-                startAngle = 135f,
-                sweepAngle = 90f,
-                useCenter = true,
-                topLeft = Offset(c.x - r, c.y - r),
-                size = Size(r * 2, r * 2),
-            )
-            drawArc(
-                color = Color(0xFFEA4335),
-                startAngle = 225f,
-                sweepAngle = 90f,
-                useCenter = true,
-                topLeft = Offset(c.x - r, c.y - r),
-                size = Size(r * 2, r * 2),
-            )
-            drawCircle(color = WarmIvory, radius = r * 0.55f, center = c)
-        }
-    } else {
-        Canvas(modifier = Modifier.size(18.dp)) {
-            drawCircle(color = Color(0xFF24292F), radius = size.minDimension / 2f)
-        }
-    }
+    Image(
+        painter = painterResource(if (google) R.drawable.provider_google else R.drawable.provider_github),
+        contentDescription = null,
+        modifier = Modifier.size(16.dp),
+    )
 }
 
 /** The API reports provider ids ("google", "github"); the button shows the product's own name. */
@@ -761,7 +731,7 @@ fun RegisterScreen(
                 uiState.registerEmailError, "register_email_input", KeyboardType.Email)
             RegisterField(uiState.registerPassword, { onPasswordChange(it.take(200)) }, "Password", "Create a strong password", Icons.Outlined.Lock,
                 uiState.registerPasswordError, "register_password_input", KeyboardType.Password, showPassword, { showPassword = !showPassword })
-            RegisterField(uiState.registerConfirmPassword, { onConfirmPasswordChange(it.take(200)) }, "Confirm password", "Re-enter your password", Icons.Outlined.Lock,
+            RegisterField(uiState.registerConfirmPassword, { onConfirmPasswordChange(it.take(200)) }, "Confirm password", "Re-enter your password", Icons.Outlined.LockClock,
                 uiState.registerConfirmError, "register_confirm_password_input", KeyboardType.Password, showConfirmation, { showConfirmation = !showConfirmation },
                 onDone = { if (uiState.canSubmitRegistration) { focusManager.clearFocus(); onSubmit() } })
             RegisterPasswordChecklist(uiState.passwordRules)
