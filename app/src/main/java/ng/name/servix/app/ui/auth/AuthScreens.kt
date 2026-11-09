@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,6 +87,7 @@ import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
+import ng.name.servix.app.ui.theme.SurfaceContainerHigh
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
@@ -465,6 +467,40 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "login_submit_button",
             )
+
+            // s3_sign_in's trust pair: a pill that says what protects the account, and one honest
+            // sentence about money — never the word the owner removed.
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Surface(shape = RoundedCornerShape(999.dp), color = SurfaceContainerHigh) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Lock,
+                            contentDescription = null,
+                            tint = ForestGreen,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "Protected by two-step sign-in",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Charcoal,
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.payment_protection_copy),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedGray,
+                    textAlign = TextAlign.Center,
+                )
+            }
 
             HorizontalDivider(color = SoftSand)
 
