@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,10 +33,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,7 +69,6 @@ import ng.name.servix.app.ui.components.FilterChipPill
 import ng.name.servix.app.ui.components.ListSkeleton
 import ng.name.servix.app.ui.components.SearchField
 import ng.name.servix.app.ui.components.ServiceCard
-import ng.name.servix.app.ui.components.ServixBottomSheet
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSegmentedControl
 import ng.name.servix.app.ui.components.ServixTopBar
@@ -79,6 +83,7 @@ import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.ServixFormatters
+import kotlin.math.roundToInt
 
 private const val PRICE_SLIDER_MAX = 500_000
 
@@ -138,12 +143,25 @@ fun ExploreScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SearchField(
-                value = uiState.query,
-                placeholder = stringResource(R.string.home_search_placeholder),
-                onValueChange = onQueryChange,
-                testTag = "explore_search_field",
-            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                SearchField(
+                    value = uiState.query,
+                    placeholder = stringResource(R.string.home_search_placeholder),
+                    onValueChange = onQueryChange,
+                    onSubmit = onQuerySubmit,
+                    showClearButton = true,
+                    modifier = Modifier.weight(1f),
+                    testTag = "explore_search_field",
+                )
+                Surface(onClick = { filterSheetOpen = true }, shape = RoundedCornerShape(14.dp), color = ForestGreen,
+                    modifier = Modifier.size(56.dp).testTag("explore_filters_chip")) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.explore_filters), tint = PureWhite, modifier = Modifier.size(22.dp))
+                        if (uiState.activeFilterCount > 0) Text(uiState.activeFilterCount.toString(), style = ServixType.labelMd,
+                            color = PureWhite, modifier = Modifier.align(Alignment.TopEnd).padding(top = 5.dp, end = 7.dp))
+                    }
+                }
+            }
             ServixSegmentedControl(
                 options = listOf(
                     SearchMode.PROFESSIONALS.name to stringResource(R.string.explore_professionals),
@@ -157,16 +175,6 @@ fun ExploreScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 8.dp),
                 modifier = Modifier.fillMaxWidth().offset(x = (-16).dp),
             ) {
-                item {
-                    FilterChipPill(
-                        label = stringResource(R.string.explore_filters),
-                        value = uiState.activeFilterCount.takeIf { it > 0 }?.toString(),
-                        active = uiState.activeFilterCount > 0,
-                        icon = Icons.Rounded.Tune,
-                        onClick = { filterSheetOpen = true },
-                        modifier = Modifier.testTag("explore_filters_chip"),
-                    )
-                }
                 item {
                     Surface(
                         onClick = { sortMenuOpen = true },
@@ -216,6 +224,20 @@ fun ExploreScreen(
                         active = uiState.location.isNotBlank(),
                         onClick = { filterSheetOpen = true },
                     )
+                }
+                if (priceLabel != null) item {
+                    FilterChipPill(label = stringResource(R.string.explore_price), value = priceLabel,
+                        active = true, onClick = { filterSheetOpen = true })
+                }
+                if (uiState.selectedRatingId != "all") item {
+                    val ratingLabel = RATING_OPTIONS.firstOrNull { it.id == uiState.selectedRatingId }?.label
+                    FilterChipPill(label = stringResource(R.string.explore_rating), value = ratingLabel,
+                        active = true, onClick = { filterSheetOpen = true })
+                }
+                if (uiState.selectedAvailabilityId != "all" && uiState.selectedAvailabilityId != "available") item {
+                    val availabilityLabel = AVAILABILITY_OPTIONS.firstOrNull { it.id == uiState.selectedAvailabilityId }?.label
+                    FilterChipPill(label = stringResource(R.string.explore_availability), value = availabilityLabel,
+                        active = true, onClick = { filterSheetOpen = true })
                 }
                 item {
                     val availableNow = uiState.selectedAvailabilityId == "available"
@@ -342,13 +364,20 @@ fun ExploreScreen(
     }
 
     if (filterSheetOpen) {
-        ServixBottomSheet(title = stringResource(R.string.explore_filters), onDismiss = { filterSheetOpen = false }) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = { filterSheetOpen = false }, sheetState = sheetState,
+            containerColor = PureWhite, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
+            Column(Modifier.fillMaxWidth().fillMaxHeight(0.84f).padding(horizontal = 20.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(stringResource(R.string.explore_filters), style = ServixType.headlineMd, color = DeepForest)
+                    TextButton(onClick = onClearFilters, modifier = Modifier.testTag("explore_clear_filters")) {
+                        Text(stringResource(R.string.explore_clear_filters), style = ServixType.labelLg, color = ForestGreen)
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
                 FilterGroup(title = stringResource(R.string.explore_category)) {
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -378,7 +407,7 @@ fun ExploreScreen(
                 }
 
                 FilterGroup(title = stringResource(R.string.explore_rating)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RATING_OPTIONS.forEach { option ->
                             CategoryChip(
                                 label = option.label,
@@ -403,7 +432,7 @@ fun ExploreScreen(
                         )
                         Slider(
                             value = limit.toFloat(),
-                            onValueChange = { raw -> onPriceLimitChange(((raw / 25000f).toInt() * 25000).takeIf { it > 0 }) },
+                            onValueChange = { raw -> onPriceLimitChange(((raw / 25000f).roundToInt() * 25000).takeIf { it > 0 }) },
                             valueRange = 0f..PRICE_SLIDER_MAX.toFloat(),
                             steps = 19,
                             colors = SliderDefaults.colors(
@@ -441,6 +470,7 @@ fun ExploreScreen(
                     }
                 }
 
+                }
                 ServixPrimaryButton(
                     text = stringResource(
                         if (uiState.mode == SearchMode.PROFESSIONALS) R.string.explore_show_results_professionals
@@ -448,7 +478,7 @@ fun ExploreScreen(
                         uiState.total,
                     ),
                     onClick = { filterSheetOpen = false },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                     testTag = "explore_show_results",
                 )
             }

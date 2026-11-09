@@ -25,6 +25,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
@@ -99,6 +103,36 @@ class StitchFoundationTest {
             onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
             onOpenProfessional = {}, onOpenService = {},
         )
+    }
+
+    @Test
+    fun exploreSearchSubmitClearAndFilterSheet() {
+        val query = mutableStateOf("plumbing")
+        var submissions = 0
+        var clearedFilters = 0
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = ng.name.servix.app.ui.catalogue.SearchUiState(query = query.value, loading = false,
+                        selectedCategory = "graphic-design", categories = Fixtures.categories, total = 0),
+                    categoryNameFor = { "Graphic Design" }, onQueryChange = { query.value = it },
+                    onQuerySubmit = { submissions++ }, onModeChange = {}, onCategorySelect = {},
+                    onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+                    onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = { clearedFilters++ },
+                    onRefresh = {}, onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNode(hasSetTextAction()).performClick().performImeAction()
+        rule.runOnIdle { org.junit.Assert.assertEquals(1, submissions) }
+        rule.onNodeWithTag("explore_search_field_clear").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("", query.value); org.junit.Assert.assertEquals(2, submissions) }
+        rule.onNodeWithTag("explore_filters_chip").performClick()
+        rule.onNodeWithTag("explore_show_results").assertIsDisplayed()
+        rule.onNodeWithTag("explore_clear_filters").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals(1, clearedFilters) }
+        rule.onNodeWithTag("explore_show_results").performClick()
+        rule.onNodeWithTag("explore_clear_filters").assertDoesNotExist()
     }
 
     @Test
