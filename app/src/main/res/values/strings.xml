@@ -28,7 +28,7 @@
     <string name="notifications_rationale_allow">Allow notifications</string>
     <string name="notifications_rationale_later">Not now</string>
     <string name="notifications_open">Notifications</string>
-    <string name="auth_or_divider">or</string>
+    <string name="auth_or_divider">or continue with</string>
     <string name="auth_continue_google">Continue with Google</string>
     <string name="auth_continue_github">Continue with GitHub</string>
     <string name="auth_provider_failed">We could not finish that sign-in. Please try again.</string>

@@ -213,6 +213,14 @@ private fun ProviderMark(google: Boolean) {
     }
 }
 
+/** The API reports provider ids ("google", "github"); the button shows the product's own name. */
+fun providerDisplayName(id: String): String = when (id.lowercase()) {
+    "google" -> "Google"
+    "github" -> "GitHub"
+    "apple" -> "Apple"
+    else -> id.replaceFirstChar { it.uppercase() }
+}
+
 /** "or" rule between provider buttons and the email form. */
 @Composable
 fun OrDivider() {
@@ -569,7 +577,7 @@ fun LoginScreen(
                 OrDivider()
                 providers.forEach { provider ->
                     ServixButton(
-                        text = "Continue with $provider",
+                        text = "Continue with ${providerDisplayName(provider)}",
                         onClick = { onProviderClick(provider) },
                         style = ServixButtonStyle.Secondary,
                         enabled = !uiState.oauthBusy,
