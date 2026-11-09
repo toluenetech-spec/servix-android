@@ -810,19 +810,21 @@ private fun PasswordChecklist(rules: List<PasswordRuleStatus>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SoftSand.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            // s4's checklist: a Sand panel at radius 16, a filled disc per rule that turns Forest Green
+            // the moment the rule is met. Colour is the only change of state, so nothing jumps.
+            .background(SoftSand.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         rules.forEach { rule ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                     text = if (rule.met) "✓" else "○",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (rule.met) DeepForest else MutedGray,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = if (rule.met) ForestGreen else MutedGray,
                 )
                 Text(
                     text = rule.label,
