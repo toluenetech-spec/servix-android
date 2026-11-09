@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,10 +39,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,12 +75,32 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import ng.name.servix.app.ui.components.ServixButtonStyle
+import ng.name.servix.app.ui.components.ServixButton
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
+import ng.name.servix.app.ui.theme.ErrorContainer
+
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Path
+import ng.name.servix.app.ui.theme.ServixMotion
+import ng.name.servix.app.ui.theme.reducedMotion
 import androidx.compose.ui.unit.sp
 import ng.name.servix.app.R
 import ng.name.servix.app.ui.components.ServixBadge
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixLogoMark
+import ng.name.servix.app.ui.components.ServixButton
+import ng.name.servix.app.ui.components.ServixField
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.ServixTextField
@@ -84,8 +109,12 @@ import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DangerRed
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
+import ng.name.servix.app.ui.theme.OnErrorContainer
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
+import ng.name.servix.app.ui.theme.SurfaceContainerHigh
+import ng.name.servix.app.ui.theme.SurfaceContainerLow
+import ng.name.servix.app.ui.theme.ServixType
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
@@ -193,6 +222,14 @@ private fun ProviderMark(google: Boolean) {
     }
 }
 
+/** The API reports provider ids ("google", "github"); the button shows the product's own name. */
+fun providerDisplayName(id: String): String = when (id.lowercase()) {
+    "google" -> "Google"
+    "github" -> "GitHub"
+    "apple" -> "Apple"
+    else -> id.replaceFirstChar { it.uppercase() }
+}
+
 /** "or" rule between provider buttons and the email form. */
 @Composable
 fun OrDivider() {
@@ -220,85 +257,156 @@ fun WelcomeScreen(
     providers: List<String> = emptyList(),
     onProviderClick: (String) -> Unit = {},
 ) {
+    // Rebuilt to corrected/s2_welcome_minimal.html: a grabber, one centred hero with a soft glow behind
+    // the wordmark, and two 54 dp buttons pinned to the bottom. No card, no scroll, no illustration.
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(WarmIvory)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 36.dp),
+            .padding(horizontal = 16.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 520.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            ServixLogoMark()
+                .size(width = 48.dp, height = 4.dp)
+                .background(SoftSand, CircleShape),
+        )
 
-            Spacer(modifier = Modifier.height(28.dp))
+        Column(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            // The HTML's hero: a soft ring behind a Forest-Green shield with a check, pulsing gently on a
+            // two-second cycle, then the SERVIX wordmark beneath. With animations off it is a still mark.
+            val pulse = if (reducedMotion()) 1f else {
+                val transition = rememberInfiniteTransition(label = "shieldPulse")
+                transition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.06f,
+                    animationSpec = infiniteRepeatable(tween(2000, easing = ServixMotion.ContentEasing), RepeatMode.Reverse),
+                    label = "shieldScale",
+                ).value
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .size(132.dp)
+                            .scale(pulse)
+                            .background(SoftSand.copy(alpha = 0.55f), CircleShape),
+                    )
+                    Canvas(modifier = Modifier.size(64.dp).testTag("welcome_shield")) {
+                        val w = size.width
+                        val h = size.height
+                        // Shield outline with a check, drawn rather than approximated by an icon.
+                        val shield = Path().apply {
+                            moveTo(w * 0.5f, h * 0.06f)
+                            lineTo(w * 0.92f, h * 0.24f)
+                            lineTo(w * 0.92f, h * 0.52f)
+                            cubicTo(w * 0.92f, h * 0.78f, w * 0.72f, h * 0.92f, w * 0.5f, h * 0.97f)
+                            cubicTo(w * 0.28f, h * 0.92f, w * 0.08f, h * 0.78f, w * 0.08f, h * 0.52f)
+                            lineTo(w * 0.08f, h * 0.24f)
+                            close()
+                        }
+                        drawPath(shield, color = ForestGreen)
+                        val check = Path().apply {
+                            moveTo(w * 0.30f, h * 0.50f)
+                            lineTo(w * 0.45f, h * 0.65f)
+                            lineTo(w * 0.72f, h * 0.34f)
+                        }
+                        drawPath(
+                            check,
+                            color = WarmIvory,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = w * 0.09f,
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                                join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                            ),
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.padding(top = 20.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = "SERVIX",
+                        style = ServixType.headlineLg.copy(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 30.sp),
+                        color = DeepForest,
+                        modifier = Modifier.testTag("welcome_wordmark"),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 2.dp, bottom = 5.dp)
+                            .size(7.dp)
+                            .background(ForestGreen, CircleShape),
+                    )
+                }
+            }
 
             Text(
                 text = stringResource(R.string.welcome_headline),
-                style = MaterialTheme.typography.displaySmall,
+                style = ServixType.headlineLgMobile,
                 color = DeepForest,
-                modifier = Modifier.testTag("welcome_hero_title"),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp).testTag("welcome_hero_title"),
             )
-
             Text(
                 text = stringResource(R.string.welcome_subtext),
-                style = MaterialTheme.typography.bodyLarge,
+                style = ServixType.bodyMd,
                 color = MutedGray,
-                modifier = Modifier.testTag("welcome_subtext"),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp).testTag("welcome_subtext"),
             )
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 520.dp)
-                .padding(top = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ServixPrimaryButton(
+            ServixButton(
                 text = stringResource(R.string.welcome_create_account),
                 onClick = onCreateAccountClick,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                 testTag = "welcome_create_account_button",
             )
-            ServixSecondaryButton(
+            ServixButton(
                 text = stringResource(R.string.welcome_sign_in),
                 onClick = onSignInClick,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                style = ServixButtonStyle.Secondary,
                 testTag = "welcome_sign_in_button",
             )
             if (providers.isNotEmpty()) {
                 OrDivider()
-                OAuthButtons(providers = providers, onProviderClick = onProviderClick)
-            }
-            if (onBrowseFirstClick != null) {
-                TextButton(
-                    onClick = onBrowseFirstClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("welcome_browse_button"),
-                ) {
-                    Text(
-                        text = stringResource(R.string.welcome_browse_first),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            textDecoration = TextDecoration.Underline,
-                        ),
-                        color = ForestGreen,
+                providers.forEach { provider ->
+                    ServixButton(
+                        text = "Continue with ${providerDisplayName(provider)}",
+                        onClick = { onProviderClick(provider) },
+                        style = ServixButtonStyle.Text,
+                        modifier = Modifier.fillMaxWidth(),
+                        testTag = "welcome_oauth_$provider",
                     )
                 }
+            }
+            onBrowseFirstClick?.let { browse ->
+                ServixButton(
+                    text = stringResource(R.string.welcome_browse_first),
+                    onClick = browse,
+                    style = ServixButtonStyle.Text,
+                    modifier = Modifier.fillMaxWidth(),
+                    testTag = "welcome_browse_first_button",
+                )
             }
         }
     }
 }
 
+/**
+ * Shared frame for the auth screens that still use it (register, email code, the security stages,
+ * forgot password). S2 and S3 own their own headers now, per their HTML.
+ */
 @Composable
 private fun AuthShellContainer(
     onBackClick: (() -> Unit)? = null,
@@ -310,22 +418,17 @@ private fun AuthShellContainer(
             .background(WarmIvory)
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 520.dp),
+            modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             if (onBackClick != null) {
                 IconButton(
                     onClick = onBackClick,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .testTag("auth_back_button"),
+                    modifier = Modifier.size(48.dp).testTag("auth_back_button"),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -336,17 +439,8 @@ private fun AuthShellContainer(
             } else {
                 Spacer(modifier = Modifier.size(48.dp))
             }
-            ServixLogoMark()
-            Spacer(modifier = Modifier.size(48.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ServixCard(
-            modifier = Modifier.widthIn(max = 520.dp),
-            containerColor = PureWhite,
-            contentPadding = PaddingValues(24.dp),
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp)) {
             content()
         }
     }
@@ -367,106 +461,196 @@ fun LoginScreen(
     val focusManager = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
 
-    AuthShellContainer(onBackClick = onBackClick) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                text = stringResource(R.string.login_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = DeepForest,
-            )
-            Text(
-                text = stringResource(R.string.login_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MutedGray,
-            )
-
-            if (providers.isNotEmpty()) {
-                OAuthButtons(
-                    providers = providers,
-                    busy = uiState.oauthBusy,
-                    onProviderClick = onProviderClick,
+    // Rebuilt to corrected/s3_sign_in.html, top to bottom: header, eyebrow card, headline block,
+    // email, password + forgot, sign-in, "or continue with", providers, footer, trust pair.
+    // Behaviour is unchanged: the same state fields, the same callbacks, the same test tags.
+    Column(modifier = Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.size(48.dp).testTag("auth_back_button"),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                    tint = Charcoal,
                 )
-                OrDivider()
             }
-
-            ServixTextField(
-                value = uiState.loginEmail,
-                onValueChange = onEmailChange,
-                label = stringResource(R.string.field_email),
-                required = true,
-                error = uiState.loginEmailError,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next,
-                ),
-                testTag = "login_email_input",
+            Text(
+                text = stringResource(R.string.sign_in),
+                style = ServixType.titleLg,
+                color = Charcoal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
+            Box(
+                modifier = Modifier.size(32.dp).background(DeepForest, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Person,
+                    contentDescription = null,
+                    tint = WarmIvory,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+        }
 
-            ServixTextField(
-                value = uiState.loginPassword,
-                onValueChange = onPasswordChange,
-                label = stringResource(R.string.field_password),
-                required = true,
-                error = uiState.loginPasswordError,
-                isPassword = true,
-                passwordVisible = showPassword,
-                onTogglePasswordVisibility = { showPassword = !showPassword },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        onSubmit()
-                    }
-                ),
-                testTag = "login_password_input",
-            )
-
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TextButton(
-                    onClick = onForgotPasswordClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("forgot_password_button"),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Eyebrow card: shield tile, SERVIX wordmark, one honest promise.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceContainerLow, RoundedCornerShape(24.dp))
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.size(40.dp).background(ForestGreen, RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
+                    Icon(
+                        Icons.Outlined.VerifiedUser,
+                        contentDescription = null,
+                        tint = WarmIvory,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("SERVIX", style = ServixType.labelMd.copy(letterSpacing = 1.2.sp), color = ForestGreen)
                     Text(
-                        text = stringResource(R.string.forgot_password_link),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ForestGreen,
+                        text = stringResource(R.string.login_tagline),
+                        style = ServixType.bodySm,
+                        color = MutedGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.login_title),
+                    style = ServixType.headlineLgMobile,
+                    color = Charcoal,
+                )
+                Text(
+                    text = stringResource(R.string.login_subtitle),
+                    style = ServixType.bodyMd,
+                    color = MutedGray,
+                )
+            }
+
+            ServixField(
+                value = uiState.loginEmail,
+                onValueChange = onEmailChange,
+                label = stringResource(R.string.field_email),
+                placeholder = "olumide@example.ng",
+                leadingIcon = Icons.Outlined.MailOutline,
+                error = uiState.loginEmailError,
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next,
+                testTag = "login_email_input",
+            )
+
+            ServixField(
+                value = uiState.loginPassword,
+                onValueChange = onPasswordChange,
+                label = stringResource(R.string.field_password),
+                leadingIcon = Icons.Outlined.Lock,
+                error = uiState.loginPasswordError,
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+                onImeAction = {
+                    focusManager.clearFocus()
+                    onSubmit()
+                },
+                trailing = {
+                    IconButton(
+                        onClick = { showPassword = !showPassword },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = stringResource(
+                                if (showPassword) R.string.hide_password else R.string.show_password,
+                            ),
+                            tint = MutedGray,
+                        )
+                    }
+                },
+                testTag = "login_password_input",
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Text(
+                    text = stringResource(R.string.forgot_password_link),
+                    style = ServixType.labelMd,
+                    color = ForestGreen,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clickable(onClick = onForgotPasswordClick)
+                        .padding(top = 14.dp)
+                        .testTag("forgot_password_button"),
+                )
+            }
+
             if (!uiState.loginGeneralError.isNullOrBlank()) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = DangerRed.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.35f)),
+                    shape = RoundedCornerShape(16.dp),
+                    color = ErrorContainer,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = uiState.loginGeneralError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = DangerRed,
+                        style = ServixType.bodySm,
+                        color = OnErrorContainer,
                         modifier = Modifier.padding(12.dp),
                     )
                 }
             }
 
-            ServixPrimaryButton(
+            ServixButton(
                 text = stringResource(if (uiState.loginSubmitting) R.string.signing_in else R.string.sign_in),
                 onClick = {
                     focusManager.clearFocus()
                     onSubmit()
                 },
                 loading = uiState.loginSubmitting,
+                trailingIcon = Icons.AutoMirrored.Outlined.ArrowForward,
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "login_submit_button",
             )
 
-            HorizontalDivider(color = SoftSand)
+            // Providers keep today's behaviour: the same onProviderClick with the API's own names.
+            if (providers.isNotEmpty()) {
+                OrDivider()
+                providers.forEach { provider ->
+                    ServixButton(
+                        text = "Continue with ${providerDisplayName(provider)}",
+                        onClick = { onProviderClick(provider) },
+                        style = ServixButtonStyle.Secondary,
+                        enabled = !uiState.oauthBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                        testTag = "login_oauth_$provider",
+                    )
+                }
+            }
+
+            HorizontalDivider(color = BorderSand)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -475,21 +659,51 @@ fun LoginScreen(
             ) {
                 Text(
                     text = stringResource(R.string.new_to_servix),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = ServixType.bodyMd,
                     color = MutedGray,
                 )
                 TextButton(
                     onClick = onCreateAccountClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("go_to_register_button"),
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("go_to_register_button"),
                 ) {
                     Text(
                         text = stringResource(R.string.create_account),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = DeepForest,
+                        style = ServixType.labelLg,
+                        color = ForestGreen,
                     )
                 }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Surface(shape = RoundedCornerShape(999.dp), color = SurfaceContainerHigh) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Lock,
+                            contentDescription = null,
+                            tint = ForestGreen,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "Protected by two-step sign-in",
+                            style = ServixType.labelMd,
+                            color = Charcoal,
+                        )
+                    }
+                }
+                Text(
+                    text = stringResource(R.string.payment_protection_copy),
+                    style = ServixType.bodySm,
+                    color = MutedGray,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -771,19 +985,21 @@ private fun PasswordChecklist(rules: List<PasswordRuleStatus>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SoftSand.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            // s4's checklist: a Sand panel at radius 16, a filled disc per rule that turns Forest Green
+            // the moment the rule is met. Colour is the only change of state, so nothing jumps.
+            .background(SoftSand.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         rules.forEach { rule ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                     text = if (rule.met) "✓" else "○",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (rule.met) DeepForest else MutedGray,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = if (rule.met) ForestGreen else MutedGray,
                 )
                 Text(
                     text = rule.label,

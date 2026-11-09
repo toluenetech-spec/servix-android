@@ -1,54 +1,56 @@
 package ng.name.servix.app.ui.theme
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
 
+/**
+ * Brand colours wired into Material so every stock component (ripples, dividers, sheet scrims) picks
+ * up Servix values instead of a default purple. These are the Stitch roles from CORRECTIONS.md §4.
+ */
 private val ServixLightColors = lightColorScheme(
     primary = DeepForest,
-    onPrimary = WarmIvory,
+    onPrimary = PureWhite,
     primaryContainer = ForestGreen,
     onPrimaryContainer = WarmIvory,
+    inversePrimary = InversePrimary,
     secondary = ForestGreen,
-    onSecondary = WarmIvory,
+    onSecondary = PureWhite,
     secondaryContainer = SoftSand,
-    onSecondaryContainer = Charcoal,
+    onSecondaryContainer = DeepForest,
     tertiary = Coral,
     onTertiary = PureWhite,
+    tertiaryContainer = TertiaryContainer,
+    onTertiaryContainer = OnTertiaryContainer,
     background = WarmIvory,
     onBackground = Charcoal,
-    surface = PureWhite,
+    surface = WarmIvory,
     onSurface = Charcoal,
     surfaceVariant = SoftSand,
     onSurfaceVariant = MutedGray,
-    outline = BorderSand,
-    outlineVariant = SoftSand,
+    surfaceContainerLowest = PureWhite,
+    surfaceContainerLow = SurfaceContainerLow,
+    surfaceContainer = SoftSand,
+    surfaceContainerHigh = SurfaceContainerHigh,
+    surfaceContainerHighest = BorderSand,
+    outline = BorderStrongSand,
+    outlineVariant = BorderSand,
     error = DangerRed,
     onError = PureWhite,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer,
 )
 
-// Mobile radii (plan §3): cards 16, sheets 24 (top), buttons/inputs 12, chips pill. No gradients.
-val ServixCardRadius = 16.dp
-val ServixButtonRadius = 12.dp
-val ServixSheetRadius = 24.dp
-val ServixShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(ServixButtonRadius),
-    medium = RoundedCornerShape(ServixCardRadius),
-    large = RoundedCornerShape(ServixCardRadius),
-    extraLarge = RoundedCornerShape(ServixSheetRadius),
-)
-
-/** v1 is light only (plan §3): the system theme must never invert the brand. */
+/**
+ * v1 is light only: the design has no dark palette and the system theme must never invert the brand
+ * (PROMPT_STITCH_IMPLEMENTATION §"How to translate": no dynamic colour, no dark theme).
+ */
 @Composable
 fun ServixTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = ServixLightColors,
         typography = ServixTypography,
         shapes = ServixShapes,
-        content = content
+        content = content,
     )
 }

@@ -101,7 +101,7 @@ internal fun AccountPaymentsSheetContent(
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    text = stringResource(R.string.escrow_copy),
+                    text = stringResource(R.string.payment_protection_copy),
                     style = MaterialTheme.typography.bodySmall,
                     color = Charcoal,
                 )

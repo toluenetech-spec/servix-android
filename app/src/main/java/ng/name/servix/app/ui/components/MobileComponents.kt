@@ -60,6 +60,10 @@ import ng.name.servix.app.ui.theme.DangerRed
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
+import ng.name.servix.app.ui.theme.OnTertiaryContainer
+import ng.name.servix.app.ui.theme.OnErrorContainer
+import ng.name.servix.app.ui.theme.TertiaryContainer
+import ng.name.servix.app.ui.theme.ErrorContainer
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.ServixButtonRadius
 import ng.name.servix.app.ui.theme.ServixCardRadius
@@ -411,29 +415,21 @@ fun FilterChipPill(
 /** Booking status pill, exactly the ten states and tints from plan §3. */
 @Composable
 fun StatusChip(status: String, modifier: Modifier = Modifier) {
-    val (label, background, foreground) = statusStyle(status)
-    Surface(modifier = modifier, shape = CircleShape, color = background) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = foreground,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-        )
-    }
+    // One chip, two entry points: screens that hold a status string keep this call, and the tone map
+    // lives beside the design's ten variants (`s13b`) rather than in each screen.
+    ng.name.servix.app.ui.components.StatusChip(
+        text = statusLabel(status),
+        tone = statusTone(status),
+        modifier = modifier,
+    )
 }
 
-fun statusStyle(status: String): Triple<String, Color, Color> = when (status) {
-    "pending_payment" -> Triple("Awaiting payment", Coral.copy(alpha = 0.12f), Coral)
-    "requested" -> Triple("Requested", SoftSand, Charcoal)
-    "accepted" -> Triple("Accepted", SoftSand, Charcoal)
-    "in_progress" -> Triple("In progress", ForestGreen.copy(alpha = 0.12f), ForestGreen)
-    "delivered" -> Triple("Delivered", ForestGreen.copy(alpha = 0.12f), ForestGreen)
-    "completed" -> Triple("Completed", DeepForest, WarmIvory)
-    "cancelled" -> Triple("Cancelled", MutedGray.copy(alpha = 0.12f), MutedGray)
-    "declined" -> Triple("Declined", MutedGray.copy(alpha = 0.12f), MutedGray)
-    "disputed" -> Triple("Disputed", DangerRed.copy(alpha = 0.10f), DangerRed)
-    "refunded" -> Triple("Refunded", MutedGray.copy(alpha = 0.12f), MutedGray)
-    else -> Triple(status, SoftSand, Charcoal)
+/** Kept for call sites that show label + colours directly; the tones come from [statusTone]. */
+fun statusStyle(status: String): Triple<String, Color, Color> = when (statusTone(status)) {
+    StatusTone.Warn -> Triple(statusLabel(status), TertiaryContainer, OnTertiaryContainer)
+    StatusTone.Bad -> Triple(statusLabel(status), ErrorContainer, OnErrorContainer)
+    StatusTone.Neutral -> Triple(statusLabel(status), SoftSand, MutedGray)
+    else -> Triple(statusLabel(status), SoftSand, DeepForest)
 }
 
 /** ₦350,000 · per project — tabular figures so amounts align. */
