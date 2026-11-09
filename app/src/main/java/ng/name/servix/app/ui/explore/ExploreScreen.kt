@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +49,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ng.name.servix.app.R
+import ng.name.servix.app.data.model.ProfessionalSummaryDto
+import ng.name.servix.app.ui.catalogue.ServixAvatarImage
 import ng.name.servix.app.ui.catalogue.AVAILABILITY_OPTIONS
 import ng.name.servix.app.ui.catalogue.PRICE_OPTIONS
 import ng.name.servix.app.ui.catalogue.RATING_OPTIONS
@@ -57,7 +62,6 @@ import ng.name.servix.app.ui.components.EmptyState
 import ng.name.servix.app.ui.components.ErrorCard
 import ng.name.servix.app.ui.components.FilterChipPill
 import ng.name.servix.app.ui.components.ListSkeleton
-import ng.name.servix.app.ui.components.ProfessionalRow
 import ng.name.servix.app.ui.components.SearchField
 import ng.name.servix.app.ui.components.ServiceCard
 import ng.name.servix.app.ui.components.ServixBottomSheet
@@ -297,19 +301,7 @@ fun ExploreScreen(
 
                 if (uiState.mode == SearchMode.PROFESSIONALS) {
                     items(uiState.professionals, key = { it.id }) { pro ->
-                        ProfessionalRow(
-                            name = pro.name,
-                            title = pro.title,
-                            rating = pro.rating,
-                            reviewCount = pro.reviewCount,
-                            startingPrice = pro.startingPrice,
-                            verified = pro.verified,
-                            initials = pro.name,
-                            subtitle = pro.location.takeIf { it.isNotBlank() },
-                            avatarUrl = pro.image,
-                            onClick = { onOpenProfessional(pro.slug) },
-                            modifier = Modifier.testTag("explore_professional_row"),
-                        )
+                        ExploreProfessionalCard(pro = pro, onOpen = { onOpenProfessional(pro.slug) })
                     }
                 } else {
                     items(uiState.services, key = { it.id }) { service ->
@@ -483,6 +475,46 @@ private fun ExploreProtection() {
                 Text("You pay through Servix. The professional is paid after you confirm the work.",
                     style = ServixType.bodySm, color = PureWhite.copy(alpha = 0.8f))
             }
+        }
+    }
+}
+
+/** S9 result card uses only fields in the professional summary, not the prototype's fictional offers. */
+@Composable
+private fun ExploreProfessionalCard(pro: ProfessionalSummaryDto, onOpen: () -> Unit) {
+    Surface(onClick = onOpen, shape = RoundedCornerShape(18.dp), color = PureWhite,
+        modifier = Modifier.fillMaxWidth().testTag("explore_professional_${pro.id}")) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                ServixAvatarImage(rawImageUrl = pro.image, name = pro.name, size = 64.dp, shape = RoundedCornerShape(12.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(pro.name, style = ServixType.titleLg, color = DeepForest, modifier = Modifier.weight(1f, fill = false))
+                        if (pro.verified) Icon(Icons.Filled.Verified, contentDescription = "Verified professional", tint = ForestGreen, modifier = Modifier.size(17.dp))
+                    }
+                    if (pro.title.isNotBlank()) Text(pro.title, style = ServixType.bodySm, color = MutedGray)
+                    if (pro.reviewCount > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Filled.Star, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(16.dp))
+                            Text("${pro.rating} · ${pro.reviewCount} reviews", style = ServixType.labelMd, color = Charcoal)
+                        }
+                    }
+                    if (pro.completedProjects > 0) Text("${pro.completedProjects} jobs completed", style = ServixType.labelMd, color = ForestGreen)
+                }
+            }
+            if (pro.location.isNotBlank() || pro.startingPrice > 0) {
+                Column(Modifier.fillMaxWidth().background(SoftSand, RoundedCornerShape(12.dp)).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (pro.location.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(16.dp))
+                        Text(pro.location, style = ServixType.bodySm, color = Charcoal)
+                    }
+                    if (pro.startingPrice > 0) Text("Starting from ${ServixFormatters.formatNaira(pro.startingPrice)}",
+                        style = ServixType.labelLg, color = DeepForest)
+                }
+            }
+            ServixPrimaryButton(text = "View profile", onClick = onOpen, modifier = Modifier.fillMaxWidth(),
+                testTag = "explore_profile_${pro.id}")
         }
     }
 }

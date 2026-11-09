@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -98,6 +99,31 @@ class StitchFoundationTest {
             onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
             onOpenProfessional = {}, onOpenService = {},
         )
+    }
+
+    @Test
+    fun exploreResultUsesRealFieldsAndOpensProfile() {
+        var opened = ""
+        val pro = ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "pro-1", name = "Ada Example",
+            title = "Technician", location = "Ibadan", rating = 4.8, reviewCount = 12,
+            startingPrice = 12000, completedProjects = 7, verified = false)
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = ng.name.servix.app.ui.catalogue.SearchUiState(query = "technician", loading = false,
+                        professionals = listOf(pro), total = 1), categoryNameFor = { "" },
+                    onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
+                    onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+                    onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+                    onOpenProfessional = { opened = it }, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithText("Ada Example").assertExists()
+        rule.onNodeWithText("7 jobs completed").assertExists()
+        rule.onNodeWithContentDescription("Verified professional").assertDoesNotExist()
+        rule.onNodeWithTag("explore_profile_pro-1").performScrollTo().performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("pro-1", opened) }
     }
 
     @Test fun sessionSplash() = rule.capture("49_session_splash_stitch") {
