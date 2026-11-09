@@ -122,7 +122,7 @@ class BookingsViewModel(
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             _uiState.update {
-                if (forceRefresh && it.bookings.isNotEmpty()) {
+                if (forceRefresh && !it.loading) {
                     it.copy(refreshing = true, error = null)
                 } else {
                     it.copy(loading = true, error = null)

@@ -137,6 +137,7 @@ class BookingDetailViewModel(
     val uiState: StateFlow<BookingDetailUiState> = _uiState.asStateFlow()
 
     private var paymentPollJob: Job? = null
+    private var bookingLoadJob: Job? = null
 
     fun loadBooking(
         id: String,
@@ -150,12 +151,13 @@ class BookingDetailViewModel(
             return
         }
 
-        viewModelScope.launch {
+        if (forceRefresh && _uiState.value.actionBusy) return
+        if (bookingLoadJob?.isActive == true && _uiState.value.bookingId == id) return
+        bookingLoadJob?.cancel()
+        bookingLoadJob = viewModelScope.launch {
             _uiState.update {
-                BookingDetailUiState(
-                    bookingId = id,
-                    loading = true,
-                )
+                if (it.bookingId == id && it.booking != null) it.copy(error = null)
+                else BookingDetailUiState(bookingId = id, loading = true)
             }
 
             val res = bookingRepository.getBooking(id)
@@ -187,8 +189,8 @@ class BookingDetailViewModel(
                     _uiState.update {
                         it.copy(
                             loading = false,
-                            notFound = apiEx?.status == 404,
-                            error = err.message ?: "We couldn't load this booking.",
+                            notFound = apiEx?.status == 404 && it.booking == null,
+                            error = if (it.booking == null) err.message ?: "We couldn't load this booking." else null,
                         )
                     }
                 }

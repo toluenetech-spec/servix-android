@@ -57,6 +57,8 @@ class ChatsViewModel(
     private var ownerId: String? = null
     private var generation = 0L
     private var loadJob: Job? = null
+    private var activeThreadId: String? = null
+    private var eventRevision = 0L
 
     init {
         viewModelScope.launch {
@@ -65,7 +67,9 @@ class ChatsViewModel(
         }
         viewModelScope.launch {
             stream.connection.collect { connection ->
+                val previous = _uiState.value.connection
                 _uiState.update { it.copy(connection = connection) }
+                if (connection == ChatConnection.LIVE && previous != ChatConnection.LIVE && ownerId != null) refresh(quiet = true)
             }
         }
         viewModelScope.launch {
@@ -79,6 +83,7 @@ class ChatsViewModel(
                     pollJob?.cancel()
                     pollJob = null
                     ownerId = userId
+                    activeThreadId = null
                     _uiState.value = ChatsUiState(loading = userId != null, aiEnabled = _uiState.value.aiEnabled)
                     if (userId != null) refresh()
                 }
@@ -104,6 +109,7 @@ class ChatsViewModel(
     fun refresh(quiet: Boolean = false) {
         val owner = ownerId ?: return
         val currentGeneration = generation
+        val requestedRevision = eventRevision
         loadJob?.cancel()
         if (!quiet) _uiState.update { it.copy(loading = it.threads.isEmpty(), refreshing = it.threads.isNotEmpty(), error = null) }
         loadJob = viewModelScope.launch {
@@ -117,6 +123,10 @@ class ChatsViewModel(
                 currentCoroutineContext().ensureActive()
             }
             if (generation != currentGeneration || ownerId != owner) return@launch
+            if (requestedRevision != eventRevision) {
+                refresh(quiet = true)
+                return@launch
+            }
             result.fold(
                 onSuccess = { threads ->
                     _uiState.update { it.copy(loading = false, refreshing = false, threads = threads,
@@ -145,18 +155,25 @@ class ChatsViewModel(
 
     fun thread(threadId: String): ChatThreadDto? = _uiState.value.threads.firstOrNull { it.id == threadId }
 
-    private fun onEvent(event: ChatEvent) {
+    fun setActiveThread(threadId: String?) {
+        activeThreadId = threadId
+        if (threadId != null) markReadLocally(threadId)
+    }
+
+    internal fun onEvent(event: ChatEvent) {
+        if (ownerId == null) return
+        if (event !is ChatEvent.Typing && event !is ChatEvent.Unknown) eventRevision++
         when (event) {
             is ChatEvent.Message -> {
                 if (_uiState.value.threads.any { it.id == event.threadId }) {
-                    applyIncoming(event.threadId, event.message.body, event.message.createdAt, event.message.senderId, event.message.kind)
+                    applyIncoming(event.threadId, event.message, isUpdate = false)
                 } else {
                     refresh(quiet = true)
                 }
             }
             is ChatEvent.MessageUpdate -> {
                 if (_uiState.value.threads.any { it.id == event.threadId }) {
-                    applyIncoming(event.threadId, event.message.body, event.message.createdAt, event.message.senderId, event.message.kind)
+                    applyIncoming(event.threadId, event.message, isUpdate = true)
                 }
             }
             is ChatEvent.Read -> {
@@ -200,20 +217,22 @@ class ChatsViewModel(
         }
     }
 
-    private fun applyIncoming(threadId: String, body: String, createdAt: String, senderId: String, kind: String) {
-        val mine = senderId == ownerId
+    private fun applyIncoming(threadId: String, message: ng.name.servix.app.data.model.ChatMessageDto, isUpdate: Boolean) {
+        val mine = message.senderId == ownerId
         _uiState.update { state ->
             val threads = state.threads.map { thread ->
-                if (thread.id != threadId) {
-                    thread
-                } else {
+                if (thread.id != threadId || (isUpdate && thread.lastMessageId != message.id)) thread
+                else {
+                    val duplicate = message.id.isNotBlank() && thread.lastMessageId == message.id
+                    val increaseUnread = !isUpdate && !duplicate && !mine && activeThreadId != threadId
                     thread.copy(
-                        lastMessage = body.ifBlank { previewForKind(kind) },
-                        lastMessageKind = kind,
-                        lastMessageAt = createdAt,
-                        lastMessageSenderId = senderId,
-                        unread = if (mine) thread.unread else true,
-                        unreadCount = if (mine) thread.unreadCount else thread.unreadCount + 1,
+                        lastMessage = message.body.ifBlank { previewForKind(message.kind) },
+                        lastMessageKind = message.kind,
+                        lastMessageAt = message.createdAt,
+                        lastMessageSenderId = message.senderId,
+                        lastMessageId = message.id,
+                        unread = if (increaseUnread) true else thread.unread,
+                        unreadCount = if (increaseUnread) thread.unreadCount + 1 else thread.unreadCount,
                     )
                 }
             }.sortedByDescending { it.lastMessageAt ?: it.updatedAt ?: "" }

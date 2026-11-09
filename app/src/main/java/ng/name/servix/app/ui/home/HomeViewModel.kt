@@ -111,7 +111,7 @@ class HomeViewModel(
             proAction?.cancel()
             _professionalState.value = ProfessionalHomeState(userId = userId)
         }
-        else _professionalState.update { it.copy(loading = true) }
+        else if (!forceRefresh) _professionalState.update { it.copy(loading = true) }
         val generation = proGeneration
         proLoad = viewModelScope.launch {
             val jobs = async { bookingRepository.getProfessionalBookings() }
@@ -171,7 +171,7 @@ class HomeViewModel(
 
         homeLoad = viewModelScope.launch {
             _uiState.update {
-                if (forceRefresh && (it.categories.isNotEmpty() || it.bookings.isNotEmpty())) {
+                if (forceRefresh && !it.loading) {
                     it.copy(refreshing = true, error = null)
                 } else {
                     it.copy(loading = true, error = null)

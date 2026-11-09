@@ -38,6 +38,7 @@ class UpdateUiState(private val context: Context, private val scope: CoroutineSc
     var downloading by mutableStateOf(false); private set
     var progress by mutableStateOf<Int?>(null); private set
     var error by mutableStateOf<String?>(null); private set
+    var completedChecks by mutableStateOf(0); private set
     private var file: File? = null
     private var waitingForInstallPermission = false
     val enabled get() = BuildConfig.SELF_UPDATE_CHANNEL == "github"
@@ -49,6 +50,7 @@ class UpdateUiState(private val context: Context, private val scope: CoroutineSc
             if (result?.version != previousVersion) file = null
             available = result
             available?.let { if (updates.shouldShow(it.version)) showDialog = true }
+            completedChecks++
         }
     }
     fun onResume() {

@@ -109,6 +109,7 @@ import ng.name.servix.app.ui.bookings.BookingsViewModel
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
 import ng.name.servix.app.ui.catalogue.SearchMode
+import ng.name.servix.app.ui.liveness.ForegroundRefresh
 import ng.name.servix.app.ui.explore.ExploreScreen
 import ng.name.servix.app.ui.catalogue.SearchViewModel
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
@@ -135,6 +136,7 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.outlined.Chat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import ng.name.servix.app.ui.home.HomeTabScreen
 import ng.name.servix.app.ui.home.HomeWeek
@@ -282,6 +284,12 @@ fun ServixAppShell(
         factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream, authViewModel.sessionState)
     )
     val chatsState by chatsViewModel.uiState.collectAsStateWithLifecycle()
+    val notificationsViewModel: NotificationsViewModel = viewModel(
+        factory = NotificationsViewModel.factory(accountRepository, authViewModel.sessionState)
+    )
+    val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+    val refreshKey = sessionUserId to updateState.completedChecks
+    ForegroundRefresh(refreshKey) { if (sessionUserId != null) notificationsViewModel.load(refresh = true) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val shellScope = rememberCoroutineScope()
     // Chat entry point from a booking; the API creates or returns the one thread per booking.
@@ -292,21 +300,40 @@ fun ServixAppShell(
             }
         }
     }
-    DisposableEffect(lifecycleOwner, sessionUserId) {
+    DisposableEffect(lifecycleOwner, sessionUserId, isOnline) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> if (sessionUserId != null) chatsViewModel.startStream()
-                Lifecycle.Event.ON_STOP -> chatsViewModel.stopStream()
+                Lifecycle.Event.ON_RESUME -> if (sessionUserId != null && isOnline) chatsViewModel.startStream()
+                Lifecycle.Event.ON_PAUSE -> chatsViewModel.stopStream()
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && sessionUserId != null) {
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && sessionUserId != null && isOnline) {
             chatsViewModel.startStream()
         }
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             chatsViewModel.stopStream()
+        }
+    }
+
+    LaunchedEffect(chatEventStream, sessionUserId, sessionRole) {
+        chatEventStream.events.collect { event ->
+            val threadId = when (event) {
+                is ng.name.servix.app.data.realtime.ChatEvent.Message -> event.threadId
+                is ng.name.servix.app.data.realtime.ChatEvent.ThreadEvent -> event.threadId
+                else -> null
+            }
+            if (threadId != null && sessionUserId != null) {
+                val thread = chatsViewModel.thread(threadId)
+                if (thread == null || !thread.bookingId.isNullOrBlank() || thread.booking != null) {
+                    bookingsViewModel.loadBookings(forceRefresh = true)
+                    if (sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId, forceRefresh = true)
+                    else homeViewModel.loadHome(sessionUserId, forceRefresh = true)
+                    notificationsViewModel.load(refresh = true)
+                }
+            }
         }
     }
 
@@ -342,7 +369,7 @@ fun ServixAppShell(
     }
 
     val isAuthenticated = sessionState is SessionState.Authenticated
-    var unreadNotifications by remember { mutableStateOf(0) }
+    val unreadNotifications = notificationsState.unread
     // One light tick when a sign-in (email, provider or security finish) lands.
     val signInTick = rememberSuccessTick()
     var lastAuthState by remember { mutableStateOf<Boolean?>(null) }
@@ -351,13 +378,6 @@ fun ServixAppShell(
         lastAuthState = isAuthenticated
     }
 
-    LaunchedEffect(isAuthenticated, currentDest) {
-        unreadNotifications = if (isAuthenticated) {
-            accountRepository.getUnreadNotificationCount().getOrNull()?.unread ?: 0
-        } else {
-            0
-        }
-    }
     val startRoute: ServixRoute = if (isAuthenticated) {
         ServixRoute.Home
     } else {
@@ -715,6 +735,10 @@ fun ServixAppShell(
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
                 val professionalHome by homeViewModel.professionalState.collectAsStateWithLifecycle()
+                ForegroundRefresh(refreshKey) {
+                    if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
+                    else homeViewModel.loadHome(user?.id, forceRefresh = true)
+                }
 
                 if (user?.role == "professional") {
                     ng.name.servix.app.ui.home.ProfessionalHomeScreen(
@@ -928,7 +952,8 @@ fun ServixAppShell(
                     },
                     onNavigateToBookingAfterPay = { bookingId ->
                         bookingsViewModel.loadBookings(forceRefresh = true)
-                        homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
+                        if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
+                        else homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
                         navController.navigate(
                             ServixRoute.BookingDetail(
                                 id = bookingId,
@@ -947,6 +972,7 @@ fun ServixAppShell(
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
+                ForegroundRefresh(refreshKey) { if (user != null) bookingsViewModel.loadBookings(forceRefresh = true) }
 
                 BookingsScreen(
                     user = user,
@@ -973,11 +999,32 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val detailViewModel: BookingDetailViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
+                    key = "booking-${user?.id.orEmpty()}-${route.id}",
                     factory = BookingDetailViewModel.factory(bookingRepository),
                 )
                 val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(route.id) {
+                val detailLifecycle = LocalLifecycleOwner.current
+                LaunchedEffect(detailLifecycle, route.id, sessionUserId) {
+                    detailLifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        chatEventStream.events.collect { event ->
+                            val threadId = when (event) {
+                                is ng.name.servix.app.data.realtime.ChatEvent.Message -> event.threadId
+                                is ng.name.servix.app.data.realtime.ChatEvent.ThreadEvent -> event.threadId
+                                else -> null
+                            }
+                            if (threadId != null && sessionUserId != null) {
+                                val thread = chatsViewModel.thread(threadId)
+                                if (thread == null || thread.bookingId == route.id) detailViewModel.loadBooking(route.id, forceRefresh = true)
+                            }
+                        }
+                    }
+                }
+
+                ForegroundRefresh(refreshKey to route.id) {
+                    if (user != null) detailViewModel.loadBooking(route.id, forceRefresh = true)
+                }
+                LaunchedEffect(route.id, user?.id) {
                     detailViewModel.loadBooking(
                         id = route.id,
                         startPollingIfPending = route.pollingAfterPay,
@@ -1068,8 +1115,6 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.Notifications> {
-                val notificationsViewModel = remember { NotificationsViewModel(accountRepository) }
-                val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
                 NotificationsScreen(
                     uiState = notificationsState,
                     onBackClick = { navController.popBackStack() },
@@ -1172,7 +1217,22 @@ fun ServixAppShell(
                 val conversationState by conversationViewModel.uiState.collectAsStateWithLifecycle()
                 val thread = chatsState.threads.firstOrNull { it.id == route.threadId }
                 var contactCardOpen by remember { mutableStateOf(false) }
-                LaunchedEffect(route.threadId) { chatsViewModel.markReadLocally(route.threadId) }
+                val conversationLifecycle = LocalLifecycleOwner.current
+                DisposableEffect(conversationLifecycle, route.threadId) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        when (event) {
+                            Lifecycle.Event.ON_RESUME -> chatsViewModel.setActiveThread(route.threadId)
+                            Lifecycle.Event.ON_PAUSE -> chatsViewModel.setActiveThread(null)
+                            else -> Unit
+                        }
+                    }
+                    conversationLifecycle.lifecycle.addObserver(observer)
+                    if (conversationLifecycle.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) chatsViewModel.setActiveThread(route.threadId)
+                    onDispose {
+                        conversationLifecycle.lifecycle.removeObserver(observer)
+                        chatsViewModel.setActiveThread(null)
+                    }
+                }
                 ConversationScreen(
                     uiState = conversationState,
                     thread = thread,

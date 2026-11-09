@@ -1,7 +1,13 @@
 package ng.name.servix.app.ui.notifications
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,6 +15,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ng.name.servix.app.data.model.NotificationDto
 import ng.name.servix.app.data.repository.AccountRepository
+import ng.name.servix.app.data.repository.SessionState
 
 data class NotificationsUiState(
     val loading: Boolean = true,
@@ -22,17 +29,37 @@ data class NotificationsUiState(
 /** Backs the Account › Notifications screen (GET/POST /account/notifications*, account.ts:44-63). */
 class NotificationsViewModel(
     private val accountRepository: AccountRepository,
+    private val session: StateFlow<SessionState>,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = _uiState.asStateFlow()
 
-    init { load() }
+    private var ownerId: String? = null
+    private var generation = 0L
+    private var loadJob: Job? = null
+    init {
+        viewModelScope.launch {
+            session.map { (it as? SessionState.Authenticated)?.user?.id }.distinctUntilChanged().collect { id ->
+                generation++
+                loadJob?.cancel()
+                ownerId = id
+                _uiState.value = NotificationsUiState(loading = id != null)
+                if (id != null) load()
+            }
+        }
+    }
 
     fun load(refresh: Boolean = false) {
-        _uiState.update { it.copy(loading = it.items.isEmpty(), refreshing = refresh, error = null) }
-        viewModelScope.launch {
-            accountRepository.getNotifications().fold(
+        val owner = ownerId ?: return
+        val requestGeneration = generation
+        loadJob?.cancel()
+        _uiState.update { it.copy(loading = if (refresh) it.loading else it.items.isEmpty(), refreshing = refresh, error = null) }
+        loadJob = viewModelScope.launch {
+            val result = accountRepository.getNotifications()
+            currentCoroutineContext().ensureActive()
+            if (generation != requestGeneration || ownerId != owner) return@launch
+            result.fold(
                 onSuccess = { page ->
                     _uiState.update {
                         it.copy(
@@ -54,10 +81,16 @@ class NotificationsViewModel(
     }
 
     fun markAllRead() {
+        val owner = ownerId ?: return
+        val requestGeneration = generation
         if (_uiState.value.markingAll) return
+        loadJob?.cancel()
         _uiState.update { it.copy(markingAll = true) }
         viewModelScope.launch {
-            accountRepository.markNotificationsRead(all = true).fold(
+            val result = accountRepository.markNotificationsRead(all = true)
+            currentCoroutineContext().ensureActive()
+            if (ownerId != owner || generation != requestGeneration) return@launch
+            result.fold(
                 onSuccess = { result ->
                     _uiState.update { state ->
                         state.copy(
@@ -66,6 +99,7 @@ class NotificationsViewModel(
                             items = state.items.map { if (it.readAt == null) it.copy(readAt = "now") else it },
                         )
                     }
+                    load(refresh = true)
                 },
                 onFailure = { _uiState.update { state -> state.copy(markingAll = false) } },
             )
@@ -73,15 +107,30 @@ class NotificationsViewModel(
     }
 
     fun markRead(id: String) {
+        val owner = ownerId ?: return
+        val requestGeneration = generation
+        loadJob?.cancel()
         viewModelScope.launch {
-            accountRepository.markNotificationsRead(ids = listOf(id)).onSuccess { result ->
+            val response = accountRepository.markNotificationsRead(ids = listOf(id))
+            currentCoroutineContext().ensureActive()
+            if (ownerId != owner || generation != requestGeneration) return@launch
+            response.onSuccess { result ->
                 _uiState.update { state ->
                     state.copy(
                         unread = result.unread,
                         items = state.items.map { if (it.id == id) it.copy(readAt = "now") else it },
                     )
                 }
+                load(refresh = true)
             }
         }
     }
+    companion object {
+        fun factory(repository: AccountRepository, session: StateFlow<SessionState>): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = NotificationsViewModel(repository, session) as T
+            }
+    }
+
 }
