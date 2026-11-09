@@ -74,6 +74,10 @@ import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.Coral
 import ng.name.servix.app.ui.theme.DangerRed
 import ng.name.servix.app.ui.theme.DeepForest
+import ng.name.servix.app.ui.theme.ServixType
+import ng.name.servix.app.ui.theme.ErrorContainer
+import ng.name.servix.app.ui.theme.SurfaceContainerHigh
+import ng.name.servix.app.ui.theme.RadiusLarge
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
@@ -121,38 +125,17 @@ fun ServixPrimaryButton(
     loading: Boolean = false,
     testTag: String? = null,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    Button(
+    // Stage A/B of the redesign: every primary action in the app now renders through one button, so
+    // the 52 dp height, 20 dp radius, label-lg type and 0.96 press cannot drift screen by screen.
+    ServixButton(
+        text = text,
         onClick = onClick,
-        enabled = enabled && !loading,
-        interactionSource = interaction,
-        shape = RoundedCornerShape(ServixButtonRadius),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = DeepForest,
-            contentColor = WarmIvory,
-            disabledContainerColor = DeepForest.copy(alpha = 0.45f),
-            disabledContentColor = WarmIvory.copy(alpha = 0.8f),
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
-        modifier = modifier
-            .pressFeedback(interaction, enabled && !loading)
-            .heightIn(min = 52.dp)
-            .let { if (testTag != null) it.testTag(testTag) else it },
-    ) {
-        if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = WarmIvory,
-            )
-            Spacer(modifier = Modifier.size(10.dp))
-        }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
+        modifier = modifier,
+        style = ServixButtonStyle.Primary,
+        enabled = enabled,
+        loading = loading,
+        testTag = testTag,
+    )
 }
 
 @Composable
@@ -163,30 +146,14 @@ fun ServixSecondaryButton(
     enabled: Boolean = true,
     testTag: String? = null,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    Button(
+    ServixButton(
+        text = text,
         onClick = onClick,
+        modifier = modifier,
+        style = ServixButtonStyle.Secondary,
         enabled = enabled,
-        interactionSource = interaction,
-        shape = RoundedCornerShape(ServixButtonRadius),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = SoftSand,
-            contentColor = Charcoal,
-            disabledContainerColor = SoftSand.copy(alpha = 0.5f),
-            disabledContentColor = MutedGray,
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
-        modifier = modifier
-            .pressFeedback(interaction, enabled)
-            .heightIn(min = 52.dp)
-            .let { if (testTag != null) it.testTag(testTag) else it },
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
+        testTag = testTag,
+    )
 }
 
 @Composable
@@ -210,8 +177,14 @@ fun ServixTextField(
     readOnly: Boolean = false,
     testTag: String? = null,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        // Floating label lives inside the field (plan §5 auth): 56 dp tall, label in the notch.
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Label above the field (Stitch `s3_sign_in`): a floating notch label is the old look. The
+        // asterisk that [required] adds stays, and the field below keeps the same test tag.
+        Text(
+            text = if (required) "$label *" else label,
+            style = ServixType.labelMd,
+            color = Charcoal,
+        )
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -220,12 +193,7 @@ fun ServixTextField(
             minLines = minLines,
             maxLines = maxLines,
             isError = !error.isNullOrBlank(),
-            label = {
-                Text(
-                    text = if (required) "$label *" else label,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            },
+            label = null,
             placeholder = placeholder?.let {
                 {
                     Text(
@@ -260,11 +228,11 @@ fun ServixTextField(
             },
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
-            shape = RoundedCornerShape(ServixButtonRadius),
+            shape = RoundedCornerShape(RadiusLarge),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = PureWhite,
+                focusedContainerColor = SurfaceContainerHigh,
                 unfocusedContainerColor = PureWhite,
-                errorContainerColor = PureWhite,
+                errorContainerColor = ErrorContainer.copy(alpha = 0.5f),
                 focusedBorderColor = DeepForest,
                 unfocusedBorderColor = BorderSand,
                 errorBorderColor = DangerRed,
@@ -272,9 +240,10 @@ fun ServixTextField(
                 unfocusedTextColor = Charcoal,
                 cursorColor = DeepForest,
             ),
-            textStyle = MaterialTheme.typography.bodyLarge,
+            textStyle = ServixType.bodyMd,
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 52.dp)
                 .let { if (testTag != null) it.testTag(testTag) else it },
         )
         if (!error.isNullOrBlank()) {
