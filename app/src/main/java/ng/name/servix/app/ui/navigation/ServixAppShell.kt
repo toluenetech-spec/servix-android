@@ -766,6 +766,14 @@ fun ServixAppShell(
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
                 val professionalHome by homeViewModel.professionalState.collectAsStateWithLifecycle()
+                var professionalActionWasBusy by remember(user?.id) { mutableStateOf(false) }
+                LaunchedEffect(professionalHome.busyBookingId) {
+                    if (professionalActionWasBusy && professionalHome.busyBookingId == null) {
+                        bookingsViewModel.loadBookings(forceRefresh = true)
+                        notificationsViewModel.load(refresh = true)
+                    }
+                    professionalActionWasBusy = professionalHome.busyBookingId != null
+                }
                 ForegroundRefresh(refreshKey) {
                     if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
                     else homeViewModel.loadHome(user?.id, forceRefresh = true)
@@ -1065,6 +1073,7 @@ fun ServixAppShell(
                 LaunchedEffect(detailUiState.booking?.status, detailUiState.booking?.hasReview) {
                     if (detailUiState.booking != null) {
                         bookingsViewModel.loadBookings(forceRefresh = true)
+                        notificationsViewModel.load(refresh = true)
                         if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
                         else homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
                     }

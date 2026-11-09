@@ -52,6 +52,7 @@ import ng.name.servix.app.data.model.BookingDto
 import ng.name.servix.app.data.model.UserDto
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.data.repository.retrySessionRead
 import ng.name.servix.app.ui.catalogue.EmptyStateCard
 import ng.name.servix.app.ui.components.ErrorStateCard
 import ng.name.servix.app.ui.components.ServixCard
@@ -129,7 +130,8 @@ class BookingsViewModel(
                     it.copy(loading = true, error = null)
                 }
             }
-            val res = bookingRepository.getMyBookings()
+            val res = retrySessionRead({ generation == requestGeneration && ownerId == owner &&
+                (session.value as? SessionState.Authenticated)?.user?.id == owner }) { bookingRepository.getMyBookings() }
             currentCoroutineContext().ensureActive()
             if (generation != requestGeneration || ownerId != owner) return@launch
             res.fold(

@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import ng.name.servix.app.data.model.FeaturesDto
 import ng.name.servix.app.data.model.ServixApiException
 import ng.name.servix.app.data.model.UserDto
@@ -99,6 +100,32 @@ class SessionChatsTest {
         assertTrue("thread" in vm.uiState.value.typingThreads)
         advanceTimeBy(5_000); runCurrent()
         assertTrue(vm.uiState.value.typingThreads.isEmpty())
+    }
+
+    @Test fun sessionReadRetriesOnlyForCurrentIdentity() = runTest {
+        var current = true
+        var calls = 0
+        val first = async {
+            ng.name.servix.app.data.repository.retrySessionRead({ current }) {
+                calls++
+                if (calls == 1) Result.failure(ServixApiException(401, message = "Authentication required"))
+                else Result.success("ok")
+            }
+        }
+        runCurrent(); assertEquals(1, calls)
+        advanceTimeBy(150); runCurrent()
+        assertEquals("ok", first.await().getOrNull())
+        calls = 0
+        val second = async {
+            ng.name.servix.app.data.repository.retrySessionRead({ current }) {
+                calls++
+                Result.failure<String>(ServixApiException(401, message = "Authentication required"))
+            }
+        }
+        runCurrent(); current = false
+        advanceTimeBy(150); runCurrent()
+        assertTrue(second.await().isFailure)
+        assertEquals(1, calls)
     }
 
     @Test fun oldRefreshCannotClearNewToken() {

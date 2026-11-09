@@ -139,6 +139,7 @@ class BookingDetailViewModel(
 
     private var paymentPollJob: Job? = null
     private var resumePaymentPoll = false
+    private var screenResumed = true
     private var bookingLoadJob: Job? = null
 
     fun loadBooking(
@@ -213,6 +214,10 @@ class BookingDetailViewModel(
         maxDurationMs: Long = 90_000L,
     ) {
         if (bookingId.isBlank()) return
+        if (!screenResumed) {
+            resumePaymentPoll = true
+            return
+        }
         paymentPollJob?.cancel()
         paymentPollJob = viewModelScope.launch {
             _uiState.update {
@@ -262,6 +267,7 @@ class BookingDetailViewModel(
     }
 
     fun onScreenResumed(shouldPollWhenPending: Boolean) {
+        screenResumed = true
         val current = _uiState.value
         val id = current.bookingId.ifBlank { return }
         if (current.booking?.status == "pending_payment" && (shouldPollWhenPending || resumePaymentPoll || current.isPollingPayment || current.paymentPollTimedOut)) {
@@ -271,6 +277,7 @@ class BookingDetailViewModel(
     }
 
     fun onScreenPaused() {
+        screenResumed = false
         resumePaymentPoll = _uiState.value.isPollingPayment
         paymentPollJob?.cancel()
         paymentPollJob = null

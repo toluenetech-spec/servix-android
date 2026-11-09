@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import ng.name.servix.app.data.model.NotificationDto
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.data.repository.retrySessionRead
 
 data class NotificationsUiState(
     val ownerId: String? = null,
@@ -57,7 +58,8 @@ class NotificationsViewModel(
         loadJob?.cancel()
         _uiState.update { it.copy(loading = if (refresh) it.loading else it.items.isEmpty(), refreshing = refresh, error = null) }
         loadJob = viewModelScope.launch {
-            val result = accountRepository.getNotifications()
+            val result = retrySessionRead({ generation == requestGeneration && ownerId == owner &&
+                (session.value as? SessionState.Authenticated)?.user?.id == owner }) { accountRepository.getNotifications() }
             currentCoroutineContext().ensureActive()
             if (generation != requestGeneration || ownerId != owner) return@launch
             result.fold(

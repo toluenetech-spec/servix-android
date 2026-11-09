@@ -285,6 +285,7 @@ class ConversationViewModel(
     }
 
     fun setVisible(isVisible: Boolean) {
+        if (visible == isVisible) return
         visible = isVisible
         if (isVisible) markRead()
     }

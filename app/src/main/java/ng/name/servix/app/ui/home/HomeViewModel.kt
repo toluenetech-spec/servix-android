@@ -19,6 +19,8 @@ import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.data.repository.retrySessionRead
+import ng.name.servix.app.data.repository.signedInError
 
 /** One row of the "needs your attention" strip: what happened, the verb, and the booking it belongs to. */
 data class HomeAttention(
@@ -118,9 +120,11 @@ class HomeViewModel(
         else _professionalState.update { if (forceRefresh && !it.loading) it.copy(refreshing = true) else it.copy(loading = true) }
         val generation = proGeneration
         proLoad = viewModelScope.launch {
-            val jobs = async { bookingRepository.getProfessionalBookings() }
-            val analytics = async { bookingRepository.getProfessionalAnalytics() }
-            val services = async { bookingRepository.getOwnServices() }
+            val isCurrent = { generation == proGeneration && _professionalState.value.userId == userId &&
+                (session == null || (session.value as? SessionState.Authenticated)?.user?.id == userId) }
+            val jobs = async { retrySessionRead(isCurrent) { bookingRepository.getProfessionalBookings() } }
+            val analytics = async { retrySessionRead(isCurrent) { bookingRepository.getProfessionalAnalytics() } }
+            val services = async { retrySessionRead(isCurrent) { bookingRepository.getOwnServices() } }
             val j = jobs.await(); val a = analytics.await(); val s = services.await()
             _professionalState.update { old ->
                 if (old.userId != userId || generation != proGeneration) old else old.copy(
@@ -129,9 +133,9 @@ class HomeViewModel(
                     jobs = j.getOrNull() ?: old.jobs,
                     totals = a.getOrNull()?.totals ?: old.totals,
                     services = s.getOrNull() ?: old.services,
-                    jobsError = j.exceptionOrNull()?.message,
-                    analyticsError = a.exceptionOrNull()?.message,
-                    servicesError = s.exceptionOrNull()?.message,
+                    jobsError = signedInError(j.exceptionOrNull(), "Could not load your jobs. Please try again."),
+                    analyticsError = signedInError(a.exceptionOrNull(), "Could not load your analytics. Please try again."),
+                    servicesError = signedInError(s.exceptionOrNull(), "Could not load your services. Please try again."),
                 )
             }
         }
@@ -146,7 +150,7 @@ class HomeViewModel(
         proAction = viewModelScope.launch {
             val result = bookingRepository.performProfessionalAction(id, action)
             if (_professionalState.value.userId != userId || generation != proGeneration) return@launch
-            _professionalState.update { it.copy(busyBookingId = null, actionError = result.exceptionOrNull()?.message) }
+            _professionalState.update { it.copy(busyBookingId = null, actionError = signedInError(result.exceptionOrNull(), "Could not update this booking. Please try again.")) }
             // Refresh server data even on conflict; transition responses omit included names.
             loadProfessionalHome(userId, forceRefresh = true)
         }
@@ -206,8 +210,10 @@ class HomeViewModel(
             val professionalsDeferred = async {
                 catalogueRepository.getProfessionals(sort = "rating", page = 1, pageSize = 6)
             }
-            val overviewDeferred = if (signedIn) async { accountRepository.getAccountOverview() } else null
-            val bookingsDeferred = if (signedIn) async { bookingRepository.getMyBookings() } else null
+            val isCurrent = { generation == homeGeneration && lastLoadedUserId == userId &&
+                (session == null || (session.value as? SessionState.Authenticated)?.user?.id == userId) }
+            val overviewDeferred = if (signedIn) async { retrySessionRead(isCurrent) { accountRepository.getAccountOverview() } } else null
+            val bookingsDeferred = if (signedIn) async { retrySessionRead(isCurrent) { bookingRepository.getMyBookings() } } else null
 
             val categoriesRes = categoriesDeferred.await()
             val professionalsRes = professionalsDeferred.await()

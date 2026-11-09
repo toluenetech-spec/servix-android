@@ -35,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import ng.name.servix.app.ui.a11y.heading
+import ng.name.servix.app.ui.liveness.ForegroundRefresh
+import ng.name.servix.app.data.repository.retrySessionRead
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -96,10 +98,9 @@ fun AccountHubScreen(
     var panel by remember { mutableStateOf(AccountPanel.NONE) }
     var paymentsOpen by remember { mutableStateOf(false) }
     var payments by remember { mutableStateOf<AccountPaymentsResponse?>(null) }
-    LaunchedEffect(paymentsOpen) {
-        if (paymentsOpen && payments == null) {
-            // GET /account/payments — built before 1.1 but had no entry point (IA audit F3).
-            accountRepository.getPayments().onSuccess { payments = it }
+    ForegroundRefresh(Triple(user?.id, paymentsOpen, updateState.completedChecks)) {
+        if (paymentsOpen && user != null) {
+            retrySessionRead({ true }) { accountRepository.getPayments() }.onSuccess { payments = it }
         }
     }
     val context = LocalContext.current
@@ -187,9 +188,9 @@ fun AccountHubScreen(
                     repository = accountRepository,
                     onRefreshSessionUser = onRefreshSessionUser,
                 )
-                AccountPanel.SAVED -> SavedPanel(repository = accountRepository)
-                AccountPanel.PLAN -> PlanPanel(repository = accountRepository)
-                AccountPanel.SECURITY -> SecurityPanel(repository = accountRepository)
+                AccountPanel.SAVED -> SavedPanel(repository = accountRepository, refreshKey = updateState.completedChecks)
+                AccountPanel.PLAN -> PlanPanel(repository = accountRepository, refreshKey = updateState.completedChecks)
+                AccountPanel.SECURITY -> SecurityPanel(repository = accountRepository, refreshKey = updateState.completedChecks)
                 AccountPanel.DEVICE -> DeviceCard(repository = accountRepository, userId = user.id, city = city)
                 AccountPanel.UPDATES -> {
                     UpdateCard(updateState)
@@ -407,23 +408,25 @@ private fun ProfilePanel(
 }
 
 @Composable
-private fun SavedPanel(repository: AccountRepository) {
+private fun SavedPanel(repository: AccountRepository, refreshKey: Int) {
     var items by remember { mutableStateOf<List<SavedProfessionalItemDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    var retryKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
-        repository.getSaved().fold(
+    ForegroundRefresh(refreshKey to retryKey) {
+        retrySessionRead({ true }) { repository.getSaved() }.fold(
             onSuccess = {
                 items = it
                 error = null
             },
-            onFailure = { error = it.message ?: "We could not load your saved professionals." },
+            onFailure = { if (items == null) error = if ((it as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                "We could not load your saved professionals. Please try again." else it.message ?: "We could not load your saved professionals." },
         )
     }
 
     when {
-        error != null -> ErrorStateCard(message = error!!, onRetry = { error = null })
+        error != null -> ErrorStateCard(message = error!!, onRetry = { error = null; retryKey++ })
         items == null -> Text("Loading saved professionals…", style = MaterialTheme.typography.bodySmall, color = MutedGray)
         items!!.isEmpty() -> EmptyStateCard(
             title = "Nothing saved yet",
@@ -455,18 +458,19 @@ private fun SavedPanel(repository: AccountRepository) {
 }
 
 @Composable
-private fun PlanPanel(repository: AccountRepository) {
+private fun PlanPanel(repository: AccountRepository, refreshKey: Int) {
     var plan by remember { mutableStateOf<JsonElement?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        repository.billingPlan().fold(
+    ForegroundRefresh(refreshKey) {
+        retrySessionRead({ true }) { repository.billingPlan() }.fold(
             onSuccess = {
                 plan = it
                 error = null
             },
-            onFailure = { error = it.message ?: "We could not load your plan." },
+            onFailure = { if (plan == null) error = if ((it as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                "We could not load your plan. Please try again." else it.message ?: "We could not load your plan." },
         )
     }
 
@@ -520,19 +524,20 @@ fun PlanCard(
 }
 
 @Composable
-private fun SecurityPanel(repository: AccountRepository) {
+private fun SecurityPanel(repository: AccountRepository, refreshKey: Int) {
     var lines by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loaded by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        repository.getSecuritySummary().fold(
+    ForegroundRefresh(refreshKey) {
+        retrySessionRead({ true }) { repository.getSecuritySummary() }.fold(
             onSuccess = { dto ->
                 lines = securityLines(dto)
                 error = null
             },
-            onFailure = { error = it.message ?: "We could not load your security summary." },
+            onFailure = { if (!loaded) error = if ((it as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                "We could not load your security summary. Please try again." else it.message ?: "We could not load your security summary." },
         )
         loaded = true
     }
