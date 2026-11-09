@@ -338,7 +338,7 @@ fun WelcomeScreen(
             }
             onBrowseFirstClick?.let { browse ->
                 ServixButton(
-                    text = stringResource(R.string.browse_first),
+                    text = stringResource(R.string.welcome_browse_first),
                     onClick = browse,
                     style = ServixButtonStyle.Text,
                     modifier = Modifier.fillMaxWidth(),
