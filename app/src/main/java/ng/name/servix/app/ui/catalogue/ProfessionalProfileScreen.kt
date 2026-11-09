@@ -369,7 +369,7 @@ fun ProfessionalProfileScreen(
                 )
                 if (uiState.services.isNotEmpty()) {
                     Text(
-                        text = stringResource(R.string.escrow_copy),
+                        text = stringResource(R.string.payment_protection_copy),
                         style = MaterialTheme.typography.bodySmall,
                         color = MutedGray,
                     )
@@ -607,7 +607,7 @@ private fun ProfileBookBar(
                     color = DeepForest,
                 )
                 Text(
-                    text = "Escrow protected",
+                    text = "Protected payment",
                     style = MaterialTheme.typography.labelSmall,
                     color = MutedGray,
                 )

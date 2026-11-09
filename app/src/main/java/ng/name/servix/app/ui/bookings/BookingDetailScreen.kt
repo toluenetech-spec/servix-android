@@ -1173,9 +1173,9 @@ fun BookingDetailScreen(
 
 /** One plain sentence describing what happens next, per booking state. */
 internal fun bookingNextStepSentence(status: String): String = when (status) {
-    "pending_payment" -> "Pay now to hold this slot — your money stays in escrow until you confirm the work."
+    "pending_payment" -> "Pay now to hold this slot — you pay through Servix, and it is released to the professional after you confirm the work."
     "requested" -> "Waiting for the professional to accept. You can cancel free of charge until they do."
-    "accepted" -> "The professional accepted. Payment is held in escrow until you confirm the work is done."
+    "accepted" -> "The professional accepted. You pay through Servix; it is released to the professional after you confirm the work is done."
     "in_progress" -> "Work is under way. Confirm when it is delivered and the payment is released."
     "delivered" -> "The professional marked this delivered — check the work, then confirm to release payment."
     "completed" -> "All done and paid. Leave a review to help the next customer decide."

@@ -358,7 +358,7 @@ class ScreenshotTest {
                     ),
                     ng.name.servix.app.data.model.NotificationDto(
                         id = "n2", type = "payment", title = "Payment received",
-                        body = "₦350,000 is held in escrow until you confirm the work.",
+                        body = "You pay ₦350,000 through Servix. It is released after you confirm the work.",
                         link = "/bookings/${Fixtures.BOOKING_ID}", readAt = "2026-11-04T18:02:00.000Z",
                         createdAt = "2026-11-04T17:58:00.000Z",
                     ),

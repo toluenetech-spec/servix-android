@@ -3,7 +3,7 @@
     <string name="tagline">Services, delivered professionally.</string>
     <string name="hero_eyebrow">Professional services, simplified.</string>
     <string name="hero_lead">Discover trusted professionals, compare services, and manage your bookings from one place.</string>
-    <string name="escrow_copy">The price is locked when you book. Payment is held securely and only released after you confirm completion.</string>
+    <string name="payment_protection_copy">The price is locked when you book. You pay through Servix. It is released to the professional after you confirm the work.</string>
     <string name="ai_disclaimer">AI suggestions are drafts — check them before you rely on them. Servix AI never moves money or changes your bookings.</string>
     <string name="ai_quota_exceeded">Your plan\'s AI allowance is used up for this month — upgrade on www.servix.name.ng</string>
     <string name="open_servix_web">Open www.servix.name.ng</string>
@@ -71,7 +71,7 @@
 
     <!-- Welcome & Auth -->
     <string name="welcome_headline">Hire trusted Nigerian professionals.</string>
-    <string name="welcome_subtext">Book verified services with upfront pricing and escrow payment protection.</string>
+    <string name="welcome_subtext">Book verified services with upfront pricing. You pay through Servix, released after you confirm the work.</string>
     <string name="welcome_create_account">Create account</string>
     <string name="welcome_sign_in">Sign in</string>
     <string name="welcome_browse_first">Browse first</string>
@@ -94,7 +94,7 @@
     <string name="new_to_servix">New to Servix?</string>
     <string name="already_have_account">Already have an account?</string>
     <string name="register_title">Create your account</string>
-    <string name="register_subtitle">Book verified professionals with locked pricing and escrow protection.</string>
+    <string name="register_subtitle">Book verified professionals with locked pricing and protected payment.</string>
     <string name="register_terms_note">By selecting Create Account, you agree to the Terms of Service and acknowledge the Privacy Policy. You must be 18 or over.</string>
     <string name="register_terms_checkbox_full">I agree to the Terms of Service and acknowledge the Privacy Policy.</string>
     <string name="register_terms_prefix">I agree to the </string>

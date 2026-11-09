@@ -1063,7 +1063,7 @@ internal fun BookingSheetContent(
             return@Column
         }
 
-        // Price & escrow line verbatim from ServiceDetailPage.jsx:118-122
+        // Price and payment-protection line, wording aligned with the web page (ServiceDetailPage.jsx:118-122)
         Text(
             text = stringResource(
                 R.string.booking_sheet_price_line,
