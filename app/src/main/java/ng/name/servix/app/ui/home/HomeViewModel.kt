@@ -87,6 +87,66 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private val _professionalState = MutableStateFlow(ProfessionalHomeState())
+    val professionalState: StateFlow<ProfessionalHomeState> = _professionalState.asStateFlow()
+    private var proLoad: kotlinx.coroutines.Job? = null
+    private var proAction: kotlinx.coroutines.Job? = null
+    private var proGeneration = 0
+
+    fun clearProfessionalHome() {
+        proGeneration++
+        proLoad?.cancel()
+        proAction?.cancel()
+        proLoad = null
+        proAction = null
+        _professionalState.value = ProfessionalHomeState()
+    }
+
+    fun loadProfessionalHome(userId: String, forceRefresh: Boolean = false) {
+        val current = _professionalState.value
+        if (!forceRefresh && current.userId == userId && (!current.loading || proLoad?.isActive == true)) return
+        proLoad?.cancel()
+        if (current.userId != userId) {
+            proGeneration++
+            proAction?.cancel()
+            _professionalState.value = ProfessionalHomeState(userId = userId)
+        }
+        else _professionalState.update { it.copy(loading = true) }
+        val generation = proGeneration
+        proLoad = viewModelScope.launch {
+            val jobs = async { bookingRepository.getProfessionalBookings() }
+            val analytics = async { bookingRepository.getProfessionalAnalytics() }
+            val services = async { bookingRepository.getOwnServices() }
+            val j = jobs.await(); val a = analytics.await(); val s = services.await()
+            _professionalState.update { old ->
+                if (old.userId != userId || generation != proGeneration) old else old.copy(
+                    loading = false,
+                    jobs = j.getOrNull() ?: old.jobs,
+                    totals = a.getOrNull()?.totals ?: old.totals,
+                    services = s.getOrNull() ?: old.services,
+                    jobsError = j.exceptionOrNull()?.message,
+                    analyticsError = a.exceptionOrNull()?.message,
+                    servicesError = s.exceptionOrNull()?.message,
+                )
+            }
+        }
+    }
+
+    fun professionalBookingAction(id: String, action: String) {
+        val state = _professionalState.value
+        val userId = state.userId ?: return
+        if (state.busyBookingId != null || !professionalActionAllowed(state.jobs.firstOrNull { it.id == id }?.status.orEmpty(), action)) return
+        val generation = proGeneration
+        _professionalState.update { it.copy(busyBookingId = id, actionError = null) }
+        proAction = viewModelScope.launch {
+            val result = bookingRepository.performProfessionalAction(id, action)
+            if (_professionalState.value.userId != userId || generation != proGeneration) return@launch
+            _professionalState.update { it.copy(busyBookingId = null, actionError = result.exceptionOrNull()?.message) }
+            // Refresh server data even on conflict; transition responses omit included names.
+            loadProfessionalHome(userId, forceRefresh = true)
+        }
+    }
+
     private var lastLoadedUserId: String? = "__uninitialized__"
 
     fun loadHome(userId: String?, forceRefresh: Boolean = false) {

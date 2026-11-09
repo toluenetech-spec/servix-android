@@ -105,6 +105,48 @@ class StitchFoundationTest {
         }
     }
 
+    @Test fun professionalHome() = rule.capture("66_home_professional_stitch") { professionalHomePreview() }
+
+    @Test fun professionalHomeHonoursActionsAndChatFlag() {
+        var action = ""
+        rule.setContent { ServixTheme { professionalHomePreview(chats = false, onAction = { _, value -> action = value }) } }
+        rule.onNodeWithText("Message").assertDoesNotExist()
+        rule.onNodeWithTag("professional_job_action_request").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("accept", action) }
+        rule.onNodeWithText("Decline").performClick()
+        rule.onNodeWithText("Decline request").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("decline", action) }
+    }
+
+    @Test fun professionalActionStateMachine() {
+        val allowed: (String, String) -> Boolean = { status, action -> ng.name.servix.app.ui.home.professionalActionAllowed(status, action) }
+        org.junit.Assert.assertTrue(allowed("requested", "accept"))
+        org.junit.Assert.assertTrue(allowed("requested", "decline"))
+        org.junit.Assert.assertTrue(allowed("accepted", "start"))
+        org.junit.Assert.assertTrue(allowed("in_progress", "deliver"))
+        org.junit.Assert.assertFalse(allowed("delivered", "deliver"))
+        org.junit.Assert.assertFalse(allowed("accepted", "decline"))
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun professionalHomePreview(chats: Boolean = true, onAction: (String, String) -> Unit = { _, _ -> }) {
+        ng.name.servix.app.ui.home.ProfessionalHomeScreen(
+            user = ng.name.servix.app.data.model.UserDto(id = "pro", fullName = "Bayo Adebayo", role = "professional"),
+            state = ng.name.servix.app.ui.home.ProfessionalHomeState(
+                userId = "pro", loading = false,
+                jobs = listOf(
+                    ng.name.servix.app.data.model.BookingDto(id = "request", status = "requested", serviceTitle = "Electrical wiring repair", customerName = "Olumide A.", scheduledAt = "2026-11-09T10:30:00.000Z"),
+                    ng.name.servix.app.data.model.BookingDto(id = "progress", status = "in_progress", serviceTitle = "Distribution box fix", customerName = "Chinwe O."),
+                    ng.name.servix.app.data.model.BookingDto(id = "delivered", status = "delivered", serviceTitle = "Socket replacement", customerName = "Tolu B."),
+                ),
+                totals = ng.name.servix.app.data.model.ProfessionalAnalyticsTotalsDto(earnings = 86000.0, completed = 4, ratingAvg = 4.8, reviewCount = 5, responseRate = 90),
+                services = listOf(ng.name.servix.app.data.model.OwnServiceDto(id = "service", title = "Electrical repairs", status = "draft", publishProblems = mapOf("gallery" to "Add at least one image to the gallery."))),
+            ), unreadNotifications = 1, chatsEnabled = chats,
+            onNotifications = {}, onAccount = {}, onSeeAllJobs = {}, onViewJob = {}, onJobAction = onAction,
+            onMessage = {}, onEditService = {}, onAi = {}, onRetry = {},
+        )
+    }
+
     @Test fun securityEmail() = rule.capture("58_security_email") { securityPreview("email") }
     @Test fun securityEnroll() = rule.capture("59_security_enroll") { securityPreview("enroll") }
     @Test fun securityFactor() = rule.capture("60_security_factor") { securityPreview("factor") }

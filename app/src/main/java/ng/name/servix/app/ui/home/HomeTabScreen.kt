@@ -106,13 +106,6 @@ fun HomeTabScreen(
     chatsEnabled: Boolean = false,
     chatsUnread: Int = 0,
     onOpenChats: () -> Unit = {},
-    /** Professional-only, read-only strip: both numbers are what their labels say (see [HomeWeek]). */
-    jobsScheduledThisWeek: Int = 0,
-    completedThisWeek: Int = 0,
-    /** Professional-only profile completion nudge (0-100). */
-    profileStrength: Int = 0,
-    /** Null until the app can resolve the professional's own slug (Stage 3 profile work). */
-    onOpenPublicProfile: (() -> Unit)? = null,
 ) {
     val signedIn = user != null
     val isProfessional = user?.role == "professional"
@@ -198,11 +191,6 @@ fun HomeTabScreen(
                     }
                 }
             }
-        }
-
-        if (signedIn && isProfessional) {
-            ThisWeekStrip(jobsScheduled = jobsScheduledThisWeek, completed = completedThisWeek)
-            ProfileStrengthCard(strength = profileStrength, onOpenPublicProfile = onOpenPublicProfile)
         }
 
         if (!(signedIn && isProfessional) && uiState.loading && uiState.categories.isEmpty()) {
@@ -568,73 +556,6 @@ private fun HomeChatsCard(unread: Int, onClick: () -> Unit) {
                         color = WarmIvory,
                     )
                 }
-            }
-        }
-    }
-}
-
-/**
- * Read-only work strip. Both figures come from booking dates the app already has, so neither label
- * claims more than the data supports (no "payouts pending" until the payouts API is native).
- */
-@Composable
-private fun ThisWeekStrip(jobsScheduled: Int, completed: Int) {
-    ServixCard(contentPadding = PaddingValues(16.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("This week", style = MaterialTheme.typography.labelMedium, color = ForestGreen)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                WeekStat(label = "Jobs scheduled", value = jobsScheduled.toString(), modifier = Modifier.weight(1f))
-                WeekStat(label = "Completed", value = completed.toString(), modifier = Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeekStat(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = DeepForest)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MutedGray)
-    }
-}
-
-/** Completion nudge for professionals: percentage + the one action that raises it. */
-@Composable
-private fun ProfileStrengthCard(strength: Int, onOpenPublicProfile: (() -> Unit)?) {
-    val clamped = strength.coerceIn(0, 100)
-    ServixCard(contentPadding = PaddingValues(16.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Profile strength", style = MaterialTheme.typography.titleSmall, color = DeepForest)
-                Text("$clamped%", style = MaterialTheme.typography.titleSmall, color = ForestGreen)
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SoftSand),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(clamped / 100f)
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(ForestGreen),
-                )
-            }
-            Text(
-                "Professionals with photos, a clear title and three portfolio pieces get more bookings.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedGray,
-            )
-            if (onOpenPublicProfile != null) {
-                ServixSecondaryButton(
-                    text = "View public profile",
-                    onClick = onOpenPublicProfile,
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "home_profile_strength_cta",
-                )
             }
         }
     }

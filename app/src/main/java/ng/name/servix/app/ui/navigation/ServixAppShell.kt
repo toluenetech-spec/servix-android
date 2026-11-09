@@ -268,6 +268,11 @@ fun ServixAppShell(
     val featuresState by featuresRepository.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { featuresRepository.refresh() }
     val sessionUserId = (sessionState as? SessionState.Authenticated)?.user?.id
+    val sessionRole = (sessionState as? SessionState.Authenticated)?.user?.role
+    LaunchedEffect(sessionUserId, sessionRole) {
+        homeViewModel.clearProfessionalHome()
+        if (sessionUserId != null && sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId)
+    }
     val chatsViewModel: ChatsViewModel = viewModel(
         factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream) { sessionUserId }
     )
@@ -724,12 +729,27 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
+                val professionalHome by homeViewModel.professionalState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(user?.id, isOnline) {
-                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
+                LaunchedEffect(user?.id, user?.role, isOnline) {
+                    if (user?.role != "professional") homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
                 }
 
-                HomeTabScreen(
+                if (user?.role == "professional") {
+                    ng.name.servix.app.ui.home.ProfessionalHomeScreen(
+                        user = user, state = professionalHome.takeIf { it.userId == user.id } ?: ng.name.servix.app.ui.home.ProfessionalHomeState(),
+                        unreadNotifications = unreadNotifications, chatsEnabled = featuresState.flags.community,
+                        onNotifications = { navController.navigate(ServixRoute.Notifications) },
+                        onAccount = { navController.navigate(ServixRoute.Account) },
+                        onSeeAllJobs = { CustomTabLauncher.launchWebPath(shellContext, "/dashboard/work") },
+                        onViewJob = { id -> navController.navigate(ServixRoute.BookingDetail(id)) },
+                        onJobAction = homeViewModel::professionalBookingAction,
+                        onMessage = { id -> openChatForBooking(id) },
+                        onEditService = { id -> CustomTabLauncher.launchWebPath(shellContext, "/dashboard/gigs/${android.net.Uri.encode(id)}/edit") },
+                        onAi = { navController.navigate(ServixRoute.ServixAi) },
+                        onRetry = { homeViewModel.loadProfessionalHome(user.id, forceRefresh = true) },
+                    )
+                } else HomeTabScreen(
                     user = user,
                     city = city,
                     uiState = homeUiState,
@@ -739,14 +759,6 @@ fun ServixAppShell(
                     chatsEnabled = featuresState.flags.community,
                     chatsUnread = chatsState.unreadTotal,
                     onOpenChats = { navController.navigate(ServixRoute.Chats) },
-                    // Both numbers are exactly what their labels say; see HomeWeek.
-                    jobsScheduledThisWeek = HomeWeek.jobsScheduled(homeUiState.bookings),
-                    completedThisWeek = HomeWeek.jobsCompleted(homeUiState.bookings),
-                    profileStrength = listOf(
-                        user?.avatarUrl != null,
-                        user?.fullName?.isNotBlank() == true,
-                        user?.emailVerified == true,
-                    ).count { it } * 33,
                     onOpenSearch = { openExplore(query = null, categorySlug = null) },
                     onOpenCategory = { slug -> openExplore(query = null, categorySlug = slug) },
                     onOpenProfessional = { slug ->
