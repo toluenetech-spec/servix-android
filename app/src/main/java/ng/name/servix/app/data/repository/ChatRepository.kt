@@ -49,8 +49,31 @@ class ChatRepository(private val api: ServixApiService) {
     suspend fun messages(threadId: String, before: String? = null): Result<ChatMessagesResponse> =
         safe { api.getChatMessages(threadId, before) }
 
-    suspend fun send(threadId: String, clientId: String, body: String, replyToId: String? = null) =
-        safe { api.sendChatMessage(threadId, ng.name.servix.app.data.model.SendChatMessageRequest(clientId, body, replyToId)) }
+    suspend fun send(
+        threadId: String,
+        clientId: String,
+        body: String,
+        replyToId: String? = null,
+        attachment: ng.name.servix.app.data.model.ChatAttachmentInput? = null,
+    ) = safe {
+        api.sendChatMessage(
+            threadId,
+            ng.name.servix.app.data.model.SendChatMessageRequest(
+                clientId = clientId,
+                body = body,
+                replyToId = replyToId,
+                attachment = attachment,
+            ),
+        )
+    }
+
+    /** `POST …/messages/:mid/react { emoji }` → the full message (also arrives as `message_update`). */
+    suspend fun react(threadId: String, messageId: String, emoji: String) =
+        safe { api.reactToChatMessage(threadId, messageId, ng.name.servix.app.data.model.ChatReactionRequest(emoji)) }
+
+    /** `DELETE …/messages/:mid` — sender only, tombstone row, object removed from storage. */
+    suspend fun delete(threadId: String, messageId: String) =
+        safe { api.deleteChatMessage(threadId, messageId) }
 
     suspend fun markRead(threadId: String): Result<Unit> = safe { api.markChatThreadRead(threadId); Unit }
 

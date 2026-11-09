@@ -120,9 +120,18 @@ class ChatEventStream(
             var attempt = 0
             while (currentCoroutineContext().isActive) {
                 _connection.value = if (attempt == 0) ChatConnection.CONNECTING else ChatConnection.RECONNECTING
-                val reachedLive = runOnce()
+                when (runOnce()) {
+                    Outcome.LIVE -> attempt = 0
+                    // 429 TOO_MANY_STREAMS (6 streams per account) is transient: stay RECONNECTING,
+                    // keep the 15 s polling fallback running, retry on the normal backoff.
+                    Outcome.RETRY -> attempt = (attempt + 1).coerceAtMost(5)
+                    Outcome.UNAVAILABLE -> {
+                        // Only 403/503 mean "this account may not stream": stop retrying and say so.
+                        _connection.value = ChatConnection.UNAVAILABLE
+                        return@launch
+                    }
+                }
                 if (!currentCoroutineContext().isActive) break
-                if (reachedLive) attempt = 0 else attempt = (attempt + 1).coerceAtMost(5)
                 _connection.value = if (attempt == 0) ChatConnection.CONNECTING else ChatConnection.RECONNECTING
                 delay(backoffMs(attempt))
             }
@@ -137,8 +146,18 @@ class ChatEventStream(
         _connection.value = ChatConnection.IDLE
     }
 
-    /** Returns true when the stream was accepted (LIVE) even if it later ended. */
-    private suspend fun runOnce(): Boolean = withContext(Dispatchers.IO) {
+    private enum class Outcome {
+        /** Stream accepted and consumed until the server closed it. */
+        LIVE,
+
+        /** Transient (network, 5xx, 429 TOO_MANY_STREAMS): reconnect on the normal backoff. */
+        RETRY,
+
+        /** 403 / 503 COMMUNITY_DISABLED: messaging is off for this account. */
+        UNAVAILABLE,
+    }
+
+    private suspend fun runOnce(): Outcome = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(eventsUrl)
             .header("Accept", "text/event-stream")
@@ -149,19 +168,23 @@ class ChatEventStream(
         try {
             active.execute().use { response ->
                 if (!response.isSuccessful) {
-                    if (response.code == 503 || response.code == 403) _connection.value = ChatConnection.UNAVAILABLE
-                    return@use false
+                    return@use when (response.code) {
+                        403, 503 -> Outcome.UNAVAILABLE
+                        // 429 TOO_MANY_STREAMS: the account already holds its six streams.
+                        429 -> Outcome.RETRY
+                        else -> Outcome.RETRY
+                    }
                 }
-                val source = response.body?.source() ?: return@use false
+                val source = response.body?.source() ?: return@use Outcome.RETRY
                 _connection.value = ChatConnection.LIVE
                 while (true) {
                     val line = source.readUtf8Line() ?: break
                     ChatEventParser.parse(line)?.let { _events.tryEmit(it) }
                 }
-                true
+                Outcome.LIVE
             }
         } catch (_: Throwable) {
-            false
+            Outcome.RETRY
         } finally {
             call.compareAndSet(active, null)
         }

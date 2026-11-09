@@ -106,12 +106,9 @@ fun HomeTabScreen(
     chatsEnabled: Boolean = false,
     chatsUnread: Int = 0,
     onOpenChats: () -> Unit = {},
-    /** `features.requests` from GET /features; never hardcoded. */
-    requestsEnabled: Boolean = false,
-    onPostRequest: () -> Unit = {},
-    /** Professional-only, read-only strip above the jobs list. */
-    thisWeekJobs: Int = 0,
-    payoutsPendingLabel: String? = null,
+    /** Professional-only, read-only strip: both numbers are what their labels say (see [HomeWeek]). */
+    jobsScheduledThisWeek: Int = 0,
+    completedThisWeek: Int = 0,
     /** Professional-only profile completion nudge (0-100). */
     profileStrength: Int = 0,
     /** Null until the app can resolve the professional's own slug (Stage 3 profile work). */
@@ -204,12 +201,8 @@ fun HomeTabScreen(
         }
 
         if (signedIn && isProfessional) {
-            ThisWeekStrip(jobsThisWeek = thisWeekJobs, payoutsPending = payoutsPendingLabel)
+            ThisWeekStrip(jobsScheduled = jobsScheduledThisWeek, completed = completedThisWeek)
             ProfileStrengthCard(strength = profileStrength, onOpenPublicProfile = onOpenPublicProfile)
-        }
-
-        if (signedIn && requestsEnabled && !isProfessional) {
-            PostRequestCard(onClick = onPostRequest)
         }
 
         if (!(signedIn && isProfessional) && uiState.loading && uiState.categories.isEmpty()) {
@@ -580,42 +573,18 @@ private fun HomeChatsCard(unread: Int, onClick: () -> Unit) {
     }
 }
 
-/** Customers only, and only while `features.requests` is true. */
+/**
+ * Read-only work strip. Both figures come from booking dates the app already has, so neither label
+ * claims more than the data supports (no "payouts pending" until the payouts API is native).
+ */
 @Composable
-private fun PostRequestCard(onClick: () -> Unit) {
-    ServixCard(
-        modifier = Modifier.clickable(onClick = onClick).testTag("home_post_request"),
-        containerColor = SoftSand,
-        contentPadding = PaddingValues(16.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = DeepForest, modifier = Modifier.size(20.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Post a request", style = MaterialTheme.typography.titleMedium, color = DeepForest)
-                Text(
-                    "Describe the job once, get proposals from professionals",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedGray,
-                )
-            }
-            Text("Post", style = MaterialTheme.typography.labelLarge, color = DeepForest)
-        }
-    }
-}
-
-/** Read-only work strip: what is scheduled this week and what is still waiting to be paid out. */
-@Composable
-private fun ThisWeekStrip(jobsThisWeek: Int, payoutsPending: String?) {
+private fun ThisWeekStrip(jobsScheduled: Int, completed: Int) {
     ServixCard(contentPadding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("This week", style = MaterialTheme.typography.labelMedium, color = ForestGreen)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                WeekStat(label = "Jobs scheduled", value = jobsThisWeek.toString(), modifier = Modifier.weight(1f))
-                WeekStat(label = "Payouts pending", value = payoutsPending ?: "—", modifier = Modifier.weight(1f))
+                WeekStat(label = "Jobs scheduled", value = jobsScheduled.toString(), modifier = Modifier.weight(1f))
+                WeekStat(label = "Completed", value = completed.toString(), modifier = Modifier.weight(1f))
             }
         }
     }

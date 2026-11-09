@@ -1,6 +1,27 @@
 package ng.name.servix.app.screenshots
 
 import android.content.Context
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import ng.name.servix.app.ui.navigation.ServixBottomBar
+import ng.name.servix.app.ui.navigation.ServixTab
+import ng.name.servix.app.ui.chat.SendFailure
+import ng.name.servix.app.ui.theme.WarmIvory
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -11,7 +32,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import ng.name.servix.app.data.model.ChatAttachmentDto
 import ng.name.servix.app.data.model.ChatBookingRefDto
+import ng.name.servix.app.data.model.ChatReplyDto
+import ng.name.servix.app.ui.ai.AiUiState
+import ng.name.servix.app.ui.ai.ChatTurn
+import ng.name.servix.app.ui.chat.AiThreadScreen
+import ng.name.servix.app.ui.chat.ImageViewer
 import ng.name.servix.app.data.model.ChatMessageDto
 import ng.name.servix.app.data.model.ChatPersonDto
 import ng.name.servix.app.data.model.ChatPersonProfileDto
@@ -112,36 +139,40 @@ class ChatScreensTest {
         aiEnabled = true,
     )
 
+    /** Minutes ago, so a render always reads "Today" instead of the CI run's yesterday. */
+    private fun ago(minutes: Long): String =
+        java.time.Instant.now().minusSeconds(minutes * 60).toString()
+
     private fun conversationMessages() = listOf(
         ChatMessageDto(
             id = "m1",
             body = "Hi Ada — I've approved the brief and paid the deposit.",
             senderId = me,
-            createdAt = "2026-11-07T09:10:00.000Z",
+            createdAt = ago(30),
         ),
         ChatMessageDto(
             id = "m2",
             body = "Thank you. I'll send the first draft before noon.",
             senderId = ada.id,
-            createdAt = "2026-11-07T09:12:00.000Z",
+            createdAt = ago(28),
         ),
         ChatMessageDto(
             id = "m3",
             body = "Sounds good.",
             senderId = me,
-            createdAt = "2026-11-07T09:40:00.000Z",
+            createdAt = ago(12),
         ),
         ChatMessageDto(
             id = "m4",
             body = "I've shared the first draft of the logo. 📍 12 Bodija Road, Ibadan",
             senderId = ada.id,
-            createdAt = "2026-11-07T09:42:00.000Z",
+            createdAt = ago(10),
         ),
         ChatMessageDto(
             id = "m5",
             body = "Looking now — the mark reads well at small sizes.",
             senderId = me,
-            createdAt = "2026-11-07T09:44:00.000Z",
+            createdAt = ago(8),
         ),
     )
 
@@ -156,8 +187,8 @@ class ChatScreensTest {
             online = false,
             lastSeenAt = "2026-11-07T09:45:00.000Z",
             // Later than the last message, so the render shows the seen state, not just sent.
-            otherReadAt = "2026-11-07T09:45:00.000Z",
-            otherDeliveredAt = "2026-11-07T09:44:10.000Z",
+            otherReadAt = ago(5),
+            otherDeliveredAt = ago(7),
             myUserId = me,
         )
     }
@@ -187,6 +218,99 @@ class ChatScreensTest {
         )
     }
 
+    /**
+     * One frame, all four states a bubble can be in: seen (coral ✓✓), delivered (muted ✓✓),
+     * sent (single ✓) and a failed optimistic row whose text names the 429 limit.
+     */
+    @Test
+    fun ticksAndFailure() = rule.capture("44_chat_ticks_and_failure") {
+        val messages = listOf(
+            ChatMessageDto(
+                id = "t1",
+                body = "Seen: the brief is approved, thank you.",
+                senderId = me,
+                createdAt = ago(60),
+            ),
+            ChatMessageDto(
+                id = "t2",
+                body = "Delivered but not opened yet.",
+                senderId = me,
+                createdAt = ago(20),
+            ),
+            ChatMessageDto(
+                id = "t3",
+                body = "Only sent — still travelling.",
+                senderId = me,
+                createdAt = ago(5),
+            ),
+            ChatMessageDto(
+                id = "",
+                body = "This one hit the 30-a-minute limit.",
+                senderId = me,
+                createdAt = ago(3),
+                clientId = "client-failed-1",
+            ),
+        )
+        ConversationScreen(
+            uiState = ConversationUiState(
+                loading = false,
+                messages = messages,
+                rows = ChatTimeline.build(messages, me),
+                online = true,
+                // Read up to 09:30 (t1 only), delivered up to 09:45 (t1 + t2, not t3).
+                otherReadAt = ago(30),
+                otherDeliveredAt = ago(10),
+                myUserId = me,
+                failures = mapOf("client-failed-1" to SendFailure.RATE_LIMITED),
+            ),
+            thread = threads.first(),
+            onBack = {},
+            onInput = {},
+            onSend = {},
+            onRetry = {},
+            onLoadOlder = {},
+            onOpenContactCard = {},
+        )
+    }
+
+    /** Shell-level evidence that Chats is the centre, prominent tab and carries the unread badge. */
+    @Test
+    fun shellChatsTab() = rule.capture("43_shell_chats_tab") {
+        Scaffold(
+            containerColor = WarmIvory,
+            bottomBar = {
+                ServixBottomBar(
+                    tabs = listOf(
+                        ServixTab("Home", Icons.Filled.Home, Icons.Outlined.Home, "nav_tab_home"),
+                        ServixTab("Explore", Icons.Filled.Search, Icons.Outlined.Search, "nav_tab_search"),
+                        ServixTab(
+                            label = "Chats",
+                            selectedIcon = Icons.Filled.Chat,
+                            unselectedIcon = Icons.Outlined.Chat,
+                            testTag = "nav_tab_chats",
+                            badgeCount = threads.sumOf { it.unreadCount },
+                            prominent = true,
+                        ),
+                        ServixTab("Bookings", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth, "nav_tab_bookings"),
+                        ServixTab("Account", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle, "nav_tab_account"),
+                    ),
+                    selectedIndex = 2,
+                    onSelect = {},
+                )
+            },
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                ChatsScreen(
+                    uiState = chatsState(),
+                    myUserId = me,
+                    onOpenThread = {},
+                    onOpenAi = {},
+                    onRetry = {},
+                )
+            }
+        }
+    }
+
     @Test
     fun typingConversation() = rule.capture("42_chat_typing") {
         ConversationScreen(
@@ -198,6 +322,118 @@ class ChatScreensTest {
             onRetry = {},
             onLoadOlder = {},
             onOpenContactCard = {},
+        )
+    }
+
+    /** Photos, a voice note, a file, a quote, reaction pills and a tombstone — Stage 2 in one frame. */
+    @Test
+    fun mediaStates() = rule.capture("45_chat_media_states") {
+        val messages = listOf(
+            ChatMessageDto(
+                id = "s1",
+                body = "Here is the shot from the shoot.",
+                senderId = ada.id,
+                createdAt = ago(42),
+                kind = "image",
+                attachment = ChatAttachmentDto(url = "", name = "studio.jpg", mime = "image/jpeg", size = 842_000),
+            ),
+            ChatMessageDto(
+                id = "s2",
+                body = "",
+                senderId = me,
+                createdAt = ago(40),
+                kind = "audio",
+                attachment = ChatAttachmentDto(url = "", name = "voice-note.m4a", mime = "audio/mp4", size = 96_000, durationMs = 7_400),
+                reactions = mapOf("🔥" to listOf(ada.id)),
+            ),
+            ChatMessageDto(
+                id = "s3",
+                body = "Sending the signed brief.",
+                senderId = ada.id,
+                createdAt = ago(20),
+                kind = "file",
+                attachment = ChatAttachmentDto(url = "", name = "brand-brief.pdf", mime = "application/pdf", size = 1_240_000),
+            ),
+            ChatMessageDto(
+                id = "s4",
+                body = "Approved — thanks Ada.",
+                senderId = me,
+                createdAt = ago(15),
+                replyTo = ChatReplyDto(id = "s3", senderId = ada.id, kind = "file", body = "", attachmentName = "brand-brief.pdf"),
+                reactions = mapOf("👍" to listOf(ada.id, me), "❤️" to listOf(ada.id)),
+            ),
+            ChatMessageDto(
+                id = "s5",
+                body = "",
+                senderId = me,
+                createdAt = ago(12),
+                kind = "deleted",
+                deletedAt = ago(11),
+            ),
+        )
+        ConversationScreen(
+            uiState = ConversationUiState(
+                loading = false,
+                messages = messages,
+                rows = ChatTimeline.build(messages, me),
+                online = true,
+                otherReadAt = ago(10),
+                myUserId = me,
+            ),
+            thread = threads.first(),
+            onBack = {}, onInput = {}, onSend = {}, onRetry = {}, onLoadOlder = {}, onOpenContactCard = {},
+        )
+    }
+
+    /** Upload ring on my own photo plus the quote banner waiting in the composer. */
+    @Test
+    fun mediaUploadingAndReply() = rule.capture("46_chat_upload_and_reply") {
+        val pending = ChatMessageDto(
+            id = "",
+            body = "",
+            senderId = me,
+            createdAt = ago(1),
+            clientId = "client-uploading",
+            kind = "image",
+            attachment = ChatAttachmentDto(url = "", name = "receet.jpg", size = 900_000),
+        )
+        val quoted = ChatMessageDto(id = "s9", body = "Can you send the invoice?", senderId = ada.id, createdAt = ago(4))
+        ConversationScreen(
+            uiState = ConversationUiState(
+                loading = false,
+                messages = listOf(quoted, pending),
+                rows = ChatTimeline.build(listOf(quoted, pending), me),
+                myUserId = me,
+                uploadProgress = mapOf("client-uploading" to 0.62f),
+                replyTo = quoted,
+            ),
+            thread = threads.first(),
+            onBack = {}, onInput = {}, onSend = {}, onRetry = {}, onLoadOlder = {}, onOpenContactCard = {},
+        )
+    }
+
+    /** Full-screen viewer reached by tapping a photo bubble. */
+    @Test
+    fun imageViewer() = rule.capture("47_chat_image_viewer") {
+        ImageViewer(url = "", onClose = {})
+    }
+
+    /** Servix AI as a conversation: assistant bubbles, an AI label, and no read ticks. */
+    @Test
+    fun aiThread() = rule.capture("48_chat_ai_thread") {
+        AiThreadScreen(
+            state = AiUiState(
+                ownerId = me,
+                turns = listOf(
+                    ChatTurn(1, "user", "What should a logo suite cost in Lagos?"),
+                    ChatTurn(2, "assistant", "Most identity projects on Servix land between ₦180,000 and ₦450,000. That range buys a primary mark, a small palette and a one-page usage guide; add 30-40% for a full brand book."),
+                ),
+                input = "And a pitch deck?",
+            ),
+            onBack = {},
+            onInput = {},
+            onSend = {},
+            onRetry = {},
         )
     }
 }

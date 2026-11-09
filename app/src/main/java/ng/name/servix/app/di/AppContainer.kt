@@ -13,6 +13,7 @@ import ng.name.servix.app.data.realtime.ChatEventStream
 import ng.name.servix.app.data.repository.CatalogueRepository
 import ng.name.servix.app.data.repository.ChatRepository
 import ng.name.servix.app.data.repository.FeaturesRepository
+import ng.name.servix.app.data.repository.UploadRepository
 import ng.name.servix.app.BuildConfig
 import ng.name.servix.app.util.ConnectivityObserver
 
@@ -56,6 +57,8 @@ class AppContainer(context: Context) {
     val featuresRepository: FeaturesRepository = FeaturesRepository(networkModule.apiService)
 
     val chatRepository: ChatRepository = ChatRepository(networkModule.apiService)
+
+    val uploadRepository: UploadRepository = UploadRepository(networkModule.apiService)
 
     /**
      * One event stream per app session. The URL is the documented SSE route; the client is the app's

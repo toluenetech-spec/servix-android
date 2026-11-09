@@ -370,6 +370,33 @@ interface ServixApiService {
     @POST("community/threads/{id}/block")
     suspend fun blockChatThread(@Path("id") threadId: String): OkResponse
 
+    /**
+     * `POST /uploads?kind=chat-image|chat-audio|chat-file&fileName=<name>` — the raw file is the body
+     * and its real `Content-Type` is required (`api/src/routes/uploads.ts:79-99`).
+     */
+    @POST("uploads")
+    suspend fun uploadChatFile(
+        @Query("kind") kind: String,
+        @Query("fileName") fileName: String,
+        @Header("Content-Type") contentType: String,
+        @Body body: okhttp3.RequestBody,
+    ): ng.name.servix.app.data.model.UploadedFile
+
+    /** `POST /community/threads/:id/messages/:mid/react { emoji }` → the full, updated message. */
+    @POST("community/threads/{id}/messages/{mid}/react")
+    suspend fun reactToChatMessage(
+        @Path("id") threadId: String,
+        @Path("mid") messageId: String,
+        @Body body: ng.name.servix.app.data.model.ChatReactionRequest,
+    ): ng.name.servix.app.data.model.ChatMessageDto
+
+    /** `DELETE /community/threads/:id/messages/:mid` — sender only; returns the tombstone. */
+    @DELETE("community/threads/{id}/messages/{mid}")
+    suspend fun deleteChatMessage(
+        @Path("id") threadId: String,
+        @Path("mid") messageId: String,
+    ): ng.name.servix.app.data.model.ChatMessageDto
+
     @POST("community/threads/{id}/typing")
     suspend fun sendChatTyping(
         @Path("id") threadId: String,

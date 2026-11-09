@@ -374,45 +374,6 @@ fun OfflineBanner(
 }
 
 @Composable
-fun ProfessionalToolsWebCard(
-    role: String,
-    modifier: Modifier = Modifier,
-) {
-    if (role != "professional" && role != "admin") return
-    val context = LocalContext.current
-    ServixCard(
-        modifier = modifier.testTag("pro_tools_web_card"),
-        containerColor = SoftSand,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ServixBadge(
-                text = if (role == "admin") "ADMIN ACCOUNT" else "PROFESSIONAL ACCOUNT",
-                containerColor = DeepForest,
-                contentColor = WarmIvory,
-            )
-            Text(
-                text = stringResource(R.string.pro_tools_on_web),
-                style = MaterialTheme.typography.titleMedium,
-                color = DeepForest,
-            )
-            Text(
-                text = stringResource(R.string.pro_tools_on_web_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Charcoal,
-            )
-            ServixSecondaryButton(
-                text = stringResource(R.string.open_servix_web),
-                onClick = {
-                    val path = if (role == "admin") "/admin" else "/pro"
-                    CustomTabLauncher.launchWebPath(context, path)
-                },
-                testTag = "open_pro_web_button",
-            )
-        }
-    }
-}
-
-@Composable
 fun SkeletonBox(
     modifier: Modifier = Modifier,
     height: Dp = 18.dp,

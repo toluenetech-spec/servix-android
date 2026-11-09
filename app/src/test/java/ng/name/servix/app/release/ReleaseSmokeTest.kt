@@ -36,8 +36,8 @@ class ReleaseSmokeTest {
 
     @Test
     fun buildConfigIsReleaseReady() {
-        assertEquals("1.0.1", BuildConfig.VERSION_NAME)
-        assertEquals(101, BuildConfig.VERSION_CODE)
+        assertEquals("1.1.0", BuildConfig.VERSION_NAME)
+        assertEquals(110, BuildConfig.VERSION_CODE)
         // "github" only in debug; Play builds must never reach the updater.
         assertTrue(
             "Unexpected update channel ${BuildConfig.SELF_UPDATE_CHANNEL}",

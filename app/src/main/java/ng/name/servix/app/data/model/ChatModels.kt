@@ -106,8 +106,10 @@ data class ChatMessagesResponse(
 @Serializable
 data class SendChatMessageRequest(
     val clientId: String,
+    /** May be empty when the message carries an attachment (`api/docs/CHAT.md:72-76`). */
     val body: String = "",
     val replyToId: String? = null,
+    val attachment: ChatAttachmentInput? = null,
 )
 
 /** `POST /community/threads` accepts exactly one of these (community.ts 121-122). */

@@ -1,6 +1,23 @@
 package ng.name.servix.app.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.launch
+import ng.name.servix.app.data.model.ChatMessageDto
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +41,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,6 +74,7 @@ import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.ServixTextButton
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
+import ng.name.servix.app.ui.theme.Coral
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
 import ng.name.servix.app.ui.theme.MutedGray
@@ -174,14 +193,75 @@ fun ConversationScreen(
     onRetry: (String) -> Unit,
     onLoadOlder: () -> Unit,
     onOpenContactCard: () -> Unit,
+    onSendImage: (ByteArray, String, String?) -> Unit = { _, _, _ -> },
+    onSendFile: (ByteArray, String) -> Unit = { _, _ -> },
+    onSendVoice: (ByteArray, String, Long) -> Unit = { _, _, _ -> },
+    onCancelReply: () -> Unit = {},
+    onOpenActions: (ChatMessageDto) -> Unit = {},
+    onDismissActions: () -> Unit = {},
+    onReply: (ChatMessageDto) -> Unit = {},
+    onToggleReaction: (ChatMessageDto, String) -> Unit = { _, _ -> },
+    onDeleteMessage: (ChatMessageDto) -> Unit = {},
+    onOpenViewer: (String) -> Unit = {},
+    onCloseViewer: () -> Unit = {},
+    onOpenAttachment: (String) -> Unit = {},
+    onSystemMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val name = thread?.person?.fullName.orEmpty().ifBlank { "Conversation" }
     val title = thread?.person?.professionalProfile?.title ?: thread?.booking?.serviceTitle
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val player = remember { VoicePlayer() }
+    val recorder = remember { VoiceRecorder(context) }
+    var playingUrl by remember { mutableStateOf<String?>(null) }
+    var positionMs by remember { mutableStateOf(0L) }
+    var recording by remember { mutableStateOf(false) }
+    var recordMs by remember { mutableStateOf(0L) }
+
+    DisposableEffect(Unit) {
+        player.setListener { url, isPlaying, position ->
+            playingUrl = if (isPlaying) url else null
+            positionMs = position
+        }
+        onDispose {
+            player.stop()
+            recorder.cancel()
+        }
+    }
 
     LaunchedEffect(uiState.rows.size) {
         if (uiState.rows.isNotEmpty()) listState.animateScrollToItem(uiState.rows.lastIndex)
+    }
+    LaunchedEffect(recording) {
+        while (recording) {
+            recorder.tick()
+            recordMs = recorder.elapsedMs
+            if (recordMs >= MAX_VOICE_MS) {
+                recording = false
+                recorder.stop()?.let { (bytes, duration) ->
+                    onSendVoice(bytes, "voice-note.m4a", duration)
+                }
+            }
+            kotlinx.coroutines.delay(120)
+        }
+    }
+
+    // System pickers hand bytes + the file name over; the type is sniffed from the bytes before upload.
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = readBytes(context, uri)
+            if (bytes != null) onSendImage(bytes, fileName(context, uri, "photo.jpg"), uri.toString())
+            else onSystemMessage("That photo could not be read.")
+        }
+    }
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val bytes = readBytes(context, uri)
+            if (bytes != null) onSendFile(bytes, fileName(context, uri, "file"))
+            else onSystemMessage("That file could not be read.")
+        }
     }
 
     Column(modifier = modifier.fillMaxSize().background(WarmIvory).imePadding()) {
@@ -223,8 +303,23 @@ fun ConversationScreen(
                     modifier = Modifier.testTag("conversation_presence"),
                 )
             }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = "Contact details",
+                tint = MutedGray,
+                modifier = Modifier.size(20.dp).testTag("conversation_contact_cue"),
+            )
         }
         HorizontalDivider(color = BorderSand)
+
+        if (uiState.hasMore) {
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
+                ServixTextButton(
+                    text = if (uiState.loadingOlder) "Loading…" else "Load earlier messages",
+                    onClick = onLoadOlder,
+                )
+            }
+        }
 
         Box(modifier = Modifier.weight(1f)) {
             when {
@@ -238,30 +333,95 @@ fun ConversationScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize().testTag("conversation_list"),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    // Bottom-anchored: a short conversation sits on the composer instead of floating
+                    // at the top of an empty screen, and new rows / the IME never leave a gap.
+                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
                 ) {
-                    if (uiState.hasMore) {
-                        item(key = "older") {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                                ServixTextButton(
-                                    text = if (uiState.loadingOlder) "Loading…" else "Load earlier messages",
-                                    onClick = onLoadOlder,
-                                )
-                            }
-                        }
-                    }
                     items(uiState.rows) { row ->
                         when (row) {
                             is ChatRow.Day -> ChatDaySeparator(row.label)
                             is ChatRow.Message -> ChatBubble(
                                 row = row,
                                 tick = uiState.tickFor(row.message),
-                                failed = uiState.failed(row.message),
+                                failure = uiState.failureOf(row.message),
+                                myUserId = uiState.myUserId,
+                                contactName = name,
+                                uploadProgress = row.message.clientId?.let { uiState.uploadProgress[it] },
+                                audio = AudioPlayback(
+                                    playing = playingUrl != null &&
+                                        playingUrl == row.message.attachment?.url,
+                                    positionMs = positionMs,
+                                    onToggle = {
+                                        row.message.attachment?.url?.takeIf { it.isNotBlank() }?.let { url ->
+                                            player.toggle(url)
+                                        }
+                                    },
+                                ),
                                 onRetry = { row.message.clientId?.let(onRetry) },
+                                onToggleReaction = { emoji -> onToggleReaction(row.message, emoji) },
+                                onOpenAttachment = { url ->
+                                    if (row.message.kind == "image") onOpenViewer(url) else onOpenAttachment(url)
+                                },
+                                onQuoteTap = { id ->
+                                    val index = uiState.rows.indexOfFirst {
+                                        it is ChatRow.Message && it.message.id == id
+                                    }
+                                    if (index >= 0) {
+                                        scope.launch { listState.animateScrollToItem(index) }
+                                    }
+                                },
+                                onLongPress = { onOpenActions(row.message) },
                             )
                         }
                     }
                 }
+            }
+        }
+
+        uiState.replyTo?.let { quoted ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SoftSand)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .testTag("composer_reply_banner"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = "Replying to ${if (quoted.senderId == uiState.myUserId) "yourself" else name}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ForestGreen,
+                    )
+                    Text(
+                        text = if (quoted.kind == "text") quoted.body else replyPreviewText(
+                            ng.name.servix.app.data.model.ChatReplyDto(kind = quoted.kind, body = quoted.body),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Charcoal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(onClick = onCancelReply, modifier = Modifier.testTag("composer_reply_cancel")) {
+                    Icon(Icons.Filled.Close, contentDescription = "Cancel reply", tint = MutedGray, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+
+        if (recording) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SoftSand)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .testTag("composer_recording"),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(10.dp).clip(CircleShape).background(Coral))
+                Text("Recording ${formatDuration(recordMs)} · release to send", style = MaterialTheme.typography.bodySmall, color = DeepForest)
             }
         }
 
@@ -277,10 +437,22 @@ fun ConversationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(PureWhite)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
+                IconButton(
+                    onClick = { imagePicker.launch("image/*") },
+                    modifier = Modifier.testTag("composer_attach_image"),
+                ) {
+                    Icon(Icons.Filled.Image, contentDescription = "Send a photo", tint = DeepForest, modifier = Modifier.size(22.dp))
+                }
+                IconButton(
+                    onClick = { filePicker.launch("*/*") },
+                    modifier = Modifier.testTag("composer_attach_file"),
+                ) {
+                    Icon(Icons.Filled.AttachFile, contentDescription = "Send a file", tint = DeepForest, modifier = Modifier.size(22.dp))
+                }
                 TextField(
                     value = uiState.input,
                     onValueChange = onInput,
@@ -299,24 +471,85 @@ fun ConversationScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { onSend() }),
                 )
-                IconButton(
-                    onClick = onSend,
-                    enabled = uiState.input.isNotBlank(),
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(if (uiState.input.isNotBlank()) DeepForest else SoftSand)
-                        .testTag("composer_send"),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (uiState.input.isNotBlank()) WarmIvory else MutedGray,
-                    )
+                if (uiState.input.isBlank()) {
+                    // Hold to record; release sends. Nothing is uploaded until the release.
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(if (recording) Coral else SoftSand)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        if (recorder.start()) {
+                                            recording = true
+                                            recordMs = 0L
+                                            tryAwaitRelease()
+                                            recording = false
+                                            recorder.stop()?.let { (bytes, duration) ->
+                                                onSendVoice(bytes, "voice-note.m4a", duration)
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                            .testTag("composer_record"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = "Hold to record a voice note",
+                            tint = if (recording) WarmIvory else DeepForest,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = onSend,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(DeepForest)
+                            .testTag("composer_send"),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = WarmIvory)
+                    }
                 }
             }
         }
     }
+
+    if (uiState.viewerUrl != null) {
+        ImageViewer(url = uiState.viewerUrl, onClose = onCloseViewer)
+    }
+    uiState.actionTarget?.let { target ->
+        ChatActionSheet(
+            message = target,
+            myUserId = uiState.myUserId,
+            reactions = uiState.reactions,
+            onReact = { emoji -> onToggleReaction(target, emoji) },
+            onReply = { onReply(target) },
+            onDelete = { onDeleteMessage(target) },
+            onDismiss = onDismissActions,
+        )
+    }
+}
+
+/** Photos down to 8 MB: the API takes 10 MB, and decoding a larger bitmap just to re-encode is waste. */
+private const val MAX_VOICE_MS = 5 * 60 * 1000L
+
+private fun readBytes(context: android.content.Context, uri: android.net.Uri): ByteArray? = runCatching {
+    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+}.getOrNull()
+
+private fun fileName(context: android.content.Context, uri: android.net.Uri, fallback: String): String {
+    val fromResolver = runCatching {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+        }
+    }.getOrNull()
+    return fromResolver?.takeIf { it.isNotBlank() } ?: fallback
 }
 
 private fun presenceLine(uiState: ConversationUiState, title: String?): String = when {
