@@ -73,6 +73,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -164,6 +166,7 @@ class BookingDetailViewModel(
             }
 
             val res = bookingRepository.getBooking(id)
+            currentCoroutineContext().ensureActive()
             res.fold(
                 onSuccess = { booking ->
                     _uiState.update {
@@ -298,9 +301,17 @@ class BookingDetailViewModel(
         _uiState.update { it.copy(activeModal = null) }
     }
 
+    // A background read started before an action must not overwrite the action's newer result.
+    private fun cancelStaleRefresh() {
+        bookingLoadJob?.cancel()
+        bookingLoadJob = null
+        _uiState.update { it.copy(refreshing = false) }
+    }
+
     fun initiatePayNow(onReadyToOpenCustomTab: (authorizationUrl: String) -> Unit) {
         val id = _uiState.value.booking?.id ?: return
         if (_uiState.value.actionBusy) return
+        cancelStaleRefresh()
 
         viewModelScope.launch {
             _uiState.update { it.copy(actionBusy = true, actionError = null, actionSuccessMessage = null) }
@@ -326,6 +337,7 @@ class BookingDetailViewModel(
     fun submitCancel(reason: String?) {
         val booking = _uiState.value.booking ?: return
         if (_uiState.value.actionBusy) return
+        cancelStaleRefresh()
         val wasPaid = booking.status != "pending_payment"
 
         viewModelScope.launch {
@@ -372,6 +384,7 @@ class BookingDetailViewModel(
     fun submitConfirmCompletion() {
         val booking = _uiState.value.booking ?: return
         if (_uiState.value.actionBusy) return
+        cancelStaleRefresh()
 
         viewModelScope.launch {
             _uiState.update { it.copy(actionBusy = true, actionError = null, actionSuccessMessage = null) }
@@ -409,6 +422,7 @@ class BookingDetailViewModel(
     fun submitDispute(reason: String) {
         val booking = _uiState.value.booking ?: return
         if (_uiState.value.actionBusy) return
+        cancelStaleRefresh()
 
         viewModelScope.launch {
             _uiState.update { it.copy(actionBusy = true, actionError = null, actionSuccessMessage = null) }
@@ -446,6 +460,7 @@ class BookingDetailViewModel(
     fun submitReview(rating: Int, text: String?) {
         val booking = _uiState.value.booking ?: return
         if (_uiState.value.actionBusy) return
+        cancelStaleRefresh()
 
         viewModelScope.launch {
             _uiState.update { it.copy(actionBusy = true, actionError = null, actionSuccessMessage = null) }

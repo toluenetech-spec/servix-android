@@ -126,20 +126,25 @@ class ChatsViewModel(
             currentCoroutineContext().ensureActive()
             // A request started at the sign-in boundary may have carried the previous token. Retry
             // once after the session is published; OkHttp reads the latest token on every request.
-            if ((result.exceptionOrNull() as? ServixApiException)?.status == 401 && ownerId == owner && generation == currentGeneration) {
+            if ((result.exceptionOrNull() as? ServixApiException)?.status == 401 && ownerId == owner && generation == currentGeneration &&
+                (session.value as? SessionState.Authenticated)?.user?.id == owner) {
                 delay(150)
+                if ((session.value as? SessionState.Authenticated)?.user?.id != owner) return@launch
                 result = loadThreads()
                 currentCoroutineContext().ensureActive()
             }
-            if (generation != currentGeneration || ownerId != owner) return@launch
+            if (generation != currentGeneration || ownerId != owner || (session.value as? SessionState.Authenticated)?.user?.id != owner) return@launch
             if (requestedRevision != eventRevision) {
                 refresh(quiet = true)
                 return@launch
             }
             result.fold(
                 onSuccess = { threads ->
-                    _uiState.update { it.copy(loading = false, refreshing = false, threads = threads,
-                        unreadTotal = threads.sumOf { thread -> thread.unreadCount }, empty = threads.isEmpty(), error = null) }
+                    val visibleThreads = threads.map { thread ->
+                        if (thread.id == activeThreadId) thread.copy(unread = false, unreadCount = 0) else thread
+                    }
+                    _uiState.update { it.copy(loading = false, refreshing = false, threads = visibleThreads,
+                        unreadTotal = visibleThreads.sumOf { thread -> thread.unreadCount }, empty = visibleThreads.isEmpty(), error = null) }
                     if (streamStarted) ensurePolling()
                 },
                 onFailure = { failure ->

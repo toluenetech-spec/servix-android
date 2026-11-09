@@ -120,8 +120,11 @@ class ChatEventStream(
             var attempt = 0
             while (currentCoroutineContext().isActive) {
                 _connection.value = if (attempt == 0) ChatConnection.CONNECTING else ChatConnection.RECONNECTING
+                val connectedAt = System.nanoTime()
                 when (runOnce()) {
-                    Outcome.LIVE -> attempt = 0
+                    // Fast connect/drop loops must back off too; a healthy minute resets the backoff.
+                    Outcome.LIVE -> attempt = if (System.nanoTime() - connectedAt >= 60_000_000_000L) 0
+                        else (attempt + 1).coerceAtMost(5)
                     // 429 TOO_MANY_STREAMS (6 streams per account) is transient: stay RECONNECTING,
                     // keep the 15 s polling fallback running, retry on the normal backoff.
                     Outcome.RETRY -> attempt = (attempt + 1).coerceAtMost(5)
