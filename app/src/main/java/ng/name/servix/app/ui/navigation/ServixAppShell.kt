@@ -293,6 +293,15 @@ fun ServixAppShell(
     val notificationsState = if (collectedNotificationsState.ownerId == sessionUserId) collectedNotificationsState
         else ng.name.servix.app.ui.notifications.NotificationsUiState(ownerId = sessionUserId)
     val refreshKey = sessionUserId to updateState.completedChecks
+    val homeRefreshState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val professionalRefreshState by homeViewModel.professionalState.collectAsStateWithLifecycle()
+    val bookingsRefreshState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
+    val showRefreshLine = when {
+        currentDest?.hasRoute(ServixRoute.Home::class) == true -> if (sessionRole == "professional") professionalRefreshState.refreshing else homeRefreshState.refreshing
+        currentDest?.hasRoute(ServixRoute.Bookings::class) == true -> bookingsRefreshState.refreshing
+        currentDest?.hasRoute(ServixRoute.Notifications::class) == true -> notificationsState.refreshing
+        else -> false
+    }
     ForegroundRefresh(refreshKey) { if (sessionUserId != null) notificationsViewModel.load(refresh = true) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val shellScope = rememberCoroutineScope()
@@ -319,6 +328,30 @@ fun ServixAppShell(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             chatsViewModel.stopStream()
+        }
+    }
+
+    // Boolean connectivity alone misses Wi-Fi ↔ mobile handovers where both networks are online.
+    DisposableEffect(lifecycleOwner, sessionUserId) {
+        val manager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val disposed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val previousNetwork = java.util.concurrent.atomic.AtomicReference(manager.activeNetwork)
+        val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                val previous = previousNetwork.getAndSet(network)
+                if (previous != null && previous != network) shellScope.launch {
+                    if (!disposed.get() && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+                        (authViewModel.sessionState.value as? SessionState.Authenticated)?.user?.id == sessionUserId && sessionUserId != null) {
+                        chatsViewModel.stopStream()
+                        chatsViewModel.startStream()
+                    }
+                }
+            }
+        }
+        val registered = runCatching { manager.registerDefaultNetworkCallback(callback) }.isSuccess
+        onDispose {
+            disposed.set(true)
+            if (registered) runCatching { manager.unregisterNetworkCallback(callback) }
         }
     }
 
@@ -461,7 +494,13 @@ fun ServixAppShell(
 
     ServixInsetScaffold(
         topBar = {
-            OfflineBanner(isOnline = isOnline)
+            Column {
+                OfflineBanner(isOnline = isOnline)
+                if (showRefreshLine) androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = ng.name.servix.app.ui.theme.ForestGreen,
+                )
+            }
         },
         bottomBar = {
             if (!isAuthDestination) {
@@ -1047,6 +1086,7 @@ fun ServixAppShell(
                     uiState = detailUiState,
                     pollingAfterPay = route.pollingAfterPay,
                     onResumeCheck = detailViewModel::onScreenResumed,
+                    onPause = detailViewModel::onScreenPaused,
                     onBackClick = {
                         if (!navController.popBackStack()) {
                             navController.navigate(ServixRoute.Bookings)

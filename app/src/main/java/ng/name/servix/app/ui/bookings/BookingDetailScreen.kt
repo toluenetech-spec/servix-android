@@ -137,6 +137,7 @@ class BookingDetailViewModel(
     val uiState: StateFlow<BookingDetailUiState> = _uiState.asStateFlow()
 
     private var paymentPollJob: Job? = null
+    private var resumePaymentPoll = false
     private var bookingLoadJob: Job? = null
 
     fun loadBooking(
@@ -260,9 +261,17 @@ class BookingDetailViewModel(
     fun onScreenResumed(shouldPollWhenPending: Boolean) {
         val current = _uiState.value
         val id = current.bookingId.ifBlank { return }
-        if (current.booking?.status == "pending_payment" && (shouldPollWhenPending || current.isPollingPayment || current.paymentPollTimedOut)) {
+        if (current.booking?.status == "pending_payment" && (shouldPollWhenPending || resumePaymentPoll || current.isPollingPayment || current.paymentPollTimedOut)) {
+            resumePaymentPoll = false
             startPaymentPolling(id)
         }
+    }
+
+    fun onScreenPaused() {
+        resumePaymentPoll = _uiState.value.isPollingPayment
+        paymentPollJob?.cancel()
+        paymentPollJob = null
+        _uiState.update { it.copy(isPollingPayment = false) }
     }
 
     fun openModal(modal: BookingActionModal) {
@@ -513,6 +522,7 @@ fun BookingDetailScreen(
     uiState: BookingDetailUiState,
     pollingAfterPay: Boolean,
     onResumeCheck: (Boolean) -> Unit,
+    onPause: () -> Unit = {},
     onBackClick: () -> Unit,
     onRetry: () -> Unit,
     onRefreshPaymentStatus: () -> Unit,
@@ -543,9 +553,8 @@ fun BookingDetailScreen(
 
     DisposableEffect(lifecycleOwner, pollingAfterPay) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                onResumeCheck(pollingAfterPay)
-            }
+            if (event == Lifecycle.Event.ON_RESUME) onResumeCheck(pollingAfterPay)
+            if (event == Lifecycle.Event.ON_PAUSE) onPause()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {

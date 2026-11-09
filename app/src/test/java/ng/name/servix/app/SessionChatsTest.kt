@@ -90,6 +90,10 @@ class SessionChatsTest {
         vm.onEvent(ChatEvent.MessageUpdate("thread", message.copy(body = "Edited")))
         assertEquals(1, vm.uiState.value.unreadTotal)
         assertEquals("Edited", vm.uiState.value.threads.single().lastMessage)
+        vm.onEvent(ChatEvent.Typing("thread", "other", true))
+        assertTrue("thread" in vm.uiState.value.typingThreads)
+        advanceTimeBy(5_000); runCurrent()
+        assertTrue(vm.uiState.value.typingThreads.isEmpty())
     }
 
     @Test fun timerRunsOnlyWhileResumed() = runTest {

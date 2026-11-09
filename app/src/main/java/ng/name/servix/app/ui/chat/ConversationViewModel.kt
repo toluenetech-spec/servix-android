@@ -110,6 +110,7 @@ class ConversationViewModel(
     private var visible = false
     private var otherUserId: String? = null
     private var typingJob: Job? = null
+    private var otherTypingJob: Job? = null
     private var typingSentAt = 0L
     private var lastTypingSent = false
 
@@ -532,9 +533,9 @@ class ConversationViewModel(
             is ChatEvent.MessageUpdate -> if (event.threadId == threadId) upsert(event.message)
             is ChatEvent.Typing -> if (event.threadId == threadId && event.userId != myUserId) {
                 _uiState.update { it.copy(otherTyping = event.typing) }
+                otherTypingJob?.cancel()
                 if (event.typing) {
-                    typingJob?.cancel()
-                    viewModelScope.launch {
+                    otherTypingJob = viewModelScope.launch {
                         delay(TYPING_IDLE_MS)
                         _uiState.update { it.copy(otherTyping = false) }
                     }

@@ -29,6 +29,7 @@ data class ChatsUiState(
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val threads: List<ChatThreadDto> = emptyList(),
+    val typingThreads: Set<String> = emptySet(),
     /** Sum of `unreadCount` — the ONE source for the tab badge and the Home card. */
     val unreadTotal: Int = 0,
     val connection: ChatConnection = ChatConnection.IDLE,
@@ -60,6 +61,7 @@ class ChatsViewModel(
     private var loadJob: Job? = null
     private var activeThreadId: String? = null
     private var eventRevision = 0L
+    private val typingJobs = mutableMapOf<String, Job>()
 
     init {
         viewModelScope.launch {
@@ -85,6 +87,8 @@ class ChatsViewModel(
                     pollJob = null
                     ownerId = userId
                     activeThreadId = null
+                    typingJobs.values.forEach { it.cancel() }
+                    typingJobs.clear()
                     _uiState.value = ChatsUiState(ownerId = userId, loading = userId != null, aiEnabled = _uiState.value.aiEnabled)
                     if (userId != null) refresh()
                 }
@@ -105,6 +109,9 @@ class ChatsViewModel(
         stream.stop()
         pollJob?.cancel()
         pollJob = null
+        typingJobs.values.forEach { it.cancel() }
+        typingJobs.clear()
+        _uiState.update { it.copy(typingThreads = emptySet()) }
     }
 
     fun refresh(quiet: Boolean = false) {
@@ -214,7 +221,17 @@ class ChatsViewModel(
             }
             is ChatEvent.ThreadEvent -> refresh(quiet = true)
             is ChatEvent.ConnectionEvent -> refresh(quiet = true)
-            is ChatEvent.Typing, is ChatEvent.Unknown -> Unit
+            is ChatEvent.Typing -> if (event.userId != ownerId) {
+                typingJobs.remove(event.threadId)?.cancel()
+                _uiState.update { state -> state.copy(typingThreads = if (event.typing)
+                    state.typingThreads + event.threadId else state.typingThreads - event.threadId) }
+                if (event.typing) typingJobs[event.threadId] = viewModelScope.launch {
+                    delay(5_000)
+                    _uiState.update { it.copy(typingThreads = it.typingThreads - event.threadId) }
+                    typingJobs.remove(event.threadId)
+                }
+            }
+            is ChatEvent.Unknown -> Unit
         }
     }
 
