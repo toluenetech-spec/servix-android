@@ -19,30 +19,59 @@ val ServixFont: FontFamily = FontFamily(
     Font(R.font.inter_700, FontWeight.Bold),
 )
 
-/** Phone scale from the design plan §3: display 32/38, headline 24/30, title 18/24, body 16/24. */
+/**
+ * The Stitch type scale, exactly as the design's `tailwind.config` declares it (CORRECTIONS.md §4
+ * "Type scale"). Material slots are the carriers; the Stitch names are kept in [ServixType] so a
+ * screen can ask for `headlineLgMobile` instead of remembering which slot aliases it.
+ *
+ * Inter, one real weight file per weight (see res/font/OFL.txt) — a single file per weight is what
+ * makes 600 render as semibold rather than faux-bold.
+ */
+private fun stitch(
+    size: Int,
+    line: Int,
+    weight: FontWeight,
+    tracking: Double = 0.0,
+) = TextStyle(
+    fontFamily = ServixFont,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    letterSpacing = tracking.sp,
+)
+
+object ServixType {
+    val displayLg = stitch(40, 48, FontWeight.Bold, -0.02)
+    val headlineLg = stitch(32, 40, FontWeight.SemiBold, -0.02)
+    val headlineLgMobile = stitch(26, 34, FontWeight.SemiBold, -0.01)
+    val headlineMd = stitch(22, 28, FontWeight.SemiBold, -0.01)
+    val titleLg = stitch(18, 24, FontWeight.SemiBold)
+    val titleMd = stitch(16, 22, FontWeight.SemiBold)
+    val bodyLg = stitch(16, 24, FontWeight.Normal)
+    val bodyMd = stitch(14, 20, FontWeight.Normal)
+    val bodySm = stitch(12, 16, FontWeight.Normal)
+    val labelLg = stitch(14, 20, FontWeight.SemiBold, 0.01)
+    val labelMd = stitch(12, 16, FontWeight.Medium, 0.02)
+    val currencyDisplay = stitch(28, 36, FontWeight.Bold, -0.01).copy(fontFeatureSettings = "tnum")
+}
+
 val ServixTypography = Typography(
-    displayLarge = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = (-0.2).sp),
-    displayMedium = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp, letterSpacing = (-0.2).sp),
-    displaySmall = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.2).sp),
-    headlineLarge = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 30.sp, letterSpacing = (-0.2).sp),
-    headlineMedium = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 30.sp, letterSpacing = (-0.2).sp),
-    headlineSmall = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp, letterSpacing = (-0.2).sp),
-    titleLarge = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp),
-    titleMedium = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
-    titleSmall = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
-    bodySmall = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    labelLarge = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp),
-    labelSmall = TextStyle(fontFamily = ServixFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
+    displayLarge = ServixType.displayLg,
+    displayMedium = ServixType.headlineLg,
+    displaySmall = ServixType.headlineLgMobile,
+    headlineLarge = ServixType.headlineLgMobile,
+    headlineMedium = ServixType.headlineMd,
+    headlineSmall = ServixType.titleLg,
+    titleLarge = ServixType.titleLg,
+    titleMedium = ServixType.titleMd,
+    titleSmall = ServixType.labelLg,
+    bodyLarge = ServixType.bodyLg,
+    bodyMedium = ServixType.bodyMd,
+    bodySmall = ServixType.bodySm,
+    labelLarge = ServixType.labelLg,
+    labelMedium = ServixType.labelMd,
+    labelSmall = ServixType.labelMd,
 )
 
 /** Prices and counters: tabular figures so columns of naira amounts line up. */
-val ServixNumericStyle = TextStyle(
-    fontFamily = ServixFont,
-    fontWeight = FontWeight.SemiBold,
-    fontSize = 16.sp,
-    lineHeight = 22.sp,
-    fontFeatureSettings = "tnum",
-)
+val ServixNumericStyle = ServixType.currencyDisplay
