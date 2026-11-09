@@ -248,137 +248,103 @@ fun WelcomeScreen(
     providers: List<String> = emptyList(),
     onProviderClick: (String) -> Unit = {},
 ) {
+    // Rebuilt to corrected/s2_welcome_minimal.html: a grabber, one centred hero with a soft glow behind
+    // the wordmark, and two 54 dp buttons pinned to the bottom. No card, no scroll, no illustration.
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(WarmIvory)
-            .verticalScroll(rememberScrollState())
-            // Design gutter: px-margin is 16 dp, and the hero sits under the status bar by space-xl.
-            .padding(horizontal = 16.dp, vertical = 32.dp),
+            .padding(horizontal = 16.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 520.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            ServixLogoMark()
+                .size(width = 48.dp, height = 4.dp)
+                .background(SoftSand, CircleShape),
+        )
 
-            Spacer(modifier = Modifier.height(28.dp))
+        Column(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                // The HTML's blurred halo; a soft Sand disc is the Compose equivalent, not a gradient.
+                Box(
+                    modifier = Modifier
+                        .size(128.dp)
+                        .background(SoftSand.copy(alpha = 0.7f), CircleShape),
+                )
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "SERVIX",
+                        style = ServixType.headlineLg.copy(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 34.sp),
+                        color = DeepForest,
+                        modifier = Modifier.testTag("welcome_wordmark"),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 2.dp, bottom = 6.dp)
+                            .size(8.dp)
+                            .background(ForestGreen, CircleShape),
+                    )
+                }
+            }
 
             Text(
                 text = stringResource(R.string.welcome_headline),
-                style = MaterialTheme.typography.displaySmall,
+                style = ServixType.headlineLgMobile,
                 color = DeepForest,
-                modifier = Modifier.testTag("welcome_hero_title"),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp).testTag("welcome_hero_title"),
             )
-
             Text(
                 text = stringResource(R.string.welcome_subtext),
-                style = MaterialTheme.typography.bodyLarge,
+                style = ServixType.bodyMd,
                 color = MutedGray,
-                modifier = Modifier.testTag("welcome_subtext"),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp, start = 16.dp, end = 16.dp).testTag("welcome_subtext"),
             )
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 520.dp)
-                .padding(top = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ServixPrimaryButton(
+            ServixButton(
                 text = stringResource(R.string.welcome_create_account),
                 onClick = onCreateAccountClick,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
                 testTag = "welcome_create_account_button",
             )
-            ServixSecondaryButton(
+            ServixButton(
                 text = stringResource(R.string.welcome_sign_in),
                 onClick = onSignInClick,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                style = ServixButtonStyle.Secondary,
                 testTag = "welcome_sign_in_button",
             )
             if (providers.isNotEmpty()) {
                 OrDivider()
-                OAuthButtons(providers = providers, onProviderClick = onProviderClick)
-            }
-            if (onBrowseFirstClick != null) {
-                TextButton(
-                    onClick = onBrowseFirstClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("welcome_browse_button"),
-                ) {
-                    Text(
-                        text = stringResource(R.string.welcome_browse_first),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            textDecoration = TextDecoration.Underline,
-                        ),
-                        color = ForestGreen,
+                providers.forEach { provider ->
+                    ServixButton(
+                        text = "Continue with ${providerDisplayName(provider)}",
+                        onClick = { onProviderClick(provider) },
+                        style = ServixButtonStyle.Text,
+                        modifier = Modifier.fillMaxWidth(),
+                        testTag = "welcome_oauth_$provider",
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AuthShellContainer(
-    onBackClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(WarmIvory)
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            // One gutter for the whole auth flow: px-margin is 16 dp in every Stitch auth screen, and
-            // the shell is shared by S3, S4, S5, S6 and S7, so they cannot drift apart.
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 520.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            if (onBackClick != null) {
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .testTag("auth_back_button"),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = stringResource(R.string.back),
-                        tint = Charcoal,
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.size(48.dp))
+            onBrowseFirstClick?.let { browse ->
+                ServixButton(
+                    text = stringResource(R.string.browse_first),
+                    onClick = browse,
+                    style = ServixButtonStyle.Text,
+                    modifier = Modifier.fillMaxWidth(),
+                    testTag = "welcome_browse_first_button",
+                )
             }
-            ServixLogoMark()
-            Spacer(modifier = Modifier.size(48.dp))
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ServixCard(
-            modifier = Modifier.widthIn(max = 520.dp),
-            containerColor = PureWhite,
-            contentPadding = PaddingValues(24.dp),
-        ) {
-            content()
         }
     }
 }
