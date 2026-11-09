@@ -139,6 +139,19 @@ class StitchFoundationTest {
         )
     }
 
+    @Test fun forgotPassword() = rule.capture("64_forgot_password_stitch") {
+        ng.name.servix.app.ui.auth.ForgotPasswordScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(), onEmailChange = {}, onSubmit = {}, onBackToSignIn = {},
+        )
+    }
+
+    @Test fun forgotPasswordSent() = rule.capture("65_forgot_password_sent") {
+        ng.name.servix.app.ui.auth.ForgotPasswordScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(forgotEmail = "test@example.ng", forgotSent = true),
+            onEmailChange = {}, onSubmit = {}, onBackToSignIn = {},
+        )
+    }
+
     @Test
     fun buttons() = rule.capture("50_foundation_buttons") {
         Column(

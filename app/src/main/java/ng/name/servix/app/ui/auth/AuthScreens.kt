@@ -1472,89 +1472,82 @@ fun ForgotPasswordScreen(
     onBackToSignIn: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-
-    AuthShellContainer(onBackClick = onBackToSignIn) {
-        if (uiState.forgotSent) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = stringResource(R.string.forgot_sent_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = DeepForest,
-                )
-                Text(
-                    text = stringResource(R.string.forgot_sent_body, uiState.forgotEmail.trim()),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                )
-                ServixSecondaryButton(
-                    text = stringResource(R.string.back_to_sign_in),
-                    onClick = onBackToSignIn,
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "forgot_back_to_login_button",
-                )
+    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBackToSignIn, modifier = Modifier.size(44.dp).testTag("auth_back_button")) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
             }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = stringResource(R.string.forgot_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = DeepForest,
-                )
-                Text(
-                    text = stringResource(R.string.forgot_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-                ServixTextField(
-                    value = uiState.forgotEmail,
-                    onValueChange = onEmailChange,
-                    label = stringResource(R.string.field_email),
-                    required = true,
-                    error = uiState.forgotError,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            onSubmit()
-                        }
-                    ),
-                    testTag = "forgot_email_input",
-                )
-                ServixPrimaryButton(
-                    text = stringResource(if (uiState.forgotSubmitting) R.string.forgot_sending else R.string.forgot_submit),
-                    onClick = {
-                        focusManager.clearFocus()
-                        onSubmit()
-                    },
-                    loading = uiState.forgotSubmitting,
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "forgot_submit_button",
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.remembered_it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MutedGray,
-                    )
-                    TextButton(
-                        onClick = onBackToSignIn,
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .testTag("forgot_return_login_button"),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.back_to_sign_in),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = DeepForest,
-                        )
+            Text("Password Recovery", style = ServixType.titleLg, color = Charcoal, modifier = Modifier.weight(1f))
+            Box(Modifier.size(32.dp).background(DeepForest, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Person, contentDescription = null, tint = PureWhite, modifier = Modifier.size(18.dp))
+            }
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(80.dp).background(SurfaceContainerHigh, CircleShape), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(56.dp).background(SoftSand, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Lock, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(30.dp))
                     }
+                    Box(Modifier.align(Alignment.BottomEnd).size(28.dp).background(ForestGreen, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = PureWhite, modifier = Modifier.size(15.dp))
+                    }
+                }
+                Row(Modifier.padding(top = 16.dp, bottom = 8.dp).background(SurfaceContainerLow, CircleShape).padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Outlined.Shield, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(14.dp))
+                    Text("Account recovery", style = ServixType.labelMd, color = ForestGreen)
+                }
+                Text("Reset your password", style = ServixType.headlineLgMobile, color = Charcoal, textAlign = TextAlign.Center)
+                Text("Enter your account email to begin secure password recovery.", style = ServixType.bodyMd, color = MutedGray,
+                    textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp).widthIn(max = 320.dp))
+            }
+            if (uiState.forgotSent) {
+                Row(Modifier.fillMaxWidth().background(SoftSand, RoundedCornerShape(24.dp)).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.size(32.dp).background(ForestGreen, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.MailOutline, contentDescription = null, tint = PureWhite, modifier = Modifier.size(18.dp))
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.forgot_sent_title), style = ServixType.titleMd, color = DeepForest)
+                        Text(stringResource(R.string.forgot_sent_body, uiState.forgotEmail.trim()), style = ServixType.bodySm, color = ForestGreen)
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Email address", style = ServixType.labelLg, color = Charcoal)
+                            Text("Required", style = ServixType.labelMd, color = MutedGray)
+                        }
+                        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).background(SurfaceContainerLow, RoundedCornerShape(24.dp)).padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Outlined.MailOutline, contentDescription = null, tint = MutedGray, modifier = Modifier.size(20.dp))
+                            Box(Modifier.weight(1f)) {
+                                if (uiState.forgotEmail.isEmpty()) Text("olumide@example.ng", style = ServixType.bodyLg, color = MutedGray.copy(alpha = 0.7f))
+                                androidx.compose.foundation.text.BasicTextField(
+                                    value = uiState.forgotEmail, onValueChange = onEmailChange, singleLine = true,
+                                    textStyle = ServixType.bodyLg.copy(color = Charcoal),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); onSubmit() }),
+                                    modifier = Modifier.fillMaxWidth().testTag("forgot_email_input"),
+                                )
+                            }
+                        }
+                        uiState.forgotError?.let { Text(it, style = ServixType.bodySm, color = DangerRed) }
+                    }
+                    ServixButton(text = if (uiState.forgotSubmitting) stringResource(R.string.forgot_sending) else "Send reset link",
+                        onClick = { focusManager.clearFocus(); onSubmit() }, loading = uiState.forgotSubmitting,
+                        modifier = Modifier.fillMaxWidth(), testTag = "forgot_submit_button")
+                }
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Remember your password?", style = ServixType.bodyMd, color = MutedGray)
+                TextButton(onClick = onBackToSignIn, modifier = Modifier.heightIn(min = 48.dp).testTag(if (uiState.forgotSent) "forgot_back_to_login_button" else "forgot_return_login_button")) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, tint = DeepForest, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text("Back to sign in", style = ServixType.labelLg.copy(textDecoration = TextDecoration.Underline), color = DeepForest)
                 }
             }
         }
