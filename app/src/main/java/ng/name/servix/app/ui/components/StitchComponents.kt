@@ -208,7 +208,7 @@ fun ServixField(
             leadingIcon?.let {
                 Icon(it, contentDescription = null, tint = MutedGray, modifier = Modifier.size(20.dp))
             }
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) {
                     Text(placeholder, style = ServixType.bodyMd, color = MutedGray.copy(alpha = 0.7f))
                 }
