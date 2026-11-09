@@ -89,6 +89,17 @@ jobs:
               print("::error::" + name + " - " + detail)
           print("::notice::failing test cases: " + str(len(found)))
           PY
+      - name: Annotate screenshot log tail
+        if: failure()
+        run: |
+          if [ -f gradle-screenshots.log ]; then
+            python3 - <<'PYTHON'
+          from pathlib import Path
+          lines = Path("gradle-screenshots.log").read_text(errors="replace").splitlines()
+          text = "\n".join(lines[-50:])[-12000:]
+          print("::error::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+          PYTHON
+          fi
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -317,6 +328,17 @@ jobs:
           cp -f gradle-play-assets.log ci-failure/ 2>/dev/null || true
           wc -l ci-failure/* 2>/dev/null || true
 
+      - name: Annotate screenshot log tail
+        if: failure()
+        run: |
+          if [ -f gradle-screenshots.log ]; then
+            python3 - <<'PYTHON'
+          from pathlib import Path
+          lines = Path("gradle-screenshots.log").read_text(errors="replace").splitlines()
+          text = "\n".join(lines[-50:])[-12000:]
+          print("::error::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+          PYTHON
+          fi
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
