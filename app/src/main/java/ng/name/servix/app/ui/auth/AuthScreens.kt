@@ -68,6 +68,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -890,37 +892,6 @@ private fun RegisterPasswordChecklist(rules: List<PasswordRuleStatus>) {
 }
 
 @Composable
-private fun PasswordChecklist(rules: List<PasswordRuleStatus>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            // s4's checklist: a Sand panel at radius 16, a filled disc per rule that turns Forest Green
-            // the moment the rule is met. Colour is the only change of state, so nothing jumps.
-            .background(SoftSand.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        rules.forEach { rule ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = if (rule.met) "✓" else "○",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (rule.met) ForestGreen else MutedGray,
-                )
-                Text(
-                    text = rule.label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (rule.met) DeepForest else MutedGray,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun VerifyEmailScreen(
     userEmail: String,
     isAlreadyVerified: Boolean,
@@ -1240,50 +1211,28 @@ private fun SixDigitCodeField(
  * Mirrors reference/web/src/pages/auth/SecurityCheckPage.jsx:16-191 and
  * checks GET /auth/security/config -> { enabled } first.
  */
-/** 0 Email, 1 Authenticator, 2 Recovery codes, 3 Done — derived from the security flow state. */
+/** Zero-based progress from the six server stages, matching new/s6a–s6f. */
 internal fun securityStepOf(uiState: AuthUiState): Int = when {
     uiState.securitySuccessMode != null -> 3
-    uiState.securityRecoveryCodes.isNotEmpty() -> 2
-    uiState.securityTotpSetup != null || uiState.securityUseRecovery -> 1
-    else -> 0
+    else -> when (uiState.securityFlow?.next) {
+        "email" -> 0
+        "enroll" -> 1
+        "factor" -> 2
+        "recovery", "reset_password", "finish" -> 3
+        else -> 0
+    }
 }
 
-/** Four-dot progress row with the step name (plan §5 security check). */
 @Composable
 fun SecurityStepProgress(current: Int) {
-    val steps = listOf("Email", "Authenticator", "Recovery codes", "Done")
-    val index = current.coerceIn(0, steps.lastIndex)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-            .testTag("security_step_progress"),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    val index = current.coerceIn(0, 3)
+    Row(
+        modifier = Modifier.fillMaxWidth().testTag("security_step_progress")
+            .semantics { contentDescription = "Step ${index + 1} of 4" },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Step ${index + 1} of ${steps.size}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MutedGray,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = steps[index],
-                style = MaterialTheme.typography.labelLarge,
-                color = DeepForest,
-                modifier = Modifier.testTag("security_step_name"),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            steps.indices.forEach { i ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(if (i <= index) DeepForest else SoftSand),
-                )
-            }
+        repeat(4) { i ->
+            Box(Modifier.weight(1f).height(6.dp).background(if (i <= index) DeepForest else BorderSand, CircleShape))
         }
     }
 }
@@ -1307,479 +1256,204 @@ fun SecurityCheckScreen(
 ) {
     val context = LocalContext.current
     var showResetPassword by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { onLoadSecurityCheck() }
 
-    LaunchedEffect(Unit) {
-        onLoadSecurityCheck()
+    val flow = uiState.securityFlow
+    val stage = flow?.next.orEmpty()
+    val title = when {
+        uiState.securitySuccessMode == "reset" -> "Password updated"
+        uiState.securityConfigEnabled == false -> stringResource(R.string.security_disabled_on_web)
+        uiState.securityLoading -> stringResource(R.string.security_preparing)
+        uiState.securityExpired -> stringResource(R.string.security_expired_title)
+        stage == "email" -> stringResource(R.string.security_title_email)
+        stage == "enroll" -> stringResource(R.string.security_title_enroll)
+        stage == "factor" -> stringResource(R.string.security_title_factor)
+        stage == "recovery" -> stringResource(R.string.security_title_recovery)
+        stage == "reset_password" -> stringResource(R.string.security_title_reset)
+        else -> stringResource(R.string.security_title_complete)
     }
+    val lead = when {
+        uiState.securitySuccessMode == "reset" -> "Your other sessions have been signed out. Use your new password and your existing security method to sign in."
+        uiState.securityLoading -> stringResource(R.string.security_checking_progress)
+        flow == null || uiState.securityExpired || uiState.securityLoadFailed || uiState.securityConfigEnabled == false -> ""
+        stage == "email" && flow.purpose == "reset" -> "If the account is eligible, a code has been queued for delivery to your email. Use the newest code within 10 minutes."
+        stage == "email" -> "A code has been queued for ${flow.email.orEmpty()}. Use the newest code within 10 minutes."
+        stage == "enroll" -> "Add Google Authenticator so only you can sign in."
+        stage == "factor" && uiState.securityUseRecovery -> "Enter one of the recovery codes you saved during setup."
+        stage == "factor" && flow.method == "passkey" -> "Use your authenticator app or a recovery code"
+        stage == "factor" -> "Enter the code from your authenticator app."
+        stage == "recovery" -> "Save these recovery codes somewhere private. Each code works once."
+        stage == "reset_password" -> "Use something you don't use anywhere else."
+        stage == "finish" -> "Thanks for keeping your account safe."
+        else -> ""
+    }
+    val normalStage = !uiState.securityLoading && !uiState.securityExpired && !uiState.securityLoadFailed &&
+        uiState.securityConfigEnabled != false && flow != null && uiState.securitySuccessMode != "reset"
 
-    AuthShellContainer(onBackClick = onCancelAndReturnLogin) {
-        SecurityStepProgress(current = securityStepOf(uiState))
-        if (uiState.securitySuccessMode == "reset") {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Icon(
-                    imageVector = Icons.Outlined.CheckCircle,
-                    contentDescription = "Password updated",
-                    tint = ForestGreen,
-                    modifier = Modifier.size(40.dp),
-                )
-                Text(
-                    text = "Password updated",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = DeepForest,
-                )
-                Text(
-                    text = "Your other sessions have been signed out. Use your new password and your existing security method to sign in.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                )
-                ServixPrimaryButton(
-                    text = stringResource(R.string.back_to_sign_in),
-                    onClick = onCancelAndReturnLogin,
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "security_reset_back_login_button",
-                )
+    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding().padding(horizontal = 16.dp)) {
+        Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onCancelAndReturnLogin, modifier = Modifier.size(48.dp).testTag("auth_back_button")) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
             }
-            return@AuthShellContainer
         }
-
-        if (uiState.securityConfigEnabled == false) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = stringResource(R.string.security_disabled_on_web),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = DeepForest,
-                    modifier = Modifier.testTag("security_disabled_message"),
-                )
-                ServixPrimaryButton(
-                    text = stringResource(R.string.open_servix_web),
-                    onClick = { CustomTabLauncher.launchWebPath(context, "/login") },
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "security_open_web_button",
-                )
-                ServixSecondaryButton(
-                    text = stringResource(R.string.back_to_sign_in),
-                    onClick = onCancelAndReturnLogin,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 8.dp)) {
+            Row(
+                Modifier.background(SoftSand.copy(alpha = 0.4f), CircleShape).padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(Modifier.size(6.dp).background(ForestGreen, CircleShape))
+                Text("Servix · Account security", style = ServixType.labelMd, color = DeepForest)
             }
-            return@AuthShellContainer
-        }
-
-        val flow = uiState.securityFlow
-        val stage = flow?.next.orEmpty()
-        val title = when {
-            uiState.securityLoading -> stringResource(R.string.security_preparing)
-            uiState.securityExpired -> stringResource(R.string.security_expired_title)
-            stage == "email" -> stringResource(R.string.security_title_email)
-            stage == "enroll" -> stringResource(R.string.security_title_enroll)
-            stage == "factor" -> stringResource(R.string.security_title_factor)
-            stage == "recovery" -> stringResource(R.string.security_title_recovery)
-            stage == "reset_password" -> stringResource(R.string.security_title_reset)
-            else -> stringResource(R.string.security_title_complete)
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = DeepForest,
-                modifier = Modifier.testTag("security_title_text"),
-            )
-
-            if (!uiState.securityError.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = DangerRed.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.35f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = uiState.securityError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = DangerRed,
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
+            Text(title, style = ServixType.headlineLgMobile, color = Charcoal, modifier = Modifier.padding(top = 4.dp).testTag("security_title_text"))
+            if (lead.isNotEmpty()) Text(lead, style = ServixType.bodyMd, color = MutedGray, modifier = Modifier.padding(top = 8.dp))
+            Spacer(Modifier.height(16.dp))
+            SecurityStepProgress(securityStepOf(uiState))
+            uiState.securityError?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = ServixType.bodySm, color = DangerRed, modifier = Modifier.fillMaxWidth().padding(top = 16.dp).background(ErrorContainer, RoundedCornerShape(16.dp)).padding(12.dp))
             }
-
-            if (!uiState.securityNotice.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = ForestGreen.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = uiState.securityNotice,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = DeepForest,
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
+            uiState.securityNotice?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = ServixType.bodySm, color = DeepForest, modifier = Modifier.fillMaxWidth().padding(top = 16.dp).background(SoftSand, RoundedCornerShape(16.dp)).padding(12.dp))
             }
-
-            if (uiState.securityLoading) {
-                Text(
-                    text = stringResource(R.string.security_checking_progress),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-                return@Column
-            }
-
-            if (uiState.securityExpired || uiState.securityLoadFailed || flow == null) {
-                ServixPrimaryButton(
-                    text = stringResource(R.string.security_start_again),
-                    onClick = onCancelAndReturnLogin,
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "security_start_again_button",
-                )
-                if (!uiState.securityExpired) {
-                    ServixSecondaryButton(
-                        text = stringResource(R.string.security_try_loading_again),
-                        onClick = onLoadSecurityCheck,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_retry_load_button",
-                    )
-                }
-                return@Column
-            }
-
-            when (stage) {
-                "email" -> {
-                    val prompt = if (flow.purpose == "reset") {
-                        "If the account is eligible, a code has been queued for delivery to your email. Use the newest code within 10 minutes."
-                    } else {
-                        "A code has been queued for ${flow.email.orEmpty()}. Use the newest code within 10 minutes."
-                    }
-                    Text(
-                        text = prompt,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
-
-                    SixDigitCodeField(
-                        label = stringResource(R.string.verify_code_label),
-                        code = uiState.securityCode,
-                        onCodeChange = onCodeChange,
-                        error = null,
-                        hint = "Paste or enter the six-digit code.",
-                        onDone = onSubmitCode,
-                        testTag = "security_email_code_input",
-                    )
-
-                    ServixPrimaryButton(
-                        text = stringResource(R.string.verify_submit),
-                        onClick = onSubmitCode,
-                        loading = uiState.securityBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_email_verify_button",
-                    )
-
-                    ServixSecondaryButton(
-                        text = if (uiState.securityWaitSeconds > 0) {
-                            "Resend in ${uiState.securityWaitSeconds}s"
-                        } else {
-                            stringResource(R.string.verify_send_new_code)
-                        },
-                        onClick = onResendEmailCode,
-                        enabled = !uiState.securityBusy && uiState.securityWaitSeconds == 0,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_email_resend_button",
-                    )
-                }
-
-                "enroll" -> {
-                    Text(
-                        text = "Choose one method. We’ll remember it and ask for it when you sign in. First, let’s prove it works.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
-                    val setup = uiState.securityTotpSetup
-                    if (setup == null) {
-                        ServixCard(
-                            modifier = Modifier
-                                .clickable(enabled = !uiState.securityBusy) { onBeginTotpSetup() }
-                                .testTag("security_choose_totp_button"),
-                            containerColor = SoftSand.copy(alpha = 0.45f),
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    text = "Google Authenticator",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = DeepForest,
-                                )
-                                Text(
-                                    text = "Set up once with a setup key or authenticator app. Then use the rotating six-digit code in your app—even offline.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MutedGray,
-                                )
+            if (normalStage) {
+                Column(Modifier.fillMaxWidth().padding(top = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    when (stage) {
+                        "email" -> {
+                            SecurityCodeInput("6-digit code", uiState.securityCode, onCodeChange, onSubmitCode, "security_email_code_input")
+                            TextButton(onClick = onResendEmailCode, enabled = !uiState.securityBusy && uiState.securityWaitSeconds == 0,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("security_email_resend_button")) {
+                                Text(if (uiState.securityWaitSeconds > 0) "Resend in ${uiState.securityWaitSeconds}s" else stringResource(R.string.verify_send_new_code),
+                                    style = ServixType.bodySm, color = if (uiState.securityWaitSeconds > 0) MutedGray else ForestGreen)
                             }
                         }
-                    } else {
-                        Text(
-                            text = "Open Google Authenticator → tap + → Enter a setup key. Keep this setup key private.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Charcoal,
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = SoftSand,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = setup.secret,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                    ),
-                                    color = DeepForest,
-                                    modifier = Modifier.testTag("security_totp_secret_text"),
-                                )
-                                if (setup.uri.isNotBlank()) {
-                                    Text(
-                                        text = setup.uri,
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            fontFamily = FontFamily.Monospace,
-                                        ),
-                                        color = MutedGray,
-                                        modifier = Modifier.testTag("security_totp_uri_text"),
-                                    )
+                        "enroll" -> {
+                            val setup = uiState.securityTotpSetup
+                            Column(Modifier.fillMaxWidth().background(PureWhite, RoundedCornerShape(24.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Icon(Icons.Outlined.Lock, contentDescription = null, tint = DeepForest, modifier = Modifier.size(24.dp))
+                                    Text("Google Authenticator", style = ServixType.titleMd, color = Charcoal)
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    ServixSecondaryButton(
-                                        text = "Copy key",
-                                        onClick = {
-                                            copyToClipboard(context, "Servix setup key", setup.secret)
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                    )
+                                if (setup == null) {
+                                    Text("Set up once with a setup key or authenticator app. Then use the rotating six-digit code in your app—even offline.", style = ServixType.bodySm, color = MutedGray)
+                                    ServixButton("Set up authenticator", onBeginTotpSetup, enabled = !uiState.securityBusy,
+                                        modifier = Modifier.fillMaxWidth(), testTag = "security_choose_totp_button")
+                                } else {
+                                    Text("Open Google Authenticator and tap +. Choose Enter a setup key. Paste the key below, then enter the 6-digit code.", style = ServixType.bodySm, color = MutedGray)
+                                    Row(Modifier.fillMaxWidth().background(SoftSand, RoundedCornerShape(16.dp)).padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(setup.secret, style = ServixType.bodyMd.copy(fontFamily = FontFamily.Monospace), color = DeepForest,
+                                            modifier = Modifier.weight(1f).testTag("security_totp_secret_text"))
+                                        TextButton(onClick = { copyToClipboard(context, "Servix setup key", setup.secret) }) { Text("Copy key", style = ServixType.labelLg, color = DeepForest) }
+                                    }
                                     if (setup.uri.startsWith("otpauth://")) {
-                                        ServixSecondaryButton(
-                                            text = "Open app",
-                                            onClick = {
-                                                runCatching {
-                                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(setup.uri)))
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f),
-                                        )
+                                        ServixSecondaryButton("Open app", onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(setup.uri))) } }, modifier = Modifier.fillMaxWidth())
                                     }
                                 }
                             }
+                            if (setup != null) SecurityCodeInput("6-digit code", uiState.securityCode, onCodeChange, onSubmitCode, "security_totp_enroll_input")
                         }
-
-                        SixDigitCodeField(
-                            label = "Google Authenticator code",
-                            code = uiState.securityCode,
-                            onCodeChange = onCodeChange,
-                            error = null,
-                            hint = "Paste or enter the six-digit code.",
-                            onDone = onSubmitCode,
-                            testTag = "security_totp_enroll_input",
-                        )
-
-                        ServixPrimaryButton(
-                            text = "Confirm authenticator",
-                            onClick = onSubmitCode,
-                            loading = uiState.securityBusy,
-                            modifier = Modifier.fillMaxWidth(),
-                            testTag = "security_totp_enroll_submit",
-                        )
-
-                        TextButton(
-                            onClick = onClearTotpSetup,
-                            enabled = !uiState.securityBusy,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "Choose a different method",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MutedGray,
-                            )
-                        }
-                    }
-                }
-
-                "factor" -> {
-                    val prompt = when {
-                        uiState.securityUseRecovery -> "Enter one of the recovery codes you saved during setup."
-                        flow.method == "passkey" -> "Use your authenticator app or a recovery code"
-                        else -> "Open Google Authenticator and enter the current code for Servix."
-                    }
-                    Text(
-                        text = prompt,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
-
-                    SixDigitCodeField(
-                        label = if (uiState.securityUseRecovery) "Recovery code" else "Google Authenticator code",
-                        code = uiState.securityCode,
-                        onCodeChange = onCodeChange,
-                        error = null,
-                        hint = if (uiState.securityUseRecovery) "Each recovery code works only once." else "Paste or enter the six-digit code.",
-                        onDone = onSubmitCode,
-                        testTag = "security_factor_code_input",
-                        isNumeric = !uiState.securityUseRecovery,
-                    )
-                    ServixPrimaryButton(
-                        text = "Verify security code",
-                        onClick = onSubmitCode,
-                        loading = uiState.securityBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_factor_submit_button",
-                    )
-
-                    TextButton(
-                        onClick = onToggleUseRecovery,
-                        enabled = !uiState.securityBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            text = if (uiState.securityUseRecovery) {
-                                "Use my enrolled security method"
-                            } else {
-                                "Lost access? Use a recovery code"
-                            },
-                            style = MaterialTheme.typography.labelLarge,
-                            color = ForestGreen,
-                        )
-                    }
-                }
-
-                "recovery" -> {
-                    Text(
-                        text = "Your security method is confirmed. Save these recovery codes in a password manager or a safe offline place before continuing.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
-                    Text(
-                        text = "Each code works once. Never send these codes to support or include them in screenshots.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MutedGray,
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = SoftSand,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            uiState.securityRecoveryCodes.forEach { recoveryCode ->
-                                Text(
-                                    text = recoveryCode,
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                                    color = DeepForest,
-                                )
+                        "factor" -> SecurityCodeInput(if (uiState.securityUseRecovery) "Recovery code" else "6-digit code", uiState.securityCode,
+                            onCodeChange, onSubmitCode, "security_factor_code_input", numeric = !uiState.securityUseRecovery)
+                        "recovery" -> {
+                            Column(Modifier.fillMaxWidth().background(PureWhite, RoundedCornerShape(24.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                uiState.securityRecoveryCodes.chunked(2).forEach { pair ->
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        pair.forEach { code -> Text(code, style = ServixType.bodyMd.copy(fontFamily = FontFamily.Monospace), color = DeepForest, modifier = Modifier.weight(1f)) }
+                                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                            ServixSecondaryButton("Copy recovery codes", onClick = { copyToClipboard(context, "Servix recovery codes", uiState.securityRecoveryCodes.joinToString("\n")) },
+                                enabled = uiState.securityRecoveryCodes.isNotEmpty(), modifier = Modifier.fillMaxWidth())
+                            Row(Modifier.fillMaxWidth().clickable { onSavedRecoveryChange(!uiState.securitySavedRecovery) }, verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = uiState.securitySavedRecovery, onCheckedChange = onSavedRecoveryChange,
+                                    colors = CheckboxDefaults.colors(checkedColor = DeepForest), modifier = Modifier.testTag("security_saved_recovery_checkbox"))
+                                Text("I have saved my recovery codes somewhere private.", style = ServixType.bodyMd, color = Charcoal)
                             }
                         }
+                        "reset_password" -> {
+                            ServixField(uiState.securityNewPassword, onNewPasswordChange, "New password", placeholder = "Create a password",
+                                leadingIcon = Icons.Outlined.Lock, keyboardType = KeyboardType.Password,
+                                visualTransformation = if (showResetPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailing = { IconButton(onClick = { showResetPassword = !showResetPassword }) {
+                                    Icon(if (showResetPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                        contentDescription = if (showResetPassword) "Hide password" else "Show password", tint = MutedGray)
+                                } }, testTag = "security_new_password_input")
+                            ServixField(uiState.securityConfirmPassword, onConfirmPasswordChange, "Confirm password", placeholder = "Repeat your password",
+                                leadingIcon = Icons.Outlined.Lock, keyboardType = KeyboardType.Password,
+                                visualTransformation = if (showResetPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                testTag = "security_confirm_password_input")
+                            SecurityPasswordRules(uiState)
+                        }
+                        "finish" -> Box(Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.VerifiedUser, contentDescription = null, tint = DeepForest, modifier = Modifier.size(72.dp))
+                        }
                     }
-
-                    ServixSecondaryButton(
-                        text = "Copy recovery codes",
-                        onClick = {
-                            copyToClipboard(
-                                context,
-                                "Servix recovery codes",
-                                uiState.securityRecoveryCodes.joinToString("\n"),
-                            )
-                        },
-                        enabled = uiState.securityRecoveryCodes.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSavedRecoveryChange(!uiState.securitySavedRecovery) }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = uiState.securitySavedRecovery,
-                            onCheckedChange = onSavedRecoveryChange,
-                            colors = CheckboxDefaults.colors(checkedColor = DeepForest),
-                            modifier = Modifier.testTag("security_saved_recovery_checkbox"),
-                        )
-                        Text(
-                            text = "I have saved my recovery codes somewhere private.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Charcoal,
-                        )
+                }
+            }
+        }
+        Column(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            when {
+                uiState.securitySuccessMode == "reset" -> ServixPrimaryButton(stringResource(R.string.back_to_sign_in), onCancelAndReturnLogin,
+                    modifier = Modifier.fillMaxWidth(), testTag = "security_reset_back_login_button")
+                uiState.securityConfigEnabled == false -> {
+                    ServixPrimaryButton(stringResource(R.string.open_servix_web), { CustomTabLauncher.launchWebPath(context, "/login") },
+                        modifier = Modifier.fillMaxWidth(), testTag = "security_open_web_button")
+                    ServixSecondaryButton(stringResource(R.string.back_to_sign_in), onCancelAndReturnLogin, modifier = Modifier.fillMaxWidth())
+                }
+                uiState.securityLoading -> Unit
+                uiState.securityExpired || uiState.securityLoadFailed || flow == null -> {
+                    ServixPrimaryButton(stringResource(R.string.security_start_again), onCancelAndReturnLogin, modifier = Modifier.fillMaxWidth(), testTag = "security_start_again_button")
+                    if (!uiState.securityExpired) ServixSecondaryButton(stringResource(R.string.security_try_loading_again), onLoadSecurityCheck,
+                        modifier = Modifier.fillMaxWidth(), testTag = "security_retry_load_button")
+                }
+                stage == "email" -> ServixPrimaryButton(stringResource(R.string.verify_submit), onSubmitCode, loading = uiState.securityBusy,
+                    modifier = Modifier.fillMaxWidth(), testTag = "security_email_verify_button")
+                stage == "enroll" && uiState.securityTotpSetup != null -> {
+                    ServixPrimaryButton("Confirm authenticator", onSubmitCode, loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_totp_enroll_submit")
+                    TextButton(onClick = onClearTotpSetup, enabled = !uiState.securityBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Choose a different method", style = ServixType.labelLg, color = DeepForest)
                     }
-
-                    ServixPrimaryButton(
-                        text = "Finish securely",
-                        onClick = onFinishSecurity,
-                        enabled = !uiState.securityBusy && uiState.securitySavedRecovery && uiState.securityRecoveryCodes.isNotEmpty(),
-                        loading = uiState.securityBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_finish_recovery_button",
-                    )
                 }
-
-                "finish" -> {
-                    Text(
-                        text = "Your email and enrolled security method have been verified.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
-                    ServixPrimaryButton(
-                        text = "Finish signing in",
-                        onClick = onFinishSecurity,
-                        loading = uiState.securityBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_finish_button",
-                    )
-                }
-
-                "reset_password" -> {
-                    Text(
-                        text = "Your email and existing security method are verified. Choose a unique password. Your enrolled security method will stay unchanged.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
-                    ServixTextField(
-                        value = uiState.securityNewPassword,
-                        onValueChange = onNewPasswordChange,
-                        label = "New password",
-                        required = true,
-                        isPassword = true,
-                        passwordVisible = showResetPassword,
-                        onTogglePasswordVisibility = { showResetPassword = !showResetPassword },
-                        testTag = "security_new_password_input",
-                    )
-                    PasswordChecklist(rules = uiState.securityResetPasswordRules)
-                    val confirmHint = when {
-                        uiState.securityConfirmPassword.isEmpty() -> "Enter the new password again."
-                        uiState.securityNewPassword == uiState.securityConfirmPassword -> "✓ Passwords match"
-                        else -> "Passwords do not match yet"
+                stage == "factor" -> {
+                    ServixPrimaryButton("Verify security code", onSubmitCode, loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_factor_submit_button")
+                    TextButton(onClick = onToggleUseRecovery, enabled = !uiState.securityBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("security_recovery_toggle")) {
+                        Text(if (uiState.securityUseRecovery) "Use my enrolled security method" else "Lost access? Use a recovery code", style = ServixType.labelLg, color = DeepForest)
                     }
-                    ServixTextField(
-                        value = uiState.securityConfirmPassword,
-                        onValueChange = onConfirmPasswordChange,
-                        label = "Confirm password",
-                        required = true,
-                        hint = confirmHint,
-                        isPassword = true,
-                        passwordVisible = showResetPassword,
-                        onTogglePasswordVisibility = { showResetPassword = !showResetPassword },
-                        testTag = "security_confirm_password_input",
-                    )
-                    ServixPrimaryButton(
-                        text = "Save new password",
-                        onClick = onSubmitResetPassword,
-                        loading = uiState.securityBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "security_save_password_button",
-                    )
                 }
+                stage == "recovery" -> ServixPrimaryButton("Finish securely", onFinishSecurity,
+                    enabled = !uiState.securityBusy && uiState.securitySavedRecovery && uiState.securityRecoveryCodes.isNotEmpty(),
+                    loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_finish_recovery_button")
+                stage == "reset_password" -> ServixPrimaryButton("Save new password", onSubmitResetPassword, loading = uiState.securityBusy,
+                    modifier = Modifier.fillMaxWidth(), testTag = "security_save_password_button")
+                stage == "finish" -> ServixPrimaryButton("Finish signing in", onFinishSecurity, loading = uiState.securityBusy,
+                    modifier = Modifier.fillMaxWidth(), testTag = "security_finish_button")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecurityCodeInput(label: String, code: String, onChange: (String) -> Unit, onDone: () -> Unit, tag: String, numeric: Boolean = true) {
+    ServixField(value = code, onValueChange = onChange, label = label, placeholder = if (numeric) "••• •••" else "Recovery code",
+        leadingIcon = Icons.Outlined.Lock, keyboardType = if (numeric) KeyboardType.NumberPassword else KeyboardType.Ascii,
+        imeAction = ImeAction.Done, onImeAction = onDone, testTag = tag)
+}
+
+@Composable
+private fun SecurityPasswordRules(state: AuthUiState) {
+    val rules = state.securityResetPasswordRules.associateBy { it.id }
+    val displayRules = mutableListOf("At least 8 characters" to (rules["length"]?.met == true))
+    if (state.securityFlow?.passwordPolicy != "basic") {
+        displayRules.add("Upper and lower case" to (rules["uppercase"]?.met == true && rules["lowercase"]?.met == true))
+        displayRules.add("A number" to (rules["number"]?.met == true))
+        displayRules.add("A symbol" to (rules["symbol"]?.met == true))
+    }
+    displayRules.add("Passwords match" to (state.securityNewPassword.isNotEmpty() && state.securityNewPassword == state.securityConfirmPassword))
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        displayRules.forEach { (label, met) ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(if (met) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+                    contentDescription = if (met) "Met" else "Not met", tint = if (met) ForestGreen else MutedGray, modifier = Modifier.size(18.dp))
+                Text(label, style = ServixType.bodySm, color = if (met) Charcoal else MutedGray)
             }
         }
     }

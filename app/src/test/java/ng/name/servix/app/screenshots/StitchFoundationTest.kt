@@ -25,6 +25,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.unit.dp
 import ng.name.servix.app.ui.components.ServixButton
 import ng.name.servix.app.ui.components.ServixButtonStyle
@@ -102,6 +104,39 @@ class StitchFoundationTest {
             org.junit.Assert.assertTrue(registeredAgain)
             org.junit.Assert.assertFalse(signedOut)
         }
+    }
+
+    @Test fun securityEmail() = rule.capture("58_security_email") { securityPreview("email") }
+    @Test fun securityEnroll() = rule.capture("59_security_enroll") { securityPreview("enroll") }
+    @Test fun securityFactor() = rule.capture("60_security_factor") { securityPreview("factor") }
+    @Test fun securityRecovery() = rule.capture("61_security_recovery") { securityPreview("recovery") }
+    @Test fun securityReset() = rule.capture("62_security_reset") { securityPreview("reset_password") }
+    @Test fun securityFinish() = rule.capture("63_security_finish") { securityPreview("finish") }
+
+    @Test fun securityFactorKeepsRecoveryToggleAndPasskeyCopy() {
+        var toggled = false
+        rule.setContent {
+            ServixTheme {
+                securityPreview("factor", method = "passkey", onToggle = { toggled = true })
+            }
+        }
+        rule.onNodeWithText("Use your authenticator app or a recovery code").assertExists()
+        rule.onNodeWithTag("security_recovery_toggle").performClick()
+        rule.runOnIdle { org.junit.Assert.assertTrue(toggled) }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun securityPreview(stage: String, method: String? = null, onToggle: () -> Unit = {}) {
+        val state = ng.name.servix.app.ui.auth.AuthUiState(
+            securityFlow = ng.name.servix.app.data.model.SecurityFlowState(next = stage, email = "test@example.ng", method = method),
+            securityTotpSetup = if (stage == "enroll") ng.name.servix.app.data.model.SecurityTotpSetupResponse(secret = "EXAMPLE-KEY", uri = "otpauth://totp/example") else null,
+            securityRecoveryCodes = if (stage == "recovery") listOf("TEST-1111", "TEST-2222", "TEST-3333", "TEST-4444") else emptyList(),
+        )
+        ng.name.servix.app.ui.auth.SecurityCheckScreen(
+            uiState = state, onLoadSecurityCheck = {}, onCodeChange = {}, onSubmitCode = {}, onResendEmailCode = {},
+            onBeginTotpSetup = {}, onClearTotpSetup = {}, onToggleUseRecovery = onToggle, onSavedRecoveryChange = {},
+            onFinishSecurity = {}, onNewPasswordChange = {}, onConfirmPasswordChange = {}, onSubmitResetPassword = {}, onCancelAndReturnLogin = {},
+        )
     }
 
     @Test
