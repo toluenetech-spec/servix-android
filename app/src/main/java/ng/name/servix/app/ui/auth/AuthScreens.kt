@@ -349,6 +349,49 @@ fun WelcomeScreen(
     }
 }
 
+/**
+ * Shared frame for the auth screens that still use it (register, email code, the security stages,
+ * forgot password). S2 and S3 own their own headers now, per their HTML.
+ */
+@Composable
+private fun AuthShellContainer(
+    onBackClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(WarmIvory)
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onBackClick != null) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.size(48.dp).testTag("auth_back_button"),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                        tint = Charcoal,
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.size(48.dp))
+            }
+        }
+        Column(modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp)) {
+            content()
+        }
+    }
+}
+
 @Composable
 fun LoginScreen(
     uiState: AuthUiState,
