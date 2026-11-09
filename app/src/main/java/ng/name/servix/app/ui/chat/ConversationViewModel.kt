@@ -548,8 +548,12 @@ class ConversationViewModel(
                 _uiState.update { it.copy(otherDeliveredAt = event.at) }
             }
             is ChatEvent.Presence -> if (event.userId == otherUserId) _uiState.update { it.copy(online = event.online, lastSeenAt = event.lastSeen ?: it.lastSeenAt) }
-            is ChatEvent.Hello -> Unit
-            is ChatEvent.ThreadEvent, is ChatEvent.ConnectionEvent, is ChatEvent.Unknown -> Unit
+            is ChatEvent.Hello -> otherUserId?.let { other ->
+                _uiState.update { it.copy(online = other in event.online, lastSeenAt = event.lastSeen[other] ?: it.lastSeenAt) }
+            }
+            is ChatEvent.ThreadEvent -> if (event.threadId == threadId && visible) open()
+            is ChatEvent.ConnectionEvent -> if (visible) open()
+            is ChatEvent.Unknown -> Unit
         }
     }
 

@@ -6,12 +6,15 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ng.name.servix.app.data.model.*
+import ng.name.servix.app.data.repository.SessionState
 import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 
@@ -28,7 +31,8 @@ data class AiUiState(
     val pricing: AiPricingResponse? = null, val pricingError: ServixApiException? = null,
 )
 
-class AiViewModel(private val repository: AiRepository, private val catalogue: CatalogueRepository) : ViewModel() {
+class AiViewModel(private val repository: AiRepository, private val catalogue: CatalogueRepository,
+    private val session: StateFlow<SessionState>? = null) : ViewModel() {
     private val _state = MutableStateFlow(AiUiState())
     val state: StateFlow<AiUiState> = _state.asStateFlow()
     private var userId: String? = null
@@ -38,6 +42,13 @@ class AiViewModel(private val repository: AiRepository, private val catalogue: C
     private val feedbackJobs = mutableListOf<Job>()
     private val usageJobs = mutableListOf<Job>()
     private var nextId = 0L
+
+    init {
+        session?.let { states -> viewModelScope.launch {
+            states.map { (it as? SessionState.Authenticated)?.user?.id }
+                .distinctUntilChanged().collect { setUser(it) }
+        } }
+    }
 
     fun setUser(id: String?) {
         if (id == userId) return
@@ -128,8 +139,8 @@ class AiViewModel(private val repository: AiRepository, private val catalogue: C
     }
     private fun asError(e: Throwable): ServixApiException = e as? ServixApiException ?: ServixApiException(0, message = e.message ?: "We couldn't reach Servix. Please try again.")
     companion object {
-        fun factory(repo: AiRepository, catalogue: CatalogueRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = AiViewModel(repo, catalogue) as T
+        fun factory(repo: AiRepository, catalogue: CatalogueRepository, session: StateFlow<SessionState>? = null): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = AiViewModel(repo, catalogue, session) as T
         }
     }
 }

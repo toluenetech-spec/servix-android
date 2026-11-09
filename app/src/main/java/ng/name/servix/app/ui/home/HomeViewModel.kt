@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +18,7 @@ import ng.name.servix.app.data.model.ProfessionalSummaryDto
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
+import ng.name.servix.app.data.repository.SessionState
 
 /** One row of the "needs your attention" strip: what happened, the verb, and the booking it belongs to. */
 data class HomeAttention(
@@ -82,6 +85,7 @@ class HomeViewModel(
     private val catalogueRepository: CatalogueRepository,
     private val accountRepository: AccountRepository,
     private val bookingRepository: BookingRepository,
+    private val session: StateFlow<SessionState>? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -151,6 +155,25 @@ class HomeViewModel(
     private var lastLoadedUserId: String? = "__uninitialized__"
     private var homeLoad: kotlinx.coroutines.Job? = null
     private var homeGeneration = 0
+
+    init {
+        session?.let { states ->
+            viewModelScope.launch {
+                states.map { state ->
+                    val user = (state as? SessionState.Authenticated)?.user
+                    Triple(state !is SessionState.Initializing, user?.id, user?.role)
+                }.distinctUntilChanged().collect { (ready, id, role) ->
+                    clearProfessionalHome()
+                    clearCustomerHome()
+                    if (ready) {
+                        if (id != null && role == "professional") loadProfessionalHome(id)
+                        else loadHome(id)
+                    }
+                }
+            }
+        }
+    }
+
 
     /** Clear private customer data and cancel any requests when the shell identity changes. */
     fun clearCustomerHome() {
@@ -228,11 +251,12 @@ class HomeViewModel(
             catalogueRepository: CatalogueRepository,
             accountRepository: AccountRepository,
             bookingRepository: BookingRepository,
+            session: StateFlow<SessionState>? = null,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return HomeViewModel(catalogueRepository, accountRepository, bookingRepository) as T
+                    return HomeViewModel(catalogueRepository, accountRepository, bookingRepository, session) as T
                 }
             }
     }

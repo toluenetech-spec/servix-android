@@ -113,6 +113,7 @@ enum class BookingActionModal {
 }
 
 data class BookingDetailUiState(
+    val refreshing: Boolean = false,
     val bookingId: String = "",
     val loading: Boolean = true,
     val notFound: Boolean = false,
@@ -157,7 +158,7 @@ class BookingDetailViewModel(
         bookingLoadJob?.cancel()
         bookingLoadJob = viewModelScope.launch {
             _uiState.update {
-                if (it.bookingId == id && it.booking != null) it.copy(error = null)
+                if (it.bookingId == id && it.booking != null) it.copy(error = null, refreshing = true)
                 else BookingDetailUiState(bookingId = id, loading = true)
             }
 
@@ -168,6 +169,7 @@ class BookingDetailViewModel(
                         it.copy(
                             loading = false,
                             notFound = false,
+                            refreshing = false,
                             error = null,
                             booking = booking,
                         )
@@ -191,6 +193,7 @@ class BookingDetailViewModel(
                         it.copy(
                             loading = false,
                             notFound = apiEx?.status == 404 && it.booking == null,
+                            refreshing = false,
                             error = if (it.booking == null) err.message ?: "We couldn't load this booking." else null,
                         )
                     }
@@ -563,6 +566,9 @@ fun BookingDetailScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+    if (uiState.refreshing) androidx.compose.material3.LinearProgressIndicator(
+        modifier = Modifier.fillMaxWidth().height(2.dp).align(Alignment.TopCenter), color = ForestGreen,
+    )
     Column(
         modifier = Modifier
             .fillMaxSize()

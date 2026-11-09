@@ -48,6 +48,7 @@ class ChatsViewModel(
     private val featuresRepository: FeaturesRepository,
     private val stream: ChatEventStream,
     private val session: StateFlow<SessionState>,
+    private val eventSource: kotlinx.coroutines.flow.SharedFlow<ChatEvent> = stream.events,
     private val loadThreads: suspend () -> Result<List<ChatThreadDto>> = { chatRepository.threads() },
 ) : ViewModel() {
 
@@ -76,7 +77,7 @@ class ChatsViewModel(
             }
         }
         viewModelScope.launch {
-            stream.events.collect { event -> onEvent(event) }
+            eventSource.collect { event -> onEvent(event) }
         }
         viewModelScope.launch {
             session.map { (it as? SessionState.Authenticated)?.user?.id }
@@ -168,7 +169,7 @@ class ChatsViewModel(
         if (threadId != null) markReadLocally(threadId)
     }
 
-    internal fun onEvent(event: ChatEvent) {
+    private fun onEvent(event: ChatEvent) {
         if (ownerId == null) return
         if (event !is ChatEvent.Typing && event !is ChatEvent.Unknown) eventRevision++
         when (event) {
@@ -180,9 +181,9 @@ class ChatsViewModel(
                 }
             }
             is ChatEvent.MessageUpdate -> {
-                if (_uiState.value.threads.any { it.id == event.threadId }) {
-                    applyIncoming(event.threadId, event.message, isUpdate = true)
-                }
+                val thread = _uiState.value.threads.firstOrNull { it.id == event.threadId }
+                if (thread != null && thread.lastMessageId != null) applyIncoming(event.threadId, event.message, isUpdate = true)
+                else refresh(quiet = true)
             }
             is ChatEvent.Read -> {
                 _uiState.update { state ->

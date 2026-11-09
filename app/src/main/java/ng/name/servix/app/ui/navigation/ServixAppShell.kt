@@ -252,12 +252,9 @@ fun ServixAppShell(
     // Pending destination to return to when a guest signs in from the Booking Sheet
     var pendingPostAuthRoute by remember { mutableStateOf<ServixRoute?>(null) }
 
-    val aiViewModel: AiViewModel = viewModel(factory = AiViewModel.factory(aiRepository, catalogueRepository))
-    val currentUserId = (sessionState as? SessionState.Authenticated)?.user?.id
-    LaunchedEffect(currentUserId) { aiViewModel.setUser(currentUserId) }
-
+    val aiViewModel: AiViewModel = viewModel(factory = AiViewModel.factory(aiRepository, catalogueRepository, authViewModel.sessionState))
     val homeViewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.factory(catalogueRepository, accountRepository, bookingRepository)
+        factory = HomeViewModel.factory(catalogueRepository, accountRepository, bookingRepository, authViewModel.sessionState)
     )
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.factory(catalogueRepository)
@@ -271,15 +268,6 @@ fun ServixAppShell(
     LaunchedEffect(Unit) { featuresRepository.refresh() }
     val sessionUserId = (sessionState as? SessionState.Authenticated)?.user?.id
     val sessionRole = (sessionState as? SessionState.Authenticated)?.user?.role
-    val sessionReady = sessionState !is SessionState.Initializing
-    LaunchedEffect(sessionUserId, sessionRole, sessionReady) {
-        homeViewModel.clearProfessionalHome()
-        homeViewModel.clearCustomerHome()
-        if (sessionReady) {
-            if (sessionUserId != null && sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId)
-            else homeViewModel.loadHome(sessionUserId)
-        }
-    }
     val chatsViewModel: ChatsViewModel = viewModel(
         factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream, authViewModel.sessionState)
     )

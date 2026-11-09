@@ -4,6 +4,8 @@ import java.lang.reflect.Proxy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import ng.name.servix.app.data.realtime.ChatEventParser
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -77,20 +79,23 @@ class SessionChatsTest {
             if (method.name == "getFeatures") FeaturesDto() else error("Unexpected call")
         } as ServixApiService
         val session = MutableStateFlow<SessionState>(SessionState.Authenticated(UserDto(id = "me")))
+        val events = MutableSharedFlow<ChatEvent>(extraBufferCapacity = 8)
         val vm = ChatsViewModel(ChatRepository(api), FeaturesRepository(api),
-            ChatEventStream(OkHttpClient(), "https://example.com/community/events"), session) {
+            ChatEventStream(OkHttpClient(), "https://example.com/community/events"), session, events) {
             Result.success(listOf(ChatThreadDto(id = "thread")))
         }
         runCurrent()
-        val message = ChatMessageDto(id = "m1", body = "Hello", senderId = "other", createdAt = "2026-01-01")
-        vm.onEvent(ChatEvent.Message("thread", message))
+        val frame = """data: {"type":"message","threadId":"thread","message":{"id":"m1","body":"Hello","senderId":"other","createdAt":"2026-01-01"}}"""
+        val message = ChatEventParser.parse(frame) as ChatEvent.Message
+        events.emit(message); runCurrent()
         assertEquals("Hello", vm.uiState.value.threads.single().lastMessage)
         assertEquals(1, vm.uiState.value.unreadTotal)
-        vm.onEvent(ChatEvent.Message("thread", message))
-        vm.onEvent(ChatEvent.MessageUpdate("thread", message.copy(body = "Edited")))
+        events.emit(message)
+        events.emit(ChatEvent.MessageUpdate("thread", message.message.copy(body = "Edited")))
+        runCurrent()
         assertEquals(1, vm.uiState.value.unreadTotal)
         assertEquals("Edited", vm.uiState.value.threads.single().lastMessage)
-        vm.onEvent(ChatEvent.Typing("thread", "other", true))
+        events.emit(ChatEvent.Typing("thread", "other", true)); runCurrent()
         assertTrue("thread" in vm.uiState.value.typingThreads)
         advanceTimeBy(5_000); runCurrent()
         assertTrue(vm.uiState.value.typingThreads.isEmpty())
