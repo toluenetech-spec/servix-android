@@ -136,6 +136,27 @@ class StitchFoundationTest {
     }
 
     @Test
+    @Config(qualifiers = "w320dp-h480dp-xxhdpi")
+    fun exploreFilterSheetScrollsOnShortScreen() {
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = ng.name.servix.app.ui.catalogue.SearchUiState(loading = false,
+                        selectedCategory = "graphic-design", categories = Fixtures.categories),
+                    categoryNameFor = { "Graphic Design" }, onQueryChange = {}, onQuerySubmit = {},
+                    onModeChange = {}, onCategorySelect = {}, onLocationChange = {}, onRatingSelect = {},
+                    onPriceSelect = {}, onPriceLimitChange = {}, onAvailabilitySelect = {}, onSortSelect = {},
+                    onClearFilters = {}, onRefresh = {}, onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("explore_filters_chip").performClick()
+        rule.onNodeWithText("Availability").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("explore_show_results").assertIsDisplayed().performClick()
+        rule.onNodeWithTag("explore_clear_filters").assertDoesNotExist()
+    }
+
+    @Test
     fun exploreResultUsesRealFieldsAndOpensProfile() {
         var opened = ""
         val pro = ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "pro-1", name = "Ada Example",
