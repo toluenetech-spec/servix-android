@@ -137,10 +137,12 @@ fun ServixButton(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (loading) {
+            // The spinner replaces the label, so it has to read as a spinner: 20 dp with a 2.5 dp
+            // stroke, and a gap so the button's height does not collapse around an 18 dp arc.
             CircularProgressIndicator(
                 color = content,
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.5.dp,
+                modifier = Modifier.size(20.dp).testTag("button_spinner"),
             )
         } else {
             leadingIcon?.let { Icon(it, contentDescription = null, tint = content.copy(alpha = alpha), modifier = Modifier.size(18.dp)) }
