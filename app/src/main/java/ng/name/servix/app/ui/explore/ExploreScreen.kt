@@ -1,7 +1,10 @@
 package ng.name.servix.app.ui.explore
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,8 +19,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,7 +66,10 @@ import ng.name.servix.app.ui.components.ServixSegmentedControl
 import ng.name.servix.app.ui.components.ServixTopBar
 import ng.name.servix.app.ui.components.ServixTextButton
 import ng.name.servix.app.ui.theme.Charcoal
+import ng.name.servix.app.ui.home.guestCategoryIcon
 import ng.name.servix.app.ui.theme.DeepForest
+import ng.name.servix.app.ui.theme.ForestGreen
+import ng.name.servix.app.ui.theme.ServixType
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.SoftSand
@@ -110,6 +118,8 @@ fun ExploreScreen(
         if (shouldLoadMore && uiState.canLoadMore && !uiState.loading && !uiState.loadingMore) onLoadNextPage()
     }
 
+    // Discovery content is only shown for the unfiltered default, never mixed into query results.
+    val showDiscovery = uiState.query.isBlank() && uiState.activeFilterCount == 0 && uiState.mode == SearchMode.PROFESSIONALS
     val sortLabel = SORT_OPTIONS.firstOrNull { it.id == uiState.sort }?.label ?: "Recommended"
     val categoryLabel = categoryNameFor(uiState.selectedCategory)
     val priceLabel = uiState.priceLimit?.let { "to ${ServixFormatters.formatNaira(it.toLong())}" }
@@ -229,6 +239,43 @@ fun ExploreScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (showDiscovery) {
+                    item(key = "protection") { ExploreProtection() }
+                    if (uiState.categories.isNotEmpty()) {
+                        item(key = "categories_title") {
+                            Text("Categories", style = ServixType.headlineMd, color = DeepForest,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+                        }
+                        items(uiState.categories.chunked(4), key = { row -> "category_" + row.first().id }) { row ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { category ->
+                                    Surface(
+                                        onClick = { onCategorySelect(category.id) },
+                                        modifier = Modifier.weight(1f).height(100.dp).testTag("explore_category_${category.id}"),
+                                        shape = RoundedCornerShape(16.dp), color = SoftSand,
+                                    ) {
+                                        Column(Modifier.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center) {
+                                            Box(Modifier.size(44.dp).background(PureWhite, RoundedCornerShape(12.dp)),
+                                                contentAlignment = Alignment.Center) {
+                                                Icon(guestCategoryIcon(category.icon, category.name), contentDescription = null,
+                                                    tint = ForestGreen, modifier = Modifier.size(22.dp))
+                                            }
+                                            Text(category.name, style = ServixType.labelMd, color = Charcoal,
+                                                maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                modifier = Modifier.padding(top = 6.dp))
+                                        }
+                                    }
+                                }
+                                repeat(4 - row.size) { androidx.compose.foundation.layout.Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    }
+                    item(key = "featured_title") {
+                        Text("Professionals", style = ServixType.headlineMd, color = DeepForest,
+                            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+                    }
+                }
                 item(key = "count") {
                     Text(
                         text = when (uiState.mode) {
@@ -422,5 +469,20 @@ private fun FilterGroup(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = DeepForest)
         content()
+    }
+}
+
+/** Informational copy, without implying every listed professional has a verification badge. */
+@Composable
+private fun ExploreProtection() {
+    Surface(shape = RoundedCornerShape(16.dp), color = DeepForest, modifier = Modifier.fillMaxWidth().testTag("explore_protection")) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Shield, contentDescription = null, tint = PureWhite, modifier = Modifier.size(28.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Protected payment", style = ServixType.labelLg, color = PureWhite)
+                Text("You pay through Servix. The professional is paid after you confirm the work.",
+                    style = ServixType.bodySm, color = PureWhite.copy(alpha = 0.8f))
+            }
+        }
     }
 }

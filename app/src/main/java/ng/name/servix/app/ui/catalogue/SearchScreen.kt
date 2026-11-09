@@ -170,7 +170,7 @@ data class SearchUiState(
             selectedCategory.isNotBlank(),
             location.isNotBlank(),
             selectedRatingId != "all",
-            selectedPriceId != "all",
+            selectedPriceId != "all" || priceLimit != null,
             selectedAvailabilityId != "all",
             sort != "recommended",
         ).count { it }

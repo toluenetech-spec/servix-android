@@ -65,6 +65,41 @@ class StitchFoundationTest {
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
 
+    @Test
+    fun exploreDiscoveryCategoriesAndPriceFilter() {
+        var selected = ""
+        val state = ng.name.servix.app.ui.catalogue.SearchUiState(
+            loading = false, categories = Fixtures.categories, professionals = Fixtures.professionals,
+            total = Fixtures.professionals.size,
+        )
+        org.junit.Assert.assertEquals(1, state.copy(priceLimit = 25000).activeFilterCount)
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = state, categoryNameFor = { "" }, onQueryChange = {}, onQuerySubmit = {},
+                    onModeChange = {}, onCategorySelect = { selected = it }, onLocationChange = {},
+                    onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {}, onAvailabilitySelect = {},
+                    onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+                    onOpenProfessional = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("explore_category_graphic-design").performClick()
+        org.junit.Assert.assertEquals("graphic-design", selected)
+    }
+
+    @Test
+    fun exploreDiscovery() = rule.capture("69_explore_discovery_stitch") {
+        ng.name.servix.app.ui.explore.ExploreScreen(
+            uiState = ng.name.servix.app.ui.catalogue.SearchUiState(loading = false, categories = Fixtures.categories,
+                professionals = Fixtures.professionals, total = Fixtures.professionals.size),
+            categoryNameFor = { "" }, onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
+            onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+            onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+            onOpenProfessional = {}, onOpenService = {},
+        )
+    }
+
     @Test fun sessionSplash() = rule.capture("49_session_splash_stitch") {
         ng.name.servix.app.ui.auth.SessionSplashScreen()
     }
