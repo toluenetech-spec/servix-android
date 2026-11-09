@@ -97,7 +97,7 @@ jobs:
           from pathlib import Path
           lines = Path("gradle-screenshots.log").read_text(errors="replace").splitlines()
           import re
-          selected = [line for line in lines if re.search(r"(^e:|error|failed|exception|/src/|what went wrong)", line, re.I)]
+          selected = [line for line in lines if re.search(r"(^e:|^error|^> Task .*FAILED|^FAILURE|^\* What went wrong|^Caused by:)", line, re.I)]
           text = "\n".join(selected[:70])[:20000] or "No diagnostics matched."
           print("::error::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
           PYTHON
