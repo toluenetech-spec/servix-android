@@ -96,6 +96,18 @@ class SessionChatsTest {
         assertTrue(vm.uiState.value.typingThreads.isEmpty())
     }
 
+    @Test fun oldRefreshCannotClearNewToken() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val tokens = ng.name.servix.app.data.local.TokenStore(context)
+        tokens.clear()
+        tokens.setAccessToken("old")
+        tokens.setAccessToken("new")
+        assertFalse(tokens.runIfTokenUnchanged("old") { tokens.clear() })
+        assertEquals("new", tokens.getAccessToken())
+        assertTrue(tokens.runIfTokenUnchanged("new") { tokens.clear() })
+        assertNull(tokens.getAccessToken())
+    }
+
     @Test fun timerRunsOnlyWhileResumed() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val owner = object : LifecycleOwner {

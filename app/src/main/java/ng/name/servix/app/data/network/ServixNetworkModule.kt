@@ -113,6 +113,8 @@ class ServixNetworkModule(
      */
     fun executeSyncRefresh(): AuthSessionResponse? {
         synchronized(refreshLock) {
+            // Login/logout may complete while the refresh request is in flight.
+            val refreshTokenOwner = tokenStore.getAccessToken()
             val baseUrl = BuildConfig.API_BASE_URL.trimEnd('/')
             // Empty body with no Content-Type header so Fastify accepts it cleanly
             val emptyBody = ByteArray(0).toRequestBody(null, 0, 0)
@@ -130,18 +132,22 @@ class ServixNetworkModule(
                         val parsed = ApiErrorParser.json.decodeFromString<AuthSessionResponse>(raw)
                         val newToken = parsed.accessToken
                         if (!newToken.isNullOrBlank()) {
-                            tokenStore.setAccessToken(newToken)
-                            parsed.user?.let { tokenStore.setCachedUser(it) }
-                            onSessionRefreshed(parsed.user, newToken)
-                            parsed
+                            val applied = tokenStore.runIfTokenUnchanged(refreshTokenOwner) {
+                                tokenStore.setAccessToken(newToken)
+                                parsed.user?.let { tokenStore.setCachedUser(it) }
+                                onSessionRefreshed(parsed.user, newToken)
+                            }
+                            if (applied) parsed else null
                         } else {
                             null
                         }
                     } else {
                         if (res.code == 401 || res.code == 403) {
-                            tokenStore.clear()
-                            cookieJar.clear()
-                            onSessionExpired()
+                            tokenStore.runIfTokenUnchanged(refreshTokenOwner) {
+                                tokenStore.clear()
+                                cookieJar.clear()
+                                onSessionExpired()
+                            }
                         }
                         null
                     }

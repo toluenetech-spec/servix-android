@@ -21,6 +21,7 @@ class TokenStore(context: Context) {
 
     fun getAccessToken(): String? = memoryAccessToken
 
+    @Synchronized
     fun setAccessToken(token: String?) {
         memoryAccessToken = token
         prefs.edit().apply {
@@ -45,6 +46,15 @@ class TokenStore(context: Context) {
         }.apply()
     }
 
+    /** Atomically ignore a refresh response belonging to an older login. */
+    @Synchronized
+    fun runIfTokenUnchanged(expected: String?, action: () -> Unit): Boolean {
+        if (memoryAccessToken != expected) return false
+        action()
+        return true
+    }
+
+    @Synchronized
     fun clear() {
         memoryAccessToken = null
         prefs.edit()
