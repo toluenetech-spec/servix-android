@@ -85,6 +85,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import ng.name.servix.app.ui.theme.ErrorContainer
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Path
+import ng.name.servix.app.ui.theme.ServixMotion
+import ng.name.servix.app.ui.theme.reducedMotion
 import androidx.compose.ui.unit.sp
 import ng.name.servix.app.R
 import ng.name.servix.app.ui.components.ServixBadge
@@ -268,24 +277,69 @@ fun WelcomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                // The HTML's blurred halo; a soft Sand disc is the Compose equivalent, not a gradient.
-                Box(
-                    modifier = Modifier
-                        .size(128.dp)
-                        .background(SoftSand.copy(alpha = 0.7f), CircleShape),
-                )
-                Row(verticalAlignment = Alignment.Bottom) {
+            // The HTML's hero: a soft ring behind a Forest-Green shield with a check, pulsing gently on a
+            // two-second cycle, then the SERVIX wordmark beneath. With animations off it is a still mark.
+            val pulse = if (reducedMotion()) 1f else {
+                val transition = rememberInfiniteTransition(label = "shieldPulse")
+                transition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.06f,
+                    animationSpec = infiniteRepeatable(tween(2000, easing = ServixMotion.ContentEasing), RepeatMode.Reverse),
+                    label = "shieldScale",
+                ).value
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .size(132.dp)
+                            .scale(pulse)
+                            .background(SoftSand.copy(alpha = 0.55f), CircleShape),
+                    )
+                    Canvas(modifier = Modifier.size(64.dp).testTag("welcome_shield")) {
+                        val w = size.width
+                        val h = size.height
+                        // Shield outline with a check, drawn rather than approximated by an icon.
+                        val shield = Path().apply {
+                            moveTo(w * 0.5f, h * 0.06f)
+                            lineTo(w * 0.92f, h * 0.24f)
+                            lineTo(w * 0.92f, h * 0.52f)
+                            cubicTo(w * 0.92f, h * 0.78f, w * 0.72f, h * 0.92f, w * 0.5f, h * 0.97f)
+                            cubicTo(w * 0.28f, h * 0.92f, w * 0.08f, h * 0.78f, w * 0.08f, h * 0.52f)
+                            lineTo(w * 0.08f, h * 0.24f)
+                            close()
+                        }
+                        drawPath(shield, color = ForestGreen)
+                        val check = Path().apply {
+                            moveTo(w * 0.30f, h * 0.50f)
+                            lineTo(w * 0.45f, h * 0.65f)
+                            lineTo(w * 0.72f, h * 0.34f)
+                        }
+                        drawPath(
+                            check,
+                            color = WarmIvory,
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = w * 0.09f,
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                                join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                            ),
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.padding(top = 20.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
                     Text(
                         text = "SERVIX",
-                        style = ServixType.headlineLg.copy(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 34.sp),
+                        style = ServixType.headlineLg.copy(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 30.sp),
                         color = DeepForest,
                         modifier = Modifier.testTag("welcome_wordmark"),
                     )
                     Box(
                         modifier = Modifier
-                            .padding(start = 2.dp, bottom = 6.dp)
-                            .size(8.dp)
+                            .padding(start = 2.dp, bottom = 5.dp)
+                            .size(7.dp)
                             .background(ForestGreen, CircleShape),
                     )
                 }
