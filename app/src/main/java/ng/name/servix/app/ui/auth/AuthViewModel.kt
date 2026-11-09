@@ -1025,7 +1025,10 @@ class AuthViewModel(
     fun logout(onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             authRepository.logout()
-            _uiState.value = AuthUiState()
+            // Provider availability is public configuration cached for this ViewModel. Keep it
+            // when clearing private form/session data so returning directly to registration
+            // still shows the providers already loaded by the shell.
+            _uiState.value = AuthUiState(oauthProviders = _uiState.value.oauthProviders)
             onComplete()
         }
     }
