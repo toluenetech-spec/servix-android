@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,6 +39,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Checkbox
@@ -71,12 +75,17 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import ng.name.servix.app.ui.components.ServixButtonStyle
+import ng.name.servix.app.ui.components.ServixButton
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ng.name.servix.app.R
 import ng.name.servix.app.ui.components.ServixBadge
 import ng.name.servix.app.ui.components.ServixCard
 import ng.name.servix.app.ui.components.ServixLogoMark
+import ng.name.servix.app.ui.components.ServixButton
+import ng.name.servix.app.ui.components.ServixButtonStyle
+import ng.name.servix.app.ui.components.ServixField
 import ng.name.servix.app.ui.components.ServixPrimaryButton
 import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.ServixTextField
@@ -85,9 +94,12 @@ import ng.name.servix.app.ui.theme.Charcoal
 import ng.name.servix.app.ui.theme.DangerRed
 import ng.name.servix.app.ui.theme.DeepForest
 import ng.name.servix.app.ui.theme.ForestGreen
+import ng.name.servix.app.ui.theme.OnErrorContainer
 import ng.name.servix.app.ui.theme.MutedGray
 import ng.name.servix.app.ui.theme.PureWhite
 import ng.name.servix.app.ui.theme.SurfaceContainerHigh
+import ng.name.servix.app.ui.theme.SurfaceContainerLow
+import ng.name.servix.app.ui.theme.ServixType
 import ng.name.servix.app.ui.theme.SoftSand
 import ng.name.servix.app.ui.theme.WarmIvory
 import ng.name.servix.app.util.CustomTabLauncher
@@ -372,109 +384,221 @@ fun LoginScreen(
     val focusManager = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
 
-    AuthShellContainer(onBackClick = onBackClick) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                text = stringResource(R.string.login_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = DeepForest,
-            )
-            Text(
-                text = stringResource(R.string.login_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MutedGray,
-            )
-
-            if (providers.isNotEmpty()) {
-                OAuthButtons(
-                    providers = providers,
-                    busy = uiState.oauthBusy,
-                    onProviderClick = onProviderClick,
+    // Rebuilt to corrected/s3_sign_in.html, top to bottom: header, eyebrow card, headline block,
+    // email, password + forgot, sign-in, "or continue with", providers, footer, trust pair.
+    // Behaviour is unchanged: the same state fields, the same callbacks, the same test tags.
+    Column(modifier = Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.size(48.dp).testTag("auth_back_button"),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                    tint = Charcoal,
                 )
-                OrDivider()
             }
-
-            ServixTextField(
-                value = uiState.loginEmail,
-                onValueChange = onEmailChange,
-                label = stringResource(R.string.field_email),
-                required = true,
-                error = uiState.loginEmailError,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next,
-                ),
-                testTag = "login_email_input",
+            Text(
+                text = stringResource(R.string.sign_in),
+                style = ServixType.titleLg,
+                color = Charcoal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
+            Box(
+                modifier = Modifier.size(32.dp).background(DeepForest, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Person,
+                    contentDescription = null,
+                    tint = WarmIvory,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Spacer(Modifier.size(12.dp))
+        }
 
-            ServixTextField(
-                value = uiState.loginPassword,
-                onValueChange = onPasswordChange,
-                label = stringResource(R.string.field_password),
-                required = true,
-                error = uiState.loginPasswordError,
-                isPassword = true,
-                passwordVisible = showPassword,
-                onTogglePasswordVisibility = { showPassword = !showPassword },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        onSubmit()
-                    }
-                ),
-                testTag = "login_password_input",
-            )
-
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TextButton(
-                    onClick = onForgotPasswordClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("forgot_password_button"),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Eyebrow card: shield tile, SERVIX wordmark, one honest promise.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceContainerLow, RoundedCornerShape(24.dp))
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.size(40.dp).background(ForestGreen, RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center,
                 ) {
+                    Icon(
+                        Icons.Outlined.VerifiedUser,
+                        contentDescription = null,
+                        tint = WarmIvory,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("SERVIX", style = ServixType.labelMd.copy(letterSpacing = 1.2.sp), color = ForestGreen)
                     Text(
-                        text = stringResource(R.string.forgot_password_link),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ForestGreen,
+                        text = stringResource(R.string.login_tagline),
+                        style = ServixType.bodySm,
+                        color = MutedGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.login_title),
+                    style = ServixType.headlineLgMobile,
+                    color = Charcoal,
+                )
+                Text(
+                    text = stringResource(R.string.login_subtitle),
+                    style = ServixType.bodyMd,
+                    color = MutedGray,
+                )
+            }
+
+            ServixField(
+                value = uiState.loginEmail,
+                onValueChange = onEmailChange,
+                label = stringResource(R.string.field_email),
+                placeholder = "olumide@example.ng",
+                leadingIcon = Icons.Outlined.MailOutline,
+                error = uiState.loginEmailError,
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next,
+                testTag = "login_email_input",
+            )
+
+            ServixField(
+                value = uiState.loginPassword,
+                onValueChange = onPasswordChange,
+                label = stringResource(R.string.field_password),
+                leadingIcon = Icons.Outlined.Lock,
+                error = uiState.loginPasswordError,
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+                onImeAction = {
+                    focusManager.clearFocus()
+                    onSubmit()
+                },
+                trailing = {
+                    IconButton(
+                        onClick = { showPassword = !showPassword },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = stringResource(
+                                if (showPassword) R.string.hide_password else R.string.show_password,
+                            ),
+                            tint = MutedGray,
+                        )
+                    }
+                },
+                testTag = "login_password_input",
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Text(
+                    text = stringResource(R.string.forgot_password_link),
+                    style = ServixType.labelMd,
+                    color = ForestGreen,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clickable(onClick = onForgotPasswordClick)
+                        .padding(top = 14.dp)
+                        .testTag("forgot_password_button"),
+                )
+            }
+
             if (!uiState.loginGeneralError.isNullOrBlank()) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = DangerRed.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.35f)),
+                    shape = RoundedCornerShape(16.dp),
+                    color = ErrorContainer,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = uiState.loginGeneralError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = DangerRed,
+                        style = ServixType.bodySm,
+                        color = OnErrorContainer,
                         modifier = Modifier.padding(12.dp),
                     )
                 }
             }
 
-            ServixPrimaryButton(
+            ServixButton(
                 text = stringResource(if (uiState.loginSubmitting) R.string.signing_in else R.string.sign_in),
                 onClick = {
                     focusManager.clearFocus()
                     onSubmit()
                 },
                 loading = uiState.loginSubmitting,
+                trailingIcon = Icons.AutoMirrored.Outlined.ArrowForward,
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "login_submit_button",
             )
 
-            // s3_sign_in's trust pair: a pill that says what protects the account, and one honest
-            // sentence about money — never the word the owner removed.
-            Column(
+            // Providers keep today's behaviour: the same onProviderClick with the API's own names.
+            if (providers.isNotEmpty()) {
+                OrDivider()
+                providers.forEach { provider ->
+                    ServixButton(
+                        text = "Continue with $provider",
+                        onClick = { onProviderClick(provider) },
+                        style = ServixButtonStyle.Secondary,
+                        enabled = !uiState.oauthBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                        testTag = "login_oauth_$provider",
+                    )
+                }
+            }
+
+            HorizontalDivider(color = BorderSand)
+
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.new_to_servix),
+                    style = ServixType.bodyMd,
+                    color = MutedGray,
+                )
+                TextButton(
+                    onClick = onCreateAccountClick,
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("go_to_register_button"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.create_account),
+                        style = ServixType.labelLg,
+                        color = ForestGreen,
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -492,43 +616,17 @@ fun LoginScreen(
                         )
                         Text(
                             text = "Protected by two-step sign-in",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = ServixType.labelMd,
                             color = Charcoal,
                         )
                     }
                 }
                 Text(
                     text = stringResource(R.string.payment_protection_copy),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = ServixType.bodySm,
                     color = MutedGray,
                     textAlign = TextAlign.Center,
                 )
-            }
-
-            HorizontalDivider(color = SoftSand)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.new_to_servix),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-                TextButton(
-                    onClick = onCreateAccountClick,
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("go_to_register_button"),
-                ) {
-                    Text(
-                        text = stringResource(R.string.create_account),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = DeepForest,
-                    )
-                }
             }
         }
     }

@@ -79,7 +79,8 @@
     <string name="create_account">Create account</string>
     <string name="continue_browsing">Browse first</string>
     <string name="login_title">Welcome back</string>
-    <string name="login_subtitle">Sign in to manage your bookings and services.</string>
+    <string name="login_tagline">Trusted professionals. Protected payments.</string>
+    <string name="login_subtitle">Sign in to manage your bookings, chats and payments.</string>
     <string name="field_email">Email</string>
     <string name="field_password">Password</string>
     <string name="field_full_name">Full name</string>
