@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -100,7 +99,6 @@ fun AiScreen(user: UserDto?, state: AiUiState, viewModel: AiViewModel, onSignIn:
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .imePadding()
             .testTag("ai_screen"),
     ) {
         AiTopBar(
@@ -261,7 +259,7 @@ private fun AssistantChat(state: AiUiState, vm: AiViewModel, modifier: Modifier 
             }
         }
 
-        // Composer pinned above the nav bar; imePadding keeps it above the keyboard.
+        // The shell keeps the composer above the keyboard and system navigation.
         Surface(
             color = WarmIvory,
             border = BorderStroke(1.dp, BorderSand),

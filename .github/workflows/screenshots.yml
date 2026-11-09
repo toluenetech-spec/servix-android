@@ -48,6 +48,7 @@ jobs:
             --tests "ng.name.servix.app.screenshots.IaPrototypesTest" \
             --tests "ng.name.servix.app.screenshots.ChatScreensTest" \
             --tests "ng.name.servix.app.screenshots.StitchFoundationTest" \
+            --tests "ng.name.servix.app.screenshots.ImeInsetsTest" \
             --tests "ng.name.servix.app.RegisterRulesTest" \
             --no-daemon --stacktrace 2>&1 | tee gradle-screenshots.log
 

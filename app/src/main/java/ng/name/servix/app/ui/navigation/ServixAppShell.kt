@@ -451,9 +451,7 @@ fun ServixAppShell(
         )
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
-        containerColor = WarmIvory,
+    ServixInsetScaffold(
         topBar = {
             OfflineBanner(isOnline = isOnline)
         },
@@ -514,7 +512,7 @@ fun ServixAppShell(
                 )
             }
         }
-    ) { innerPadding ->
+    ) {
         val screenMs = motionMs(Motion.SCREEN_MS)
         val tabMs = motionMs(Motion.TAB_MS)
         val slideSpec = tween<androidx.compose.ui.unit.IntOffset>(screenMs, easing = FastOutSlowInEasing)
@@ -522,9 +520,7 @@ fun ServixAppShell(
         NavHost(
             navController = navController,
             startDestination = startRoute,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier = Modifier.fillMaxSize(),
             // Shared-axis X pushes: new screen slides in from the end, old one drifts back.
             enterTransition = {
                 slideInHorizontally(slideSpec) { full -> full / 4 } + fadeIn(fadeSpec)

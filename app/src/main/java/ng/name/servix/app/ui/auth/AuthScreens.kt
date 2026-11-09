@@ -18,7 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import ng.name.servix.app.ui.theme.ServixButtonRadius
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -418,7 +417,6 @@ private fun AuthShellContainer(
         modifier = Modifier
             .fillMaxSize()
             .background(WarmIvory)
-            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -466,7 +464,7 @@ fun LoginScreen(
     // Rebuilt to corrected/s3_sign_in.html, top to bottom: header, eyebrow card, headline block,
     // email, password + forgot, sign-in, "or continue with", providers, footer, trust pair.
     // Behaviour is unchanged: the same state fields, the same callbacks, the same test tags.
-    Column(modifier = Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+    Column(modifier = Modifier.fillMaxSize().background(WarmIvory)) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -729,7 +727,7 @@ fun RegisterScreen(
     val focusManager = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var showConfirmation by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+    Column(Modifier.fillMaxSize().background(WarmIvory)) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1077,7 +1075,7 @@ private fun VerifyOtpStitchScreen(
     onRegisterAgain: () -> Unit,
 ) {
     val context = LocalContext.current
-    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+    Column(Modifier.fillMaxSize().background(WarmIvory)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onSignOut, modifier = Modifier.size(44.dp).testTag("auth_back_button")) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
@@ -1290,7 +1288,7 @@ fun SecurityCheckScreen(
     val normalStage = !uiState.securityLoading && !uiState.securityExpired && !uiState.securityLoadFailed &&
         uiState.securityConfigEnabled != false && flow != null && uiState.securitySuccessMode != "reset"
 
-    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding().padding(horizontal = 16.dp)) {
+    Column(Modifier.fillMaxSize().background(WarmIvory).padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onCancelAndReturnLogin, modifier = Modifier.size(48.dp).testTag("auth_back_button")) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
@@ -1496,7 +1494,7 @@ fun ForgotPasswordScreen(
     onBackToSignIn: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+    Column(Modifier.fillMaxSize().background(WarmIvory)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBackToSignIn, modifier = Modifier.size(44.dp).testTag("auth_back_button")) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
