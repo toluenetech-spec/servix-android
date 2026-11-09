@@ -107,6 +107,8 @@ class ConversationViewModel(
 
     private val outbox = mutableMapOf<String, Outgoing>()
 
+    private var visible = false
+    private var otherUserId: String? = null
     private var typingJob: Job? = null
     private var typingSentAt = 0L
     private var lastTypingSent = false
@@ -123,8 +125,10 @@ class ConversationViewModel(
         viewModelScope.launch {
             chatRepository.messages(threadId).fold(
                 onSuccess = { page ->
+                    otherUserId = page.otherUserId
                     _uiState.update { state ->
-                        val merged = ChatMerge.upsertAll(page.messages, state.messages.filter { it.id.isBlank() })
+                        val merged = ChatMerge.upsertAll(page.messages, state.messages.filter { it.id.isNotBlank() }) +
+                            state.messages.filter { pending -> pending.id.isBlank() && page.messages.none { it.clientId != null && it.clientId == pending.clientId } }
                         state.copy(
                             loading = false,
                             messages = merged,
@@ -139,7 +143,7 @@ class ConversationViewModel(
                             reactions = page.reactions.ifEmpty { DEFAULT_REACTIONS },
                         )
                     }
-                    markRead()
+                    if (visible) markRead()
                 },
                 onFailure = { failure ->
                     _uiState.update {
@@ -277,6 +281,11 @@ class ConversationViewModel(
                 },
             )
         }
+    }
+
+    fun setVisible(isVisible: Boolean) {
+        visible = isVisible
+        if (isVisible) markRead()
     }
 
     /** Opening / returning to the thread: `POST …/read` then `POST …/delivered`. */
@@ -518,7 +527,7 @@ class ConversationViewModel(
         when (event) {
             is ChatEvent.Message -> if (event.threadId == threadId) {
                 upsert(event.message)
-                if (event.message.senderId != myUserId) markRead()
+                if (visible && event.message.senderId != myUserId) markRead()
             }
             is ChatEvent.MessageUpdate -> if (event.threadId == threadId) upsert(event.message)
             is ChatEvent.Typing -> if (event.threadId == threadId && event.userId != myUserId) {
@@ -537,7 +546,7 @@ class ConversationViewModel(
             is ChatEvent.Delivered -> if (event.threadId == threadId) {
                 _uiState.update { it.copy(otherDeliveredAt = event.at) }
             }
-            is ChatEvent.Presence -> _uiState.update { it.copy(online = event.online, lastSeenAt = event.lastSeen ?: it.lastSeenAt) }
+            is ChatEvent.Presence -> if (event.userId == otherUserId) _uiState.update { it.copy(online = event.online, lastSeenAt = event.lastSeen ?: it.lastSeenAt) }
             is ChatEvent.Hello -> Unit
             is ChatEvent.ThreadEvent, is ChatEvent.ConnectionEvent, is ChatEvent.Unknown -> Unit
         }

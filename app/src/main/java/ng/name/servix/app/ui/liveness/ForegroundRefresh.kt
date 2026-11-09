@@ -12,7 +12,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.currentCoroutineContext
 
 /** Runs immediately on resume, then periodically only while this lifecycle is RESUMED. */
-suspend fun runForegroundRefresh(lifecycle: Lifecycle, intervalMs: Long = 25_000, refresh: () -> Unit) {
+suspend fun runForegroundRefresh(lifecycle: Lifecycle, intervalMs: Long = 25_000, refresh: suspend () -> Unit) {
     lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
         while (currentCoroutineContext().isActive) {
             refresh()
@@ -22,7 +22,7 @@ suspend fun runForegroundRefresh(lifecycle: Lifecycle, intervalMs: Long = 25_000
 }
 
 @Composable
-fun ForegroundRefresh(key: Any?, refresh: () -> Unit) {
+fun ForegroundRefresh(key: Any?, refresh: suspend () -> Unit) {
     val owner = LocalLifecycleOwner.current
     val latest by rememberUpdatedState(refresh)
     LaunchedEffect(owner, key) { runForegroundRefresh(owner.lifecycle) { latest() } }

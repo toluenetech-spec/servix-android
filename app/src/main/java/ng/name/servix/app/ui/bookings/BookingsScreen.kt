@@ -71,6 +71,7 @@ enum class BookingsListTab {
 }
 
 data class BookingsUiState(
+    val ownerId: String? = null,
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val error: String? = null,
@@ -106,7 +107,7 @@ class BookingsViewModel(
                 generation++
                 loadJob?.cancel()
                 ownerId = id
-                _uiState.value = BookingsUiState(loading = id != null)
+                _uiState.value = BookingsUiState(ownerId = id, loading = id != null)
                 if (id != null) loadBookings()
             }
         }
@@ -147,7 +148,8 @@ class BookingsViewModel(
                         it.copy(
                             loading = false,
                             refreshing = false,
-                            error = err.message ?: "We couldn't load your bookings.",
+                            error = if ((err as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                                "We couldn't load your bookings. Please try again." else err.message ?: "We couldn't load your bookings.",
                         )
                     }
                 }

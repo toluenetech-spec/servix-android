@@ -25,6 +25,7 @@ import ng.name.servix.app.data.model.ServixApiException
 
 /** Everything the Chats list needs, plus the single unread total the bar and Home both read. */
 data class ChatsUiState(
+    val ownerId: String? = null,
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val threads: List<ChatThreadDto> = emptyList(),
@@ -84,7 +85,7 @@ class ChatsViewModel(
                     pollJob = null
                     ownerId = userId
                     activeThreadId = null
-                    _uiState.value = ChatsUiState(loading = userId != null, aiEnabled = _uiState.value.aiEnabled)
+                    _uiState.value = ChatsUiState(ownerId = userId, loading = userId != null, aiEnabled = _uiState.value.aiEnabled)
                     if (userId != null) refresh()
                 }
         }

@@ -1,6 +1,7 @@
 package ng.name.servix.app.data.repository
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -131,14 +132,21 @@ class AuthRepository(
      * breaking the screen that was just saved from.
      */
     suspend fun refreshSessionUser(): Result<UserDto> = withContext(Dispatchers.IO) {
+        val ownerId = (_sessionState.value as? SessionState.Authenticated)?.user?.id
+        val originalToken = tokenStore.getAccessToken()
         try {
             val me = api.getMe()
-            tokenStore.setCachedUser(me.user)
-            _sessionState.value = SessionState.Authenticated(me.user)
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (ownerId != null && (_sessionState.value as? SessionState.Authenticated)?.user?.id == ownerId && me.user.id == ownerId) {
+                tokenStore.setCachedUser(me.user)
+                _sessionState.value = SessionState.Authenticated(me.user)
+            }
             Result.success(me.user)
         } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
             val error = ApiErrorParser.toServixException(t)
-            if (error.status == 401 || error.status == 403) {
+            if ((error.status == 401 || error.status == 403) && ownerId != null &&
+                (_sessionState.value as? SessionState.Authenticated)?.user?.id == ownerId && tokenStore.getAccessToken() == originalToken) {
                 // The session really is gone; do not keep showing an authenticated shell.
                 tokenStore.clear()
                 cookieJar.clear()

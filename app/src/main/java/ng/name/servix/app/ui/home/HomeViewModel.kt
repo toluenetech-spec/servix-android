@@ -199,7 +199,10 @@ class HomeViewModel(
             }
 
             val accountError = if (signedIn) {
-                overviewRes?.exceptionOrNull()?.message ?: bookingsRes?.exceptionOrNull()?.message
+                (overviewRes?.exceptionOrNull() ?: bookingsRes?.exceptionOrNull())?.let { error ->
+                    if ((error as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                        "Your account could not be loaded. Please try again." else error.message
+                }
             } else {
                 null
             }

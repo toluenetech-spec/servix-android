@@ -18,6 +18,7 @@ import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.SessionState
 
 data class NotificationsUiState(
+    val ownerId: String? = null,
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val unread: Int = 0,
@@ -44,7 +45,7 @@ class NotificationsViewModel(
                 generation++
                 loadJob?.cancel()
                 ownerId = id
-                _uiState.value = NotificationsUiState(loading = id != null)
+                _uiState.value = NotificationsUiState(ownerId = id, loading = id != null)
                 if (id != null) load()
             }
         }
@@ -73,7 +74,8 @@ class NotificationsViewModel(
                 },
                 onFailure = { err ->
                     _uiState.update {
-                        it.copy(loading = false, refreshing = false, error = err.message ?: "We could not load notifications.")
+                        it.copy(loading = false, refreshing = false, error = if ((err as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                            "We could not load notifications. Please try again." else err.message ?: "We could not load notifications.")
                     }
                 },
             )
