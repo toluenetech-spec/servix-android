@@ -185,7 +185,7 @@
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "skillPath": ".claude/skills/design-system/SKILL.md",
-      "computedHash": "c50a1a77394e988b2593ed97f95ae28b5167eb8a826385b5996d67e398d15b6a"
+      "computedHash": "407141febc8fae02d061c909843d4082693174829240e44e620e3add26a9a735"
     },
     "developing-with-compose-previews": {
       "source": "skydoves/android-testing-skills",
@@ -265,11 +265,17 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
     },
+    "gestures": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/gestures/SKILL.md",
+      "computedHash": "d89c81c2ddb0ecb44b9f244a69e41073d74277422f80e675fb424f51ffab955b"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "83a6c49c8c5497676262e125cf2d95c8d66a3df7c639f2a64b14151ae36b95e6"
+      "computedHash": "b79e42080422abc5f2c0420bc6719524a5e7071b3f30980abeb57496e9271a53"
     },
     "improve-animations": {
       "source": "emilkowalski/skills",
@@ -509,13 +515,13 @@
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-styling/SKILL.md",
-      "computedHash": "39ad392c96adab936d8d057b66d1d632dd9c3d2b2397ec11bfe0e2a7c1fc975a"
+      "computedHash": "46f6d38bd624f91a9aefdb22d03264c4b08885503306ae5ee3c0e69cea3fa8ee"
     },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
-      "computedHash": "f9f7f8eb0ff50334c509c51b761f362db712ba99972748b1fc3a1dbc65873e80"
+      "computedHash": "411316b5893571bda59f1517b1fd639682cbbc26f8c804c08a071f2b7b864992"
     },
     "understanding-adb-architecture": {
       "source": "skydoves/android-testing-skills",

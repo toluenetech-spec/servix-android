@@ -174,6 +174,28 @@ interface ServixApiService {
     @POST("auth/security/cancel")
     suspend fun securityCancel(): OkResponse
 
+    // Existing professional workspace routes in api/src/routes/bookings.ts, pro.ts and proWorkspace.ts.
+    @GET("pro/bookings")
+    suspend fun getProfessionalBookings(): List<BookingDto>
+
+    @POST("pro/bookings/{id}/accept")
+    suspend fun acceptProfessionalBooking(@Path("id") id: String): BookingDto
+
+    @POST("pro/bookings/{id}/decline")
+    suspend fun declineProfessionalBooking(@Path("id") id: String): BookingDto
+
+    @POST("pro/bookings/{id}/start")
+    suspend fun startProfessionalBooking(@Path("id") id: String): BookingDto
+
+    @POST("pro/bookings/{id}/deliver")
+    suspend fun deliverProfessionalBooking(@Path("id") id: String): BookingDto
+
+    @GET("pro/analytics")
+    suspend fun getProfessionalAnalytics(@Query("days") days: Int = 7): ng.name.servix.app.data.model.ProfessionalAnalyticsDto
+
+    @GET("pro/services")
+    suspend fun getOwnServices(): List<ng.name.servix.app.data.model.OwnServiceDto>
+
     /* -------- Stage 2: Catalogue (categories, stats, professionals, services) -------- */
 
     @GET("categories")

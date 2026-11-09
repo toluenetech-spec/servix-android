@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -70,7 +69,7 @@ fun AiThreadScreen(
         val count = state.turns.size
         if (count > 0) listState.animateScrollToItem(count)
     }
-    Column(modifier = modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+    Column(modifier = modifier.fillMaxSize().background(WarmIvory)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

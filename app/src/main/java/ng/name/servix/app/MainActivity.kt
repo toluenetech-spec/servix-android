@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Edge-to-edge plus manifest adjustResize lets the shell handle system/IME insets once.
         enableEdgeToEdge()
         // Transparent bars with dark icons on the Warm Ivory canvas (plan §3).
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true

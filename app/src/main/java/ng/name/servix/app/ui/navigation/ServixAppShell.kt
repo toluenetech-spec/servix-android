@@ -268,6 +268,16 @@ fun ServixAppShell(
     val featuresState by featuresRepository.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { featuresRepository.refresh() }
     val sessionUserId = (sessionState as? SessionState.Authenticated)?.user?.id
+    val sessionRole = (sessionState as? SessionState.Authenticated)?.user?.role
+    val sessionReady = sessionState !is SessionState.Initializing
+    LaunchedEffect(sessionUserId, sessionRole, sessionReady) {
+        homeViewModel.clearProfessionalHome()
+        homeViewModel.clearCustomerHome()
+        if (sessionReady) {
+            if (sessionUserId != null && sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId)
+            else homeViewModel.loadHome(sessionUserId)
+        }
+    }
     val chatsViewModel: ChatsViewModel = viewModel(
         factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream) { sessionUserId }
     )
@@ -327,23 +337,7 @@ fun ServixAppShell(
     } ?: false
 
     if (sessionState is SessionState.Initializing) {
-        Scaffold(
-            contentWindowInsets = WindowInsets.safeDrawing,
-            containerColor = WarmIvory,
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                ServixLogoMark()
-                Spacer(modifier = Modifier.height(24.dp))
-                SkeletonBox(modifier = Modifier.widthIn(max = 220.dp).fillMaxWidth(0.6f), height = 16.dp)
-            }
-        }
+        ng.name.servix.app.ui.auth.SessionSplashScreen()
         return
     }
 
@@ -441,9 +435,7 @@ fun ServixAppShell(
         )
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
-        containerColor = WarmIvory,
+    ServixInsetScaffold(
         topBar = {
             OfflineBanner(isOnline = isOnline)
         },
@@ -504,7 +496,7 @@ fun ServixAppShell(
                 )
             }
         }
-    ) { innerPadding ->
+    ) {
         val screenMs = motionMs(Motion.SCREEN_MS)
         val tabMs = motionMs(Motion.TAB_MS)
         val slideSpec = tween<androidx.compose.ui.unit.IntOffset>(screenMs, easing = FastOutSlowInEasing)
@@ -512,9 +504,7 @@ fun ServixAppShell(
         NavHost(
             navController = navController,
             startDestination = startRoute,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier = Modifier.fillMaxSize(),
             // Shared-axis X pushes: new screen slides in from the end, old one drifts back.
             enterTransition = {
                 slideInHorizontally(slideSpec) { full -> full / 4 } + fadeIn(fadeSpec)
@@ -651,7 +641,15 @@ fun ServixAppShell(
                                 popUpTo(0) { inclusive = true }
                             }
                         }
-                    }
+                    },
+                    onRegisterAgain = {
+                        pendingPostAuthRoute = null
+                        authViewModel.logout {
+                            navController.navigate(ServixRoute.Register) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    },
                 )
             }
 
@@ -716,29 +714,32 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
+                val professionalHome by homeViewModel.professionalState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(user?.id, isOnline) {
-                    homeViewModel.loadHome(userId = user?.id, forceRefresh = false)
-                }
-
-                HomeTabScreen(
+                if (user?.role == "professional") {
+                    ng.name.servix.app.ui.home.ProfessionalHomeScreen(
+                        user = user, state = professionalHome.takeIf { it.userId == user.id } ?: ng.name.servix.app.ui.home.ProfessionalHomeState(),
+                        unreadNotifications = unreadNotifications, chatsEnabled = featuresState.flags.community,
+                        onNotifications = { navController.navigate(ServixRoute.Notifications) },
+                        onAccount = { navController.navigate(ServixRoute.Account) },
+                        onSeeAllJobs = { CustomTabLauncher.launchWebPath(shellContext, "/dashboard/work") },
+                        onViewJob = { id -> navController.navigate(ServixRoute.BookingDetail(id)) },
+                        onJobAction = homeViewModel::professionalBookingAction,
+                        onMessage = { id -> openChatForBooking(id) },
+                        onEditService = { id -> CustomTabLauncher.launchWebPath(shellContext, "/dashboard/gigs/${android.net.Uri.encode(id)}/edit") },
+                        onAi = { navController.navigate(ServixRoute.ServixAi) },
+                        onRetry = { homeViewModel.loadProfessionalHome(user.id, forceRefresh = true) },
+                    )
+                } else HomeTabScreen(
                     user = user,
                     city = city,
-                    uiState = homeUiState,
+                    uiState = if (homeUiState.loadedForUserId == user?.id) homeUiState else homeUiState.copy(overview = null, bookings = emptyList()),
                     aiUsage = aiUiState.usage,
                     onRefresh = { homeViewModel.loadHome(userId = user?.id, forceRefresh = true) },
                     // Chats card: same unread number as the tab badge (one source), AI is inside Chats now.
                     chatsEnabled = featuresState.flags.community,
                     chatsUnread = chatsState.unreadTotal,
                     onOpenChats = { navController.navigate(ServixRoute.Chats) },
-                    // Both numbers are exactly what their labels say; see HomeWeek.
-                    jobsScheduledThisWeek = HomeWeek.jobsScheduled(homeUiState.bookings),
-                    completedThisWeek = HomeWeek.jobsCompleted(homeUiState.bookings),
-                    profileStrength = listOf(
-                        user?.avatarUrl != null,
-                        user?.fullName?.isNotBlank() == true,
-                        user?.emailVerified == true,
-                    ).count { it } * 33,
                     onOpenSearch = { openExplore(query = null, categorySlug = null) },
                     onOpenCategory = { slug -> openExplore(query = null, categorySlug = slug) },
                     onOpenProfessional = { slug ->

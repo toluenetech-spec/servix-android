@@ -60,6 +60,33 @@ class BookingRepository(
         }
     }
 
+    suspend fun getProfessionalBookings(): Result<List<BookingDto>> = withContext(Dispatchers.IO) {
+        try { Result.success(api.getProfessionalBookings()) }
+        catch (t: Throwable) { Result.failure(ApiErrorParser.toServixException(t)) }
+    }
+
+    suspend fun getProfessionalAnalytics(): Result<ng.name.servix.app.data.model.ProfessionalAnalyticsDto> = withContext(Dispatchers.IO) {
+        try { Result.success(api.getProfessionalAnalytics(7)) }
+        catch (t: Throwable) { Result.failure(ApiErrorParser.toServixException(t)) }
+    }
+
+    suspend fun getOwnServices(): Result<List<ng.name.servix.app.data.model.OwnServiceDto>> = withContext(Dispatchers.IO) {
+        try { Result.success(api.getOwnServices()) }
+        catch (t: Throwable) { Result.failure(ApiErrorParser.toServixException(t)) }
+    }
+
+    suspend fun performProfessionalAction(id: String, action: String): Result<BookingDto> = withContext(Dispatchers.IO) {
+        try {
+            Result.success(when (action) {
+                "accept" -> api.acceptProfessionalBooking(id)
+                "decline" -> api.declineProfessionalBooking(id)
+                "start" -> api.startProfessionalBooking(id)
+                "deliver" -> api.deliverProfessionalBooking(id)
+                else -> throw IllegalArgumentException("Unsupported booking action")
+            })
+        } catch (t: Throwable) { Result.failure(ApiErrorParser.toServixException(t)) }
+    }
+
     suspend fun getMyBookings(): Result<List<BookingDto>> = withContext(Dispatchers.IO) {
         try {
             Result.success(api.getMyBookings())

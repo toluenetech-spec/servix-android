@@ -22,7 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.decodeFromString
 import ng.name.servix.app.ui.components.ServixButton
 import ng.name.servix.app.ui.components.ServixButtonStyle
 import ng.name.servix.app.ui.components.ServixField
@@ -58,6 +64,287 @@ class StitchFoundationTest {
 
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun exploreDiscoveryCategoriesAndPriceFilter() {
+        var selected = ""
+        val state = ng.name.servix.app.ui.catalogue.SearchUiState(
+            loading = false, categories = Fixtures.categories, professionals = Fixtures.professionals,
+            total = Fixtures.professionals.size,
+        )
+        org.junit.Assert.assertEquals(1, state.copy(priceLimit = 25000).activeFilterCount)
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = state, categoryNameFor = { "" }, onQueryChange = {}, onQuerySubmit = {},
+                    onModeChange = {}, onCategorySelect = { selected = it }, onLocationChange = {},
+                    onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {}, onAvailabilitySelect = {},
+                    onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+                    onOpenProfessional = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("explore_category_graphic-design").performClick()
+        org.junit.Assert.assertEquals("graphic-design", selected)
+    }
+
+    @Test
+    fun exploreDiscovery() = rule.capture("69_explore_discovery_stitch") {
+        ng.name.servix.app.ui.explore.ExploreScreen(
+            uiState = ng.name.servix.app.ui.catalogue.SearchUiState(loading = false, categories = Fixtures.categories,
+                professionals = Fixtures.professionals, total = Fixtures.professionals.size),
+            categoryNameFor = { "" }, onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
+            onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+            onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+            onOpenProfessional = {}, onOpenService = {},
+        )
+    }
+
+    @Test fun sessionSplash() = rule.capture("49_session_splash_stitch") {
+        ng.name.servix.app.ui.auth.SessionSplashScreen()
+    }
+
+    @Test
+    fun register() = rule.capture("56_register_stitch") {
+        ng.name.servix.app.ui.auth.RegisterScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(),
+            onNameChange = {}, onEmailChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
+            onSubmit = {}, onSignInClick = {}, onBackClick = {}, providers = listOf("google", "github"),
+        )
+    }
+
+    @Test
+    fun registerBottom() = rule.capture("56b_register_stitch_bottom", afterContent = {
+        rule.onNodeWithTag("go_to_login_button").performScrollTo()
+    }) {
+        ng.name.servix.app.ui.auth.RegisterScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(),
+            onNameChange = {}, onEmailChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
+            onSubmit = {}, onSignInClick = {}, onBackClick = {}, providers = listOf("google", "github"),
+        )
+    }
+
+    @Test
+    fun verifyEmail() = rule.capture("57_verify_email_stitch") {
+        ng.name.servix.app.ui.auth.VerifyEmailScreen(
+            userEmail = "olumide@example.ng", isAlreadyVerified = false,
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(verificationMethod = "otp", resendWaitSeconds = 45),
+            onLoadMethod = {}, onOtpCodeChange = {}, onSubmitOtp = {}, onResend = {},
+            onCheckVerifiedStatus = {}, onContinueToHome = {}, onSignOut = {}, onRegisterAgain = {},
+        )
+    }
+
+    @Test
+    fun verifyEmailRegisterAgainUsesDedicatedCallbackAndKeepsCooldown() {
+        var registeredAgain = false
+        var signedOut = false
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.auth.VerifyEmailScreen(
+                    userEmail = "olumide@example.ng", isAlreadyVerified = false,
+                    uiState = ng.name.servix.app.ui.auth.AuthUiState(verificationMethod = "otp", resendWaitSeconds = 45),
+                    onLoadMethod = {}, onOtpCodeChange = {}, onSubmitOtp = {}, onResend = {},
+                    onCheckVerifiedStatus = {}, onContinueToHome = {}, onSignOut = { signedOut = true },
+                    onRegisterAgain = { registeredAgain = true },
+                )
+            }
+        }
+        rule.onNodeWithTag("otp_resend_button").assertIsNotEnabled()
+        rule.onNodeWithTag("verify_register_again_button").performClick()
+        rule.runOnIdle {
+            org.junit.Assert.assertTrue(registeredAgain)
+            org.junit.Assert.assertFalse(signedOut)
+        }
+    }
+
+    @Test fun customerHome() = rule.capture("68_home_customer_stitch") { customerHomePreview() }
+
+    @Test fun customerHomeBottom() = rule.capture("68b_home_customer_bottom", afterContent = {
+        rule.onNodeWithText("Manage plan").performScrollTo()
+    }) { customerHomePreview() }
+
+    @Test fun customerHomeRetainsBookingAndChatActions() {
+        var opened = ""
+        rule.setContent { ServixTheme { customerHomePreview(onBooking = { opened = it }, onChats = { opened = "chats" }) } }
+        rule.onNodeWithText("Confirm").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("delivered", opened) }
+        rule.onNodeWithTag("home_chats_card").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("chats", opened) }
+    }
+
+    @Test fun customerHomeHidesChatsWhenFeatureOff() {
+        rule.setContent { ServixTheme { customerHomePreview(chatsEnabled = false) } }
+        rule.onNodeWithTag("home_chats_card").assertDoesNotExist()
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun customerHomePreview(chatsEnabled: Boolean = true, onBooking: (String) -> Unit = {}, onChats: () -> Unit = {}) {
+        ng.name.servix.app.ui.home.HomeTabScreen(
+            user = ng.name.servix.app.data.model.UserDto(id = "customer", fullName = "Olumide Adeleke"), city = "Lagos",
+            uiState = ng.name.servix.app.ui.home.HomeUiState(loading = false,
+                bookings = listOf(
+                    ng.name.servix.app.data.model.BookingDto(id = "delivered", status = "delivered", serviceTitle = "Electrical wiring repair"),
+                    ng.name.servix.app.data.model.BookingDto(id = "active", status = "in_progress", serviceTitle = "Plumbing pipe maintenance", professionalName = "Tunde Adeleke", scheduledAt = "2026-11-09T15:00:00Z")
+                ),
+                categories = listOf(ng.name.servix.app.data.model.CategoryDto(id = "electric", name = "Electrical", icon = "bolt"),
+                    ng.name.servix.app.data.model.CategoryDto(id = "plumbing", name = "Plumbing", icon = "plumbing")),
+                professionals = listOf(ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "emeka", name = "Emeka Nwosu", title = "AC & Fridge technician", rating = 4.9, reviewCount = 128, startingPrice = 15000, verified = true))
+            ),
+            chatsEnabled = chatsEnabled, chatsUnread = 2, unreadNotifications = 1,
+            onOpenBookingDetail = onBooking, onOpenChats = onChats,
+        )
+    }
+
+    @Test fun guestHome() = rule.capture("67_home_guest_stitch") { guestHomePreview() }
+
+    @Test fun guestHomeBottom() = rule.capture("67b_home_guest_bottom", afterContent = {
+        rule.onNodeWithText("Ask Servix AI").performScrollTo()
+    }) { guestHomePreview() }
+
+    @Test fun guestHomeActions() {
+        var opened = ""
+        rule.setContent { ServixTheme { guestHomePreview(onSearch = { opened = "search" }, onCreate = { opened = "register" }) } }
+        rule.onNodeWithTag("home_search_field").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("search", opened) }
+        rule.onNodeWithTag("home_create_account_button").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("register", opened) }
+        rule.onNodeWithText("Chats").assertDoesNotExist()
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun guestHomePreview(onSearch: () -> Unit = {}, onCreate: () -> Unit = {}) {
+        ng.name.servix.app.ui.home.GuestHomeScreen(city = "Lagos", state = ng.name.servix.app.ui.home.HomeUiState(
+            loading = false,
+            categories = listOf(ng.name.servix.app.data.model.CategoryDto(id = "electrical", name = "Electrical", icon = "bolt"),
+                ng.name.servix.app.data.model.CategoryDto(id = "plumbing", name = "Plumbing", icon = "plumbing")),
+            professionals = listOf(ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "emeka", name = "Emeka Nwosu",
+                title = "AC & Fridge technician", rating = 4.9, reviewCount = 128, location = "Ikeja", startingPrice = 15000, verified = true))),
+            onRefresh = {}, onSearch = onSearch, onCategory = {}, onProfessional = {}, onSignIn = {}, onCreateAccount = onCreate, onAi = {})
+    }
+
+    @Test fun professionalHome() = rule.capture("66_home_professional_stitch") { professionalHomePreview() }
+
+    @Test fun professionalHomeBottom() = rule.capture("66b_home_professional_bottom", afterContent = {
+        rule.onNodeWithText("Ask Servix AI").performScrollTo()
+    }) { professionalHomePreview() }
+
+    @Test fun professionalHomeHonoursActionsAndChatFlag() {
+        var action = ""
+        rule.setContent { ServixTheme { professionalHomePreview(chats = false, onAction = { _, value -> action = value }) } }
+        rule.onNodeWithText("Message").assertDoesNotExist()
+        rule.onNodeWithTag("professional_job_action_request").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("accept", action) }
+        rule.onNodeWithText("Decline").performClick()
+        rule.onNodeWithText("Decline request").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("decline", action) }
+    }
+
+    @Test fun professionalWorkspaceSchemasDecode() {
+        val json = ng.name.servix.app.data.network.ApiErrorParser.json
+        val analytics = json.decodeFromString<ng.name.servix.app.data.model.ProfessionalAnalyticsDto>(
+            """{"totals":{"earnings":86000.5,"completed":4,"responseRate":null,"ratingAvg":4.8,"reviewCount":5}}"""
+        )
+        org.junit.Assert.assertEquals(86000.5, analytics.totals!!.earnings!!, 0.001)
+        org.junit.Assert.assertNull(analytics.totals!!.responseRate)
+        val services = json.decodeFromString<List<ng.name.servix.app.data.model.OwnServiceDto>>(
+            """[{"id":"one","title":"Repairs","status":"draft","publishProblems":{"gallery":"Add an image."}},{"id":"two","title":"Done","status":"active","publishProblems":{}}]"""
+        )
+        org.junit.Assert.assertEquals("Add an image.", services[0].publishProblems["gallery"])
+        org.junit.Assert.assertTrue(services[1].publishProblems.isEmpty())
+    }
+
+    @Test fun professionalHomeHidesCompleteServiceAndShowsRetry() {
+        var retried = false
+        rule.setContent { ServixTheme {
+            ng.name.servix.app.ui.home.ProfessionalHomeScreen(
+                user = ng.name.servix.app.data.model.UserDto(id = "pro", role = "professional"),
+                state = ng.name.servix.app.ui.home.ProfessionalHomeState(userId = "pro", loading = false,
+                    services = listOf(ng.name.servix.app.data.model.OwnServiceDto(id = "complete", status = "active")),
+                    jobsError = "Could not load jobs"),
+                unreadNotifications = 0, chatsEnabled = false, onNotifications = {}, onAccount = {}, onSeeAllJobs = {},
+                onViewJob = {}, onJobAction = { _, _ -> }, onMessage = {}, onEditService = {}, onAi = {}, onRetry = { retried = true },
+            )
+        } }
+        rule.onNodeWithText("Finish your service").assertDoesNotExist()
+        rule.onNodeWithText("Could not load jobs").assertExists()
+        rule.onNodeWithText("Try again").performClick()
+        rule.runOnIdle { org.junit.Assert.assertTrue(retried) }
+    }
+
+    @Test fun professionalActionStateMachine() {
+        val allowed: (String, String) -> Boolean = { status, action -> ng.name.servix.app.ui.home.professionalActionAllowed(status, action) }
+        org.junit.Assert.assertTrue(allowed("requested", "accept"))
+        org.junit.Assert.assertTrue(allowed("requested", "decline"))
+        org.junit.Assert.assertTrue(allowed("accepted", "start"))
+        org.junit.Assert.assertTrue(allowed("in_progress", "deliver"))
+        org.junit.Assert.assertFalse(allowed("delivered", "deliver"))
+        org.junit.Assert.assertFalse(allowed("accepted", "decline"))
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun professionalHomePreview(chats: Boolean = true, onAction: (String, String) -> Unit = { _, _ -> }) {
+        ng.name.servix.app.ui.home.ProfessionalHomeScreen(
+            user = ng.name.servix.app.data.model.UserDto(id = "pro", fullName = "Bayo Adebayo", role = "professional"),
+            state = ng.name.servix.app.ui.home.ProfessionalHomeState(
+                userId = "pro", loading = false,
+                jobs = listOf(
+                    ng.name.servix.app.data.model.BookingDto(id = "request", status = "requested", serviceTitle = "Electrical wiring repair", customerName = "Olumide A.", scheduledAt = "2026-11-09T10:30:00.000Z"),
+                    ng.name.servix.app.data.model.BookingDto(id = "progress", status = "in_progress", serviceTitle = "Distribution box fix", customerName = "Chinwe O."),
+                    ng.name.servix.app.data.model.BookingDto(id = "delivered", status = "delivered", serviceTitle = "Socket replacement", customerName = "Tolu B."),
+                ),
+                totals = ng.name.servix.app.data.model.ProfessionalAnalyticsTotalsDto(earnings = 86000.0, completed = 4, ratingAvg = 4.8, reviewCount = 5, responseRate = 90),
+                services = listOf(ng.name.servix.app.data.model.OwnServiceDto(id = "service", title = "Electrical repairs", status = "draft", publishProblems = mapOf("gallery" to "Add at least one image to the gallery."))),
+            ), unreadNotifications = 1, chatsEnabled = chats,
+            onNotifications = {}, onAccount = {}, onSeeAllJobs = {}, onViewJob = {}, onJobAction = onAction,
+            onMessage = {}, onEditService = {}, onAi = {}, onRetry = {},
+        )
+    }
+
+    @Test fun securityEmail() = rule.capture("58_security_email") { securityPreview("email") }
+    @Test fun securityEnroll() = rule.capture("59_security_enroll") { securityPreview("enroll") }
+    @Test fun securityFactor() = rule.capture("60_security_factor") { securityPreview("factor") }
+    @Test fun securityRecovery() = rule.capture("61_security_recovery") { securityPreview("recovery") }
+    @Test fun securityReset() = rule.capture("62_security_reset") { securityPreview("reset_password") }
+    @Test fun securityFinish() = rule.capture("63_security_finish") { securityPreview("finish") }
+
+    @Test fun securityFactorKeepsRecoveryToggleAndPasskeyCopy() {
+        var toggled = false
+        rule.setContent {
+            ServixTheme {
+                securityPreview("factor", method = "passkey", onToggle = { toggled = true })
+            }
+        }
+        rule.onNodeWithText("Use your authenticator app or a recovery code").assertExists()
+        rule.onNodeWithTag("security_recovery_toggle").performClick()
+        rule.runOnIdle { org.junit.Assert.assertTrue(toggled) }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun securityPreview(stage: String, method: String? = null, onToggle: () -> Unit = {}) {
+        val state = ng.name.servix.app.ui.auth.AuthUiState(
+            securityFlow = ng.name.servix.app.data.model.SecurityFlowState(next = stage, email = "test@example.ng", method = method),
+            securityTotpSetup = if (stage == "enroll") ng.name.servix.app.data.model.SecurityTotpSetupResponse(secret = "EXAMPLE-KEY", uri = "otpauth://totp/example") else null,
+            securityRecoveryCodes = if (stage == "recovery") listOf("TEST-1111", "TEST-2222", "TEST-3333", "TEST-4444") else emptyList(),
+        )
+        ng.name.servix.app.ui.auth.SecurityCheckScreen(
+            uiState = state, onLoadSecurityCheck = {}, onCodeChange = {}, onSubmitCode = {}, onResendEmailCode = {},
+            onBeginTotpSetup = {}, onClearTotpSetup = {}, onToggleUseRecovery = onToggle, onSavedRecoveryChange = {},
+            onFinishSecurity = {}, onNewPasswordChange = {}, onConfirmPasswordChange = {}, onSubmitResetPassword = {}, onCancelAndReturnLogin = {},
+        )
+    }
+
+    @Test fun forgotPassword() = rule.capture("64_forgot_password_stitch") {
+        ng.name.servix.app.ui.auth.ForgotPasswordScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(), onEmailChange = {}, onSubmit = {}, onBackToSignIn = {},
+        )
+    }
+
+    @Test fun forgotPasswordSent() = rule.capture("65_forgot_password_sent") {
+        ng.name.servix.app.ui.auth.ForgotPasswordScreen(
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(forgotEmail = "test@example.ng", forgotSent = true),
+            onEmailChange = {}, onSubmit = {}, onBackToSignIn = {},
+        )
+    }
 
     @Test
     fun buttons() = rule.capture("50_foundation_buttons") {
