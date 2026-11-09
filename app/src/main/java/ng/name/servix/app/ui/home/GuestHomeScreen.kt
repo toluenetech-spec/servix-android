@@ -153,7 +153,7 @@ private fun GuestButton(text: String, onClick: () -> Unit, modifier: Modifier = 
     }
 }
 
-private fun guestCategoryIcon(icon: String, name: String): androidx.compose.ui.graphics.vector.ImageVector {
+internal fun guestCategoryIcon(icon: String, name: String): androidx.compose.ui.graphics.vector.ImageVector {
     val key = (icon + " " + name).lowercase()
     return when {
         "electric" in key || "bolt" in key -> Icons.Rounded.FlashOn

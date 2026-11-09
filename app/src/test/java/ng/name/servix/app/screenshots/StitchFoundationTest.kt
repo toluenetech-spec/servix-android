@@ -118,6 +118,44 @@ class StitchFoundationTest {
         }
     }
 
+    @Test fun customerHome() = rule.capture("68_home_customer_stitch") { customerHomePreview() }
+
+    @Test fun customerHomeBottom() = rule.capture("68b_home_customer_bottom", afterContent = {
+        rule.onNodeWithText("Manage plan").performScrollTo()
+    }) { customerHomePreview() }
+
+    @Test fun customerHomeRetainsBookingAndChatActions() {
+        var opened = ""
+        rule.setContent { ServixTheme { customerHomePreview(onBooking = { opened = it }, onChats = { opened = "chats" }) } }
+        rule.onNodeWithText("Confirm").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("delivered", opened) }
+        rule.onNodeWithTag("home_chats_card").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("chats", opened) }
+    }
+
+    @Test fun customerHomeHidesChatsWhenFeatureOff() {
+        rule.setContent { ServixTheme { customerHomePreview(chatsEnabled = false) } }
+        rule.onNodeWithTag("home_chats_card").assertDoesNotExist()
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun customerHomePreview(chatsEnabled: Boolean = true, onBooking: (String) -> Unit = {}, onChats: () -> Unit = {}) {
+        ng.name.servix.app.ui.home.HomeTabScreen(
+            user = ng.name.servix.app.data.model.UserDto(id = "customer", fullName = "Olumide Adeleke"), city = "Lagos",
+            uiState = ng.name.servix.app.ui.home.HomeUiState(loading = false,
+                bookings = listOf(
+                    ng.name.servix.app.data.model.BookingDto(id = "delivered", status = "delivered", serviceTitle = "Electrical wiring repair"),
+                    ng.name.servix.app.data.model.BookingDto(id = "active", status = "in_progress", serviceTitle = "Plumbing pipe maintenance", professionalName = "Tunde Adeleke", scheduledAt = "2026-11-09T15:00:00Z")
+                ),
+                categories = listOf(ng.name.servix.app.data.model.CategoryDto(id = "electric", name = "Electrical", icon = "bolt"),
+                    ng.name.servix.app.data.model.CategoryDto(id = "plumbing", name = "Plumbing", icon = "plumbing")),
+                professionals = listOf(ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "emeka", name = "Emeka Nwosu", title = "AC & Fridge technician", rating = 4.9, reviewCount = 128, startingPrice = 15000, verified = true))
+            ),
+            chatsEnabled = chatsEnabled, chatsUnread = 2, unreadNotifications = 1,
+            onOpenBookingDetail = onBooking, onOpenChats = onChats,
+        )
+    }
+
     @Test fun guestHome() = rule.capture("67_home_guest_stitch") { guestHomePreview() }
 
     @Test fun guestHomeBottom() = rule.capture("67b_home_guest_bottom", afterContent = {
