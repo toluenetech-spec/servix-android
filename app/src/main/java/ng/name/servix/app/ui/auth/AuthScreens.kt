@@ -1344,7 +1344,7 @@ fun SecurityCheckScreen(
                                         TextButton(onClick = { copyToClipboard(context, "Servix setup key", setup.secret) }) { Text("Copy key", style = ServixType.labelLg, color = DeepForest) }
                                     }
                                     if (setup.uri.startsWith("otpauth://")) {
-                                        ServixSecondaryButton("Open app", onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(setup.uri))) } }, modifier = Modifier.fillMaxWidth())
+                                        SecuritySecondaryButton("Open app", onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(setup.uri))) } }, modifier = Modifier.fillMaxWidth())
                                     }
                                 }
                             }
@@ -1361,7 +1361,7 @@ fun SecurityCheckScreen(
                                     }
                                 }
                             }
-                            ServixSecondaryButton("Copy recovery codes", onClick = { copyToClipboard(context, "Servix recovery codes", uiState.securityRecoveryCodes.joinToString("\n")) },
+                            SecuritySecondaryButton("Copy recovery codes", onClick = { copyToClipboard(context, "Servix recovery codes", uiState.securityRecoveryCodes.joinToString("\n")) },
                                 enabled = uiState.securityRecoveryCodes.isNotEmpty(), modifier = Modifier.fillMaxWidth())
                             Row(Modifier.fillMaxWidth().clickable { onSavedRecoveryChange(!uiState.securitySavedRecovery) }, verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = uiState.securitySavedRecovery, onCheckedChange = onSavedRecoveryChange,
@@ -1392,42 +1392,66 @@ fun SecurityCheckScreen(
         }
         Column(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when {
-                uiState.securitySuccessMode == "reset" -> ServixPrimaryButton(stringResource(R.string.back_to_sign_in), onCancelAndReturnLogin,
+                uiState.securitySuccessMode == "reset" -> SecurityPrimaryButton(stringResource(R.string.back_to_sign_in), onCancelAndReturnLogin,
                     modifier = Modifier.fillMaxWidth(), testTag = "security_reset_back_login_button")
                 uiState.securityConfigEnabled == false -> {
-                    ServixPrimaryButton(stringResource(R.string.open_servix_web), { CustomTabLauncher.launchWebPath(context, "/login") },
+                    SecurityPrimaryButton(stringResource(R.string.open_servix_web), { CustomTabLauncher.launchWebPath(context, "/login") },
                         modifier = Modifier.fillMaxWidth(), testTag = "security_open_web_button")
-                    ServixSecondaryButton(stringResource(R.string.back_to_sign_in), onCancelAndReturnLogin, modifier = Modifier.fillMaxWidth())
+                    SecuritySecondaryButton(stringResource(R.string.back_to_sign_in), onCancelAndReturnLogin, modifier = Modifier.fillMaxWidth())
                 }
                 uiState.securityLoading -> Unit
                 uiState.securityExpired || uiState.securityLoadFailed || flow == null -> {
-                    ServixPrimaryButton(stringResource(R.string.security_start_again), onCancelAndReturnLogin, modifier = Modifier.fillMaxWidth(), testTag = "security_start_again_button")
-                    if (!uiState.securityExpired) ServixSecondaryButton(stringResource(R.string.security_try_loading_again), onLoadSecurityCheck,
+                    SecurityPrimaryButton(stringResource(R.string.security_start_again), onCancelAndReturnLogin, modifier = Modifier.fillMaxWidth(), testTag = "security_start_again_button")
+                    if (!uiState.securityExpired) SecuritySecondaryButton(stringResource(R.string.security_try_loading_again), onLoadSecurityCheck,
                         modifier = Modifier.fillMaxWidth(), testTag = "security_retry_load_button")
                 }
-                stage == "email" -> ServixPrimaryButton(stringResource(R.string.verify_submit), onSubmitCode, loading = uiState.securityBusy,
+                stage == "email" -> SecurityPrimaryButton(stringResource(R.string.verify_submit), onSubmitCode, loading = uiState.securityBusy,
                     modifier = Modifier.fillMaxWidth(), testTag = "security_email_verify_button")
                 stage == "enroll" && uiState.securityTotpSetup != null -> {
-                    ServixPrimaryButton("Confirm authenticator", onSubmitCode, loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_totp_enroll_submit")
+                    SecurityPrimaryButton("Confirm authenticator", onSubmitCode, loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_totp_enroll_submit")
                     TextButton(onClick = onClearTotpSetup, enabled = !uiState.securityBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text("Choose a different method", style = ServixType.labelLg, color = DeepForest)
                     }
                 }
                 stage == "factor" -> {
-                    ServixPrimaryButton("Verify security code", onSubmitCode, loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_factor_submit_button")
+                    SecurityPrimaryButton("Verify security code", onSubmitCode, loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_factor_submit_button")
                     TextButton(onClick = onToggleUseRecovery, enabled = !uiState.securityBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("security_recovery_toggle")) {
                         Text(if (uiState.securityUseRecovery) "Use my enrolled security method" else "Lost access? Use a recovery code", style = ServixType.labelLg, color = DeepForest)
                     }
+                    TextButton(onClick = { CustomTabLauncher.launchWebPath(context, "/contact") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Contact Servix support", style = ServixType.labelLg, color = MutedGray)
+                    }
                 }
-                stage == "recovery" -> ServixPrimaryButton("Finish securely", onFinishSecurity,
+                stage == "recovery" -> SecurityPrimaryButton("Finish securely", onFinishSecurity,
                     enabled = !uiState.securityBusy && uiState.securitySavedRecovery && uiState.securityRecoveryCodes.isNotEmpty(),
                     loading = uiState.securityBusy, modifier = Modifier.fillMaxWidth(), testTag = "security_finish_recovery_button")
-                stage == "reset_password" -> ServixPrimaryButton("Save new password", onSubmitResetPassword, loading = uiState.securityBusy,
+                stage == "reset_password" -> SecurityPrimaryButton("Save new password", onSubmitResetPassword, loading = uiState.securityBusy,
                     modifier = Modifier.fillMaxWidth(), testTag = "security_save_password_button")
-                stage == "finish" -> ServixPrimaryButton("Finish signing in", onFinishSecurity, loading = uiState.securityBusy,
+                stage == "finish" -> SecurityPrimaryButton("Finish signing in", onFinishSecurity, loading = uiState.securityBusy,
                     modifier = Modifier.fillMaxWidth(), testTag = "security_finish_button")
             }
         }
+    }
+}
+
+@Composable
+private fun SecurityPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
+    enabled: Boolean = true, loading: Boolean = false, testTag: String? = null) {
+    Button(onClick = onClick, enabled = enabled && !loading, shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = DeepForest, contentColor = PureWhite),
+        modifier = modifier.heightIn(min = 52.dp).let { if (testTag != null) it.testTag(testTag) else it }) {
+        if (loading) androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = PureWhite)
+        else Text(text, style = ServixType.labelLg)
+    }
+}
+
+@Composable
+private fun SecuritySecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
+    enabled: Boolean = true, testTag: String? = null) {
+    Button(onClick = onClick, enabled = enabled, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, ng.name.servix.app.ui.theme.BorderStrongSand),
+        colors = ButtonDefaults.buttonColors(containerColor = PureWhite, contentColor = DeepForest),
+        modifier = modifier.heightIn(min = 52.dp).let { if (testTag != null) it.testTag(testTag) else it }) {
+        Text(text, style = ServixType.labelLg)
     }
 }
 
