@@ -227,7 +227,8 @@ fun WelcomeScreen(
             .fillMaxSize()
             .background(WarmIvory)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 36.dp),
+            // Design gutter: px-margin is 16 dp, and the hero sits under the status bar by space-xl.
+            .padding(horizontal = 16.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
