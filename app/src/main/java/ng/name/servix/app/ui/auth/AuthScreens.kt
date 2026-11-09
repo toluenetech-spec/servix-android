@@ -932,11 +932,18 @@ fun VerifyEmailScreen(
     onCheckVerifiedStatus: () -> Unit,
     onContinueToHome: () -> Unit,
     onSignOut: () -> Unit,
+    onRegisterAgain: () -> Unit = onSignOut,
 ) {
     LaunchedEffect(Unit) {
         if (uiState.verificationMethod == null && !isAlreadyVerified && !uiState.emailConfirmed) {
             onLoadMethod()
         }
+    }
+
+    if (!isAlreadyVerified && !uiState.emailConfirmed && !uiState.verificationMethodError &&
+        uiState.verificationMethod != null && uiState.verificationMethod != "link") {
+        VerifyOtpStitchScreen(userEmail, uiState, onOtpCodeChange, onSubmitOtp, onResend, onSignOut, onRegisterAgain)
+        return
     }
 
     AuthShellContainer(onBackClick = null) {
@@ -1082,83 +1089,84 @@ fun VerifyEmailScreen(
                 }
             }
 
-            else -> {
-                // 6-digit OTP verification screen matching EmailCodeVerification.jsx
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.verify_otp_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = DeepForest,
-                    )
-                    Text(
-                        text = stringResource(R.string.verify_otp_lead, userEmail),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Charcoal,
-                    )
+            else -> Unit // OTP mode is rendered by VerifyOtpStitchScreen above.
 
-                    SixDigitCodeField(
-                        label = stringResource(R.string.verify_code_label),
-                        code = uiState.otpCode,
-                        onCodeChange = onOtpCodeChange,
-                        error = uiState.otpError,
-                        hint = stringResource(R.string.verify_code_hint),
-                        onDone = onSubmitOtp,
-                        testTag = "otp_code_input",
-                    )
+        }
+    }
+}
 
-                    ServixPrimaryButton(
-                        text = stringResource(if (uiState.otpBusy) R.string.verify_please_wait else R.string.verify_submit),
-                        onClick = onSubmitOtp,
-                        loading = uiState.otpBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "otp_submit_button",
-                    )
-
-                    if (!uiState.otpNotice.isNullOrBlank()) {
-                        Text(
-                            text = uiState.otpNotice,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ForestGreen,
-                        )
-                    }
-
-                    ServixSecondaryButton(
-                        text = if (uiState.resendWaitSeconds > 0) {
-                            stringResource(R.string.verify_resend_cooldown, uiState.resendWaitSeconds)
-                        } else {
-                            stringResource(R.string.verify_send_new_code)
-                        },
-                        onClick = onResend,
-                        enabled = !uiState.otpBusy && uiState.resendWaitSeconds == 0,
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "otp_resend_button",
-                    )
-
-                    Text(
-                        text = stringResource(R.string.verify_security_footer),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MutedGray,
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        TextButton(
-                            onClick = onSignOut,
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .testTag("otp_sign_out_button"),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.sign_out),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = DangerRed,
-                            )
-                        }
-                    }
+@Composable
+private fun VerifyOtpStitchScreen(
+    userEmail: String,
+    uiState: AuthUiState,
+    onOtpCodeChange: (String) -> Unit,
+    onSubmitOtp: () -> Unit,
+    onResend: () -> Unit,
+    onSignOut: () -> Unit,
+    onRegisterAgain: () -> Unit,
+) {
+    val context = LocalContext.current
+    Column(Modifier.fillMaxSize().background(WarmIvory).imePadding()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onSignOut, modifier = Modifier.size(44.dp).testTag("auth_back_button")) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = Charcoal)
+            }
+            Text("Verification", style = ServixType.titleLg, color = Charcoal, modifier = Modifier.weight(1f))
+            Box(Modifier.size(32.dp).background(DeepForest, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Person, contentDescription = null, tint = PureWhite, modifier = Modifier.size(18.dp))
+            }
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(Modifier.padding(top = 16.dp, bottom = 24.dp).size(96.dp).background(SoftSand, CircleShape), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(64.dp).background(SoftSand, CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.MailOutline, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(36.dp))
+                }
+                Box(Modifier.align(Alignment.TopEnd).size(28.dp).background(ForestGreen, CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Shield, contentDescription = null, tint = PureWhite, modifier = Modifier.size(15.dp))
                 }
             }
+            Text("Verify your email address", style = ServixType.headlineLgMobile, color = Charcoal, textAlign = TextAlign.Center)
+            Text("We sent a 6-digit confirmation code to", style = ServixType.bodyMd, color = MutedGray,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+            Text(userEmail, style = ServixType.titleMd, color = Charcoal, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 2.dp, bottom = 32.dp))
+            Column(
+                Modifier.fillMaxWidth().background(SurfaceContainerLow, RoundedCornerShape(20.dp)).padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Keep the existing paste-capable code field, labels, errors and callbacks.
+                SixDigitCodeField(
+                    label = stringResource(R.string.verify_code_label), code = uiState.otpCode, onCodeChange = onOtpCodeChange,
+                    error = uiState.otpError, hint = stringResource(R.string.verify_code_hint), onDone = onSubmitOtp, testTag = "otp_code_input",
+                )
+                if (!uiState.otpNotice.isNullOrBlank()) Text(uiState.otpNotice, style = ServixType.bodySm, color = ForestGreen)
+                ServixSecondaryButton(
+                    text = if (uiState.resendWaitSeconds > 0) stringResource(R.string.verify_resend_cooldown, uiState.resendWaitSeconds)
+                        else stringResource(R.string.verify_send_new_code),
+                    onClick = onResend, enabled = !uiState.otpBusy && uiState.resendWaitSeconds == 0,
+                    modifier = Modifier.fillMaxWidth(), testTag = "otp_resend_button",
+                )
+                TextButton(onClick = onRegisterAgain, enabled = !uiState.otpBusy, modifier = Modifier.heightIn(min = 48.dp).testTag("verify_register_again_button")) {
+                    Text("Wrong address? Register again", style = ServixType.labelLg, color = ForestGreen, textAlign = TextAlign.Center)
+                }
+                ServixPrimaryButton(
+                    text = stringResource(if (uiState.otpBusy) R.string.verify_please_wait else R.string.verify_submit),
+                    onClick = onSubmitOtp, loading = uiState.otpBusy, modifier = Modifier.fillMaxWidth(), testTag = "otp_submit_button",
+                )
+                ServixSecondaryButton(
+                    text = "Open Mail App", onClick = {
+                        val intent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_EMAIL).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try { context.startActivity(intent) } catch (_: android.content.ActivityNotFoundException) {
+                            android.widget.Toast.makeText(context, "No email app found on this device.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }, modifier = Modifier.fillMaxWidth(), testTag = "verify_open_mail_button",
+                )
+            }
+            Text(stringResource(R.string.verify_security_footer), style = ServixType.bodySm, color = MutedGray,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(top = 24.dp))
         }
     }
 }

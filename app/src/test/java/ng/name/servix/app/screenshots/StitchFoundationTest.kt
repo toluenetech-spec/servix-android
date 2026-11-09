@@ -22,6 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.unit.dp
 import ng.name.servix.app.ui.components.ServixButton
 import ng.name.servix.app.ui.components.ServixButtonStyle
@@ -66,6 +69,39 @@ class StitchFoundationTest {
             onNameChange = {}, onEmailChange = {}, onPasswordChange = {}, onConfirmPasswordChange = {},
             onSubmit = {}, onSignInClick = {}, onBackClick = {}, providers = listOf("google", "github"),
         )
+    }
+
+    @Test
+    fun verifyEmail() = rule.capture("57_verify_email_stitch") {
+        ng.name.servix.app.ui.auth.VerifyEmailScreen(
+            userEmail = "olumide@example.ng", isAlreadyVerified = false,
+            uiState = ng.name.servix.app.ui.auth.AuthUiState(verificationMethod = "otp", resendWaitSeconds = 45),
+            onLoadMethod = {}, onOtpCodeChange = {}, onSubmitOtp = {}, onResend = {},
+            onCheckVerifiedStatus = {}, onContinueToHome = {}, onSignOut = {}, onRegisterAgain = {},
+        )
+    }
+
+    @Test
+    fun verifyEmailRegisterAgainUsesDedicatedCallbackAndKeepsCooldown() {
+        var registeredAgain = false
+        var signedOut = false
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.auth.VerifyEmailScreen(
+                    userEmail = "olumide@example.ng", isAlreadyVerified = false,
+                    uiState = ng.name.servix.app.ui.auth.AuthUiState(verificationMethod = "otp", resendWaitSeconds = 45),
+                    onLoadMethod = {}, onOtpCodeChange = {}, onSubmitOtp = {}, onResend = {},
+                    onCheckVerifiedStatus = {}, onContinueToHome = {}, onSignOut = { signedOut = true },
+                    onRegisterAgain = { registeredAgain = true },
+                )
+            }
+        }
+        rule.onNodeWithTag("otp_resend_button").assertIsNotEnabled()
+        rule.onNodeWithTag("verify_register_again_button").performClick()
+        rule.runOnIdle {
+            org.junit.Assert.assertTrue(registeredAgain)
+            org.junit.Assert.assertFalse(signedOut)
+        }
     }
 
     @Test

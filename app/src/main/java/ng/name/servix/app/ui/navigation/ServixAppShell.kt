@@ -651,7 +651,15 @@ fun ServixAppShell(
                                 popUpTo(0) { inclusive = true }
                             }
                         }
-                    }
+                    },
+                    onRegisterAgain = {
+                        pendingPostAuthRoute = null
+                        authViewModel.logout {
+                            navController.navigate(ServixRoute.Register) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    },
                 )
             }
 
