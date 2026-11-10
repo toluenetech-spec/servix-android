@@ -2,6 +2,8 @@ package ng.name.servix.app.ui.bookings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import ng.name.servix.app.ui.a11y.heading
@@ -56,6 +62,8 @@ import ng.name.servix.app.data.repository.retrySessionRead
 import ng.name.servix.app.ui.catalogue.EmptyStateCard
 import ng.name.servix.app.ui.components.ErrorStateCard
 import ng.name.servix.app.ui.components.ServixCard
+import ng.name.servix.app.ui.components.CategoryChip
+import ng.name.servix.app.ui.components.ServixSecondaryButton
 import ng.name.servix.app.ui.components.SkeletonBox
 import ng.name.servix.app.ui.theme.BorderSand
 import ng.name.servix.app.ui.theme.Charcoal
@@ -70,6 +78,21 @@ enum class BookingsListTab {
     ACTIVE,
     PAST,
 }
+
+enum class BookingFilter(val label: String) {
+    ALL("All"), ATTENTION("Needs Attention"), IN_PROGRESS("In Progress"), SCHEDULED("Scheduled")
+}
+
+internal fun filterBookings(bookings: List<BookingDto>, filter: BookingFilter): List<BookingDto> =
+    bookings.filter { booking ->
+        when (filter) {
+            BookingFilter.ALL -> true
+            BookingFilter.ATTENTION -> booking.status in setOf("pending_payment", "delivered")
+            BookingFilter.IN_PROGRESS -> booking.status == "in_progress"
+            BookingFilter.SCHEDULED -> booking.status == "accepted"
+        }
+    }
+
 
 data class BookingsUiState(
     val ownerId: String? = null,
@@ -205,7 +228,13 @@ fun BookingsScreen(
 
     val activeList = remember(uiState.bookings) { uiState.activeBookings }
     val pastList = remember(uiState.bookings) { uiState.pastBookings }
-    val displayedBookings = if (uiState.selectedTab == BookingsListTab.ACTIVE) activeList else pastList
+    var filter by rememberSaveable { mutableStateOf(BookingFilter.ALL) }
+    val tabBookings = when (uiState.selectedTab) {
+        BookingsListTab.ACTIVE -> activeList
+        BookingsListTab.PAST -> pastList
+    }
+    val displayedBookings = filterBookings(tabBookings, filter)
+    val attentionBookings = filterBookings(activeList, BookingFilter.ATTENTION)
 
     PullToRefreshBox(
         isRefreshing = uiState.refreshing,
@@ -238,8 +267,19 @@ fun BookingsScreen(
                         BookingsListTab.PAST.name to "${stringResource(R.string.bookings_tab_past)} (${pastList.size})",
                     ),
                     selectedId = uiState.selectedTab.name,
-                    onSelect = { id -> onTabSelect(BookingsListTab.valueOf(id)) },
+                    onSelect = { id -> filter = BookingFilter.ALL; onTabSelect(BookingsListTab.valueOf(id)) },
                 )
+            }
+
+            item(key = "filters") {
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BookingFilter.entries.forEach { option ->
+                        val label = if (option == BookingFilter.ATTENTION && attentionBookings.isNotEmpty())
+                            "${option.label} (${attentionBookings.size})" else option.label
+                        CategoryChip(label = label, selected = filter == option, onClick = { filter = option })
+                    }
+                }
             }
 
             if (uiState.loading && uiState.bookings.isEmpty()) {
@@ -279,41 +319,45 @@ fun BookingsScreen(
 
             if (displayedBookings.isEmpty()) {
                 item(key = "empty_tab") {
-                    val emptyTitle = if (uiState.selectedTab == BookingsListTab.ACTIVE) {
-                        stringResource(R.string.bookings_empty_active_title)
-                    } else {
-                        stringResource(R.string.bookings_empty_past_title)
-                    }
-                    val emptyMsg = if (uiState.selectedTab == BookingsListTab.ACTIVE) {
-                        stringResource(R.string.bookings_empty_active_message)
-                    } else {
-                        stringResource(R.string.bookings_empty_past_message)
-                    }
-                    EmptyStateCard(
-                        title = emptyTitle,
-                        message = emptyMsg,
-                        actionLabel = stringResource(R.string.bookings_explore_services),
-                        onActionClick = onExploreServicesClick,
-                    )
+                    val filtered = filter != BookingFilter.ALL
+                    val emptyTitle = if (filtered) "No matching bookings" else if (uiState.selectedTab == BookingsListTab.PAST)
+                        stringResource(R.string.bookings_empty_past_title) else stringResource(R.string.bookings_empty_active_title)
+                    val emptyMsg = if (filtered) "Try another filter." else if (uiState.selectedTab == BookingsListTab.PAST)
+                        stringResource(R.string.bookings_empty_past_message) else stringResource(R.string.bookings_empty_active_message)
+                    EmptyStateCard(title = emptyTitle, message = emptyMsg,
+                        actionLabel = stringResource(R.string.bookings_explore_services), onActionClick = onExploreServicesClick)
                 }
                 return@LazyColumn
             }
 
-            groupedBookings(displayedBookings).forEach { (group, bookingsInGroup) ->
-                item(key = "group_$group") {
-                    Text(
-                        text = group,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MutedGray,
-                        modifier = Modifier.testTag("bookings_group_${group.replace(" ", "_").lowercase()}"),
-                    )
+            if (uiState.selectedTab != BookingsListTab.PAST && filter == BookingFilter.ALL && attentionBookings.isNotEmpty()) {
+                item(key = "attention_header") {
+                    Text("Needs Attention", style = MaterialTheme.typography.titleLarge, color = DeepForest,
+                        modifier = Modifier.heading())
                 }
-                items(bookingsInGroup, key = { it.id }) { booking ->
-                    BookingRow(
-                        booking = booking,
-                        onClick = { onOpenBooking(booking.id) },
-                    )
+                items(attentionBookings, key = { "attention_${it.id}" }) { booking ->
+                    ServixCard(modifier = Modifier.fillMaxWidth().clickable { onOpenBooking(booking.id) }
+                        .testTag("booking_attention_${booking.id}"), contentPadding = PaddingValues(16.dp),
+                        containerColor = ng.name.servix.app.ui.theme.SoftSand) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BookingStatusChip(booking.status)
+                            Text(booking.serviceTitle, style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                            Text(if (booking.status == "delivered") "Review the work before confirming completion."
+                                else "Payment is required to confirm this booking.",
+                                style = MaterialTheme.typography.bodyMedium, color = Charcoal)
+                            ServixSecondaryButton(text = if (booking.status == "delivered") "Review work details" else "View payment details",
+                                onClick = { onOpenBooking(booking.id) }, modifier = Modifier.fillMaxWidth(),
+                                testTag = "booking_attention_open_${booking.id}")
+                        }
+                    }
                 }
+            }
+            item(key = "list_header") {
+                Text(if (uiState.selectedTab == BookingsListTab.PAST) "Past Bookings" else "Active Bookings", style = MaterialTheme.typography.titleLarge,
+                    color = DeepForest, modifier = Modifier.heading())
+            }
+            items(displayedBookings, key = { it.id }) { booking ->
+                BookingListItemCard(booking = booking, onClick = { onOpenBooking(booking.id) })
             }
         }
     }
@@ -493,6 +537,8 @@ fun BookingListItemCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MutedGray,
             )
+            ServixSecondaryButton(text = "View details", onClick = onClick, modifier = Modifier.fillMaxWidth(),
+                testTag = "booking_details_${booking.id}")
         }
     }
 }

@@ -304,6 +304,7 @@ class ScreenshotTest {
             uiState = BookingsUiState(
                 loading = false,
                 bookings = listOf(
+                    Fixtures.booking("delivered", "99999999-9999-4999-8999-999999999999", "Brand identity review").copy(scheduledAt = at(today)),
                     Fixtures.booking("requested", "55555555-5555-4555-8555-555555555555", "Logo suite").copy(scheduledAt = at(today)),
                     Fixtures.booking("accepted", "66666666-6666-4666-8666-666666666666", "Social media starter kit").copy(scheduledAt = at(today.plusDays(2))),
                     Fixtures.booking("in_progress", "77777777-7777-4777-8777-777777777777", "Pitch deck design").copy(scheduledAt = at(today.plusDays(30))),

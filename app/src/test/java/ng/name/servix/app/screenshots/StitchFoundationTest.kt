@@ -159,6 +159,41 @@ class StitchFoundationTest {
     }
 
     @Test
+    fun bookingsHubFiltersAndOpensActualBooking() {
+        val selected = mutableStateOf(ng.name.servix.app.ui.bookings.BookingsListTab.ACTIVE)
+        val delivered = Fixtures.booking("delivered", "delivered-1", "Work to review")
+        val active = Fixtures.booking("in_progress", "active-1", "Work in progress")
+        val past = Fixtures.booking("completed", "past-1", "Completed work")
+        var opened = ""
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.bookings.BookingsScreen(user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.bookings.BookingsUiState(bookings = listOf(delivered, active, past),
+                        selectedTab = selected.value), onTabSelect = { selected.value = it }, onRefresh = {},
+                    onExploreServicesClick = {}, onSignInClick = {}, onOpenBooking = { opened = it })
+            }
+        }
+        rule.onNodeWithTag("booking_attention_delivered-1").assertExists()
+        rule.onNodeWithTag("booking_attention_open_delivered-1").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("delivered-1", opened) }
+        rule.onNodeWithText("Needs Attention (1)").performClick()
+        rule.onNodeWithTag("booking_card_SVX-4712").assertExists()
+        rule.onNodeWithTag("segmented_PAST").performClick()
+        rule.onNodeWithText("Completed work").assertExists()
+        rule.onNodeWithTag("booking_attention_delivered-1").assertDoesNotExist()
+    }
+
+    @Test
+    fun bookingsFiltersUseStatusesRatherThanGuessingFromDates() {
+        val rows = listOf(Fixtures.booking("pending_payment", "p"), Fixtures.booking("delivered", "d"),
+            Fixtures.booking("in_progress", "i"), Fixtures.booking("accepted", "a"), Fixtures.booking("completed", "c"))
+        org.junit.Assert.assertEquals(listOf("p", "d"), ng.name.servix.app.ui.bookings.filterBookings(rows,
+            ng.name.servix.app.ui.bookings.BookingFilter.ATTENTION).map { it.id })
+        org.junit.Assert.assertEquals(listOf("a"), ng.name.servix.app.ui.bookings.filterBookings(rows,
+            ng.name.servix.app.ui.bookings.BookingFilter.SCHEDULED).map { it.id })
+    }
+
+    @Test
     fun serviceGalleryUsesTypedMediaAndOnlyOneVideo() {
         val source = Fixtures.serviceDetail.copy(media = listOf(
             ng.name.servix.app.data.model.ServiceMediaDto(url = "/a", kind = "image"),
