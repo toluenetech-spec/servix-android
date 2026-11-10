@@ -6,12 +6,17 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ng.name.servix.app.data.model.*
+import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.data.repository.retrySessionRead
+import ng.name.servix.app.data.repository.signedInError
 import ng.name.servix.app.data.repository.AiRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
 
@@ -28,7 +33,8 @@ data class AiUiState(
     val pricing: AiPricingResponse? = null, val pricingError: ServixApiException? = null,
 )
 
-class AiViewModel(private val repository: AiRepository, private val catalogue: CatalogueRepository) : ViewModel() {
+class AiViewModel(private val repository: AiRepository, private val catalogue: CatalogueRepository,
+    private val session: StateFlow<SessionState>? = null) : ViewModel() {
     private val _state = MutableStateFlow(AiUiState())
     val state: StateFlow<AiUiState> = _state.asStateFlow()
     private var userId: String? = null
@@ -38,6 +44,13 @@ class AiViewModel(private val repository: AiRepository, private val catalogue: C
     private val feedbackJobs = mutableListOf<Job>()
     private val usageJobs = mutableListOf<Job>()
     private var nextId = 0L
+
+    init {
+        session?.let { states -> viewModelScope.launch {
+            states.map { (it as? SessionState.Authenticated)?.user?.id }
+                .distinctUntilChanged().collect { setUser(it) }
+        } }
+    }
 
     fun setUser(id: String?) {
         if (id == userId) return
@@ -49,9 +62,10 @@ class AiViewModel(private val repository: AiRepository, private val catalogue: C
     fun reload() {
         if (userId == null) return
         initialization?.cancel()
+        val owner = userId ?: return
         initialization = viewModelScope.launch {
-            val usage = repository.usage()
-            _state.update { it.copy(usage = usage.getOrNull(), usageError = usage.exceptionOrNull()?.message) }
+            val usage = retrySessionRead({ userId == owner && (session == null || (session.value as? SessionState.Authenticated)?.user?.id == owner) }) { repository.usage() }
+            _state.update { it.copy(usage = usage.getOrNull(), usageError = signedInError(usage.exceptionOrNull(), "Could not load AI usage. Please try again.")) }
             val cats = catalogue.getCategories()
             currentCoroutineContext().ensureActive()
             _state.update { old -> old.copy(categories = cats.getOrNull().orEmpty(), categoriesError = cats.exceptionOrNull()?.message, category = old.category.ifBlank { cats.getOrNull()?.firstOrNull()?.id.orEmpty() }) }
@@ -121,15 +135,20 @@ class AiViewModel(private val repository: AiRepository, private val catalogue: C
     private fun refreshUsage() {
         val owner = userId ?: return
         usageJobs += viewModelScope.launch {
-            repository.usage().getOrNull()?.let { meter ->
+            retrySessionRead({ userId == owner && (session == null || (session.value as? SessionState.Authenticated)?.user?.id == owner) }) { repository.usage() }.getOrNull()?.let { meter ->
                 if (userId == owner) _state.update { it.copy(usage = meter, usageError = null) }
             }
         }
     }
-    private fun asError(e: Throwable): ServixApiException = e as? ServixApiException ?: ServixApiException(0, message = e.message ?: "We couldn't reach Servix. Please try again.")
+    private fun asError(e: Throwable): ServixApiException {
+        val apiError = e as? ServixApiException
+        return if (apiError?.status == 401)
+            ServixApiException(401, code = apiError.code, message = "Servix AI could not be reached. Please try again.")
+        else apiError ?: ServixApiException(0, message = e.message ?: "We couldn't reach Servix. Please try again.")
+    }
     companion object {
-        fun factory(repo: AiRepository, catalogue: CatalogueRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = AiViewModel(repo, catalogue) as T
+        fun factory(repo: AiRepository, catalogue: CatalogueRepository, session: StateFlow<SessionState>? = null): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = AiViewModel(repo, catalogue, session) as T
         }
     }
 }

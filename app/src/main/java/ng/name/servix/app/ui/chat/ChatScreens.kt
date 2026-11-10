@@ -131,6 +131,7 @@ fun ChatsScreen(
                     ChatThreadRow(
                         thread = thread,
                         myUserId = myUserId,
+                        typing = thread.id in uiState.typingThreads,
                         onClick = { onOpenThread(thread.id) },
                     )
                     HorizontalDivider(color = BorderSand.copy(alpha = 0.6f))

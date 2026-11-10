@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,12 +20,16 @@ import ng.name.servix.app.data.realtime.ChatEvent
 import ng.name.servix.app.data.realtime.ChatEventStream
 import ng.name.servix.app.data.repository.ChatRepository
 import ng.name.servix.app.data.repository.FeaturesRepository
+import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.data.model.ServixApiException
 
 /** Everything the Chats list needs, plus the single unread total the bar and Home both read. */
 data class ChatsUiState(
+    val ownerId: String? = null,
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val threads: List<ChatThreadDto> = emptyList(),
+    val typingThreads: Set<String> = emptySet(),
     /** Sum of `unreadCount` — the ONE source for the tab badge and the Home card. */
     val unreadTotal: Int = 0,
     val connection: ChatConnection = ChatConnection.IDLE,
@@ -39,7 +47,9 @@ class ChatsViewModel(
     private val chatRepository: ChatRepository,
     private val featuresRepository: FeaturesRepository,
     private val stream: ChatEventStream,
-    private val myUserId: () -> String?,
+    private val session: StateFlow<SessionState>,
+    private val eventSource: kotlinx.coroutines.flow.SharedFlow<ChatEvent> = stream.events,
+    private val loadThreads: suspend () -> Result<List<ChatThreadDto>> = { chatRepository.threads() },
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatsUiState())
@@ -47,6 +57,12 @@ class ChatsViewModel(
 
     private var pollJob: Job? = null
     private var streamStarted = false
+    private var ownerId: String? = null
+    private var generation = 0L
+    private var loadJob: Job? = null
+    private var activeThreadId: String? = null
+    private var eventRevision = 0L
+    private val typingJobs = mutableMapOf<String, Job>()
 
     init {
         viewModelScope.launch {
@@ -55,13 +71,29 @@ class ChatsViewModel(
         }
         viewModelScope.launch {
             stream.connection.collect { connection ->
+                val previous = _uiState.value.connection
                 _uiState.update { it.copy(connection = connection) }
+                if (connection == ChatConnection.LIVE && previous != ChatConnection.LIVE && ownerId != null) refresh(quiet = true)
             }
         }
         viewModelScope.launch {
-            stream.events.collect { event -> onEvent(event) }
+            eventSource.collect { event -> onEvent(event) }
         }
-        refresh()
+        viewModelScope.launch {
+            session.map { (it as? SessionState.Authenticated)?.user?.id }
+                .distinctUntilChanged().collect { userId ->
+                    generation++
+                    loadJob?.cancel()
+                    pollJob?.cancel()
+                    pollJob = null
+                    ownerId = userId
+                    activeThreadId = null
+                    typingJobs.values.forEach { it.cancel() }
+                    typingJobs.clear()
+                    _uiState.value = ChatsUiState(ownerId = userId, loading = userId != null, aiEnabled = _uiState.value.aiEnabled)
+                    if (userId != null) refresh()
+                }
+        }
     }
 
     /** Called by the shell when the app comes to the foreground; the stream lives only while visible. */
@@ -69,39 +101,57 @@ class ChatsViewModel(
         if (streamStarted) return
         streamStarted = true
         stream.start(viewModelScope)
+        if (ownerId != null) ensurePolling()
     }
 
     fun stopStream() {
         if (!streamStarted) return
         streamStarted = false
         stream.stop()
+        pollJob?.cancel()
+        pollJob = null
+        typingJobs.values.forEach { it.cancel() }
+        typingJobs.clear()
+        _uiState.update { it.copy(typingThreads = emptySet()) }
     }
 
     fun refresh(quiet: Boolean = false) {
-        if (!quiet) _uiState.update { it.copy(loading = it.threads.isEmpty(), refreshing = !it.loading) }
-        viewModelScope.launch {
-            chatRepository.threads().fold(
+        val owner = ownerId ?: return
+        val currentGeneration = generation
+        val requestedRevision = eventRevision
+        loadJob?.cancel()
+        if (!quiet) _uiState.update { it.copy(loading = it.threads.isEmpty(), refreshing = it.threads.isNotEmpty(), error = null) }
+        loadJob = viewModelScope.launch {
+            var result = loadThreads()
+            currentCoroutineContext().ensureActive()
+            // A request started at the sign-in boundary may have carried the previous token. Retry
+            // once after the session is published; OkHttp reads the latest token on every request.
+            if ((result.exceptionOrNull() as? ServixApiException)?.status == 401 && ownerId == owner && generation == currentGeneration &&
+                (session.value as? SessionState.Authenticated)?.user?.id == owner) {
+                delay(150)
+                if ((session.value as? SessionState.Authenticated)?.user?.id != owner) return@launch
+                result = loadThreads()
+                currentCoroutineContext().ensureActive()
+            }
+            if (generation != currentGeneration || ownerId != owner || (session.value as? SessionState.Authenticated)?.user?.id != owner) return@launch
+            if (requestedRevision != eventRevision) {
+                refresh(quiet = true)
+                return@launch
+            }
+            result.fold(
                 onSuccess = { threads ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            refreshing = false,
-                            threads = threads,
-                            unreadTotal = threads.sumOf { thread -> thread.unreadCount },
-                            empty = threads.isEmpty(),
-                            error = null,
-                        )
+                    val visibleThreads = threads.map { thread ->
+                        if (thread.id == activeThreadId) thread.copy(unread = false, unreadCount = 0) else thread
                     }
-                    ensurePolling()
+                    _uiState.update { it.copy(loading = false, refreshing = false, threads = visibleThreads,
+                        unreadTotal = visibleThreads.sumOf { thread -> thread.unreadCount }, empty = visibleThreads.isEmpty(), error = null) }
+                    if (streamStarted) ensurePolling()
                 },
                 onFailure = { failure ->
-                    _uiState.update {
-                        it.copy(
-                            loading = false,
-                            refreshing = false,
-                            error = if (it.threads.isEmpty()) failure.message ?: "Chats could not be loaded." else it.error,
-                        )
-                    }
+                    val message = if ((failure as? ServixApiException)?.status == 401)
+                        "Chats could not be loaded. Please try again." else failure.message ?: "Chats could not be loaded."
+                    _uiState.update { it.copy(loading = false, refreshing = false,
+                        error = if (it.threads.isEmpty()) message else it.error) }
                 },
             )
         }
@@ -119,19 +169,26 @@ class ChatsViewModel(
 
     fun thread(threadId: String): ChatThreadDto? = _uiState.value.threads.firstOrNull { it.id == threadId }
 
+    fun setActiveThread(threadId: String?) {
+        activeThreadId = threadId
+        if (threadId != null) markReadLocally(threadId)
+    }
+
     private fun onEvent(event: ChatEvent) {
+        if (ownerId == null) return
+        if (event !is ChatEvent.Typing && event !is ChatEvent.Unknown) eventRevision++
         when (event) {
             is ChatEvent.Message -> {
                 if (_uiState.value.threads.any { it.id == event.threadId }) {
-                    applyIncoming(event.threadId, event.message.body, event.message.createdAt, event.message.senderId, event.message.kind)
+                    applyIncoming(event.threadId, event.message, isUpdate = false)
                 } else {
                     refresh(quiet = true)
                 }
             }
             is ChatEvent.MessageUpdate -> {
-                if (_uiState.value.threads.any { it.id == event.threadId }) {
-                    applyIncoming(event.threadId, event.message.body, event.message.createdAt, event.message.senderId, event.message.kind)
-                }
+                val thread = _uiState.value.threads.firstOrNull { it.id == event.threadId }
+                if (thread != null && thread.lastMessageId != null) applyIncoming(event.threadId, event.message, isUpdate = true)
+                else refresh(quiet = true)
             }
             is ChatEvent.Read -> {
                 _uiState.update { state ->
@@ -170,24 +227,36 @@ class ChatsViewModel(
             }
             is ChatEvent.ThreadEvent -> refresh(quiet = true)
             is ChatEvent.ConnectionEvent -> refresh(quiet = true)
-            is ChatEvent.Typing, is ChatEvent.Unknown -> Unit
+            is ChatEvent.Typing -> if (event.userId != ownerId) {
+                typingJobs.remove(event.threadId)?.cancel()
+                _uiState.update { state -> state.copy(typingThreads = if (event.typing)
+                    state.typingThreads + event.threadId else state.typingThreads - event.threadId) }
+                if (event.typing) typingJobs[event.threadId] = viewModelScope.launch {
+                    delay(5_000)
+                    _uiState.update { it.copy(typingThreads = it.typingThreads - event.threadId) }
+                    typingJobs.remove(event.threadId)
+                }
+            }
+            is ChatEvent.Unknown -> Unit
         }
     }
 
-    private fun applyIncoming(threadId: String, body: String, createdAt: String, senderId: String, kind: String) {
-        val mine = senderId == myUserId()
+    private fun applyIncoming(threadId: String, message: ng.name.servix.app.data.model.ChatMessageDto, isUpdate: Boolean) {
+        val mine = message.senderId == ownerId
         _uiState.update { state ->
             val threads = state.threads.map { thread ->
-                if (thread.id != threadId) {
-                    thread
-                } else {
+                if (thread.id != threadId || (isUpdate && thread.lastMessageId != message.id)) thread
+                else {
+                    val duplicate = message.id.isNotBlank() && thread.lastMessageId == message.id
+                    val increaseUnread = !isUpdate && !duplicate && !mine && activeThreadId != threadId
                     thread.copy(
-                        lastMessage = body.ifBlank { previewForKind(kind) },
-                        lastMessageKind = kind,
-                        lastMessageAt = createdAt,
-                        lastMessageSenderId = senderId,
-                        unread = if (mine) thread.unread else true,
-                        unreadCount = if (mine) thread.unreadCount else thread.unreadCount + 1,
+                        lastMessage = message.body.ifBlank { previewForKind(message.kind) },
+                        lastMessageKind = message.kind,
+                        lastMessageAt = message.createdAt,
+                        lastMessageSenderId = message.senderId,
+                        lastMessageId = message.id,
+                        unread = if (increaseUnread) true else thread.unread,
+                        unreadCount = if (increaseUnread) thread.unreadCount + 1 else thread.unreadCount,
                     )
                 }
             }.sortedByDescending { it.lastMessageAt ?: it.updatedAt ?: "" }
@@ -221,11 +290,11 @@ class ChatsViewModel(
             chatRepository: ChatRepository,
             featuresRepository: FeaturesRepository,
             stream: ChatEventStream,
-            myUserId: () -> String?,
+            session: StateFlow<SessionState>,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                ChatsViewModel(chatRepository, featuresRepository, stream, myUserId) as T
+                ChatsViewModel(chatRepository, featuresRepository, stream, session) as T
         }
     }
 }

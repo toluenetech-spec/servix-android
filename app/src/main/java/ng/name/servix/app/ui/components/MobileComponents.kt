@@ -23,6 +23,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -115,6 +119,8 @@ fun SearchField(
     onValueChange: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     testTag: String? = null,
+    onSubmit: (() -> Unit)? = null,
+    showClearButton: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -134,6 +140,8 @@ fun SearchField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = if (onSubmit != null) ImeAction.Search else ImeAction.Default),
+                keyboardActions = KeyboardActions(onSearch = { onSubmit?.invoke() }),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Charcoal),
                 decorationBox = { inner ->
                     if (value.isEmpty()) Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = MutedGray)
@@ -141,6 +149,12 @@ fun SearchField(
                 },
                 modifier = Modifier.weight(1f),
             )
+            if (showClearButton && value.isNotEmpty()) {
+                IconButton(onClick = { onValueChange(""); onSubmit?.invoke() },
+                    modifier = Modifier.size(40.dp).let { if (testTag != null) it.testTag("${testTag}_clear") else it }) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Clear search", tint = MutedGray, modifier = Modifier.size(20.dp))
+                }
+            }
         } else {
             Text(if (value.isEmpty()) placeholder else value, style = MaterialTheme.typography.bodyLarge, color = if (value.isEmpty()) MutedGray else Charcoal)
         }

@@ -109,6 +109,7 @@ import ng.name.servix.app.ui.bookings.BookingsViewModel
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen
 import ng.name.servix.app.ui.catalogue.ProfessionalProfileViewModel
 import ng.name.servix.app.ui.catalogue.SearchMode
+import ng.name.servix.app.ui.liveness.ForegroundRefresh
 import ng.name.servix.app.ui.explore.ExploreScreen
 import ng.name.servix.app.ui.catalogue.SearchViewModel
 import ng.name.servix.app.ui.catalogue.ServiceDetailScreen
@@ -135,6 +136,7 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.outlined.Chat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import ng.name.servix.app.ui.home.HomeTabScreen
 import ng.name.servix.app.ui.home.HomeWeek
@@ -250,18 +252,15 @@ fun ServixAppShell(
     // Pending destination to return to when a guest signs in from the Booking Sheet
     var pendingPostAuthRoute by remember { mutableStateOf<ServixRoute?>(null) }
 
-    val aiViewModel: AiViewModel = viewModel(factory = AiViewModel.factory(aiRepository, catalogueRepository))
-    val currentUserId = (sessionState as? SessionState.Authenticated)?.user?.id
-    LaunchedEffect(currentUserId) { aiViewModel.setUser(currentUserId) }
-
+    val aiViewModel: AiViewModel = viewModel(factory = AiViewModel.factory(aiRepository, catalogueRepository, authViewModel.sessionState))
     val homeViewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.factory(catalogueRepository, accountRepository, bookingRepository)
+        factory = HomeViewModel.factory(catalogueRepository, accountRepository, bookingRepository, authViewModel.sessionState)
     )
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.factory(catalogueRepository)
     )
     val bookingsViewModel: BookingsViewModel = viewModel(
-        factory = BookingsViewModel.factory(bookingRepository)
+        factory = BookingsViewModel.factory(bookingRepository, authViewModel.sessionState)
     )
 
     // Release 1.1: flags decide what exists at all; the chat store owns the unread number.
@@ -269,19 +268,29 @@ fun ServixAppShell(
     LaunchedEffect(Unit) { featuresRepository.refresh() }
     val sessionUserId = (sessionState as? SessionState.Authenticated)?.user?.id
     val sessionRole = (sessionState as? SessionState.Authenticated)?.user?.role
-    val sessionReady = sessionState !is SessionState.Initializing
-    LaunchedEffect(sessionUserId, sessionRole, sessionReady) {
-        homeViewModel.clearProfessionalHome()
-        homeViewModel.clearCustomerHome()
-        if (sessionReady) {
-            if (sessionUserId != null && sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId)
-            else homeViewModel.loadHome(sessionUserId)
-        }
-    }
     val chatsViewModel: ChatsViewModel = viewModel(
-        factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream) { sessionUserId }
+        factory = ChatsViewModel.factory(chatRepository, featuresRepository, chatEventStream, authViewModel.sessionState)
     )
-    val chatsState by chatsViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedChatsState by chatsViewModel.uiState.collectAsStateWithLifecycle()
+    val chatsState = if (collectedChatsState.ownerId == sessionUserId) collectedChatsState
+        else ng.name.servix.app.ui.chat.ChatsUiState(ownerId = sessionUserId)
+    val notificationsViewModel: NotificationsViewModel = viewModel(
+        factory = NotificationsViewModel.factory(accountRepository, authViewModel.sessionState)
+    )
+    val collectedNotificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
+    val notificationsState = if (collectedNotificationsState.ownerId == sessionUserId) collectedNotificationsState
+        else ng.name.servix.app.ui.notifications.NotificationsUiState(ownerId = sessionUserId)
+    val refreshKey = sessionUserId to updateState.completedChecks
+    val homeRefreshState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val professionalRefreshState by homeViewModel.professionalState.collectAsStateWithLifecycle()
+    val bookingsRefreshState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
+    val showRefreshLine = when {
+        currentDest?.hasRoute(ServixRoute.Home::class) == true -> if (sessionRole == "professional") professionalRefreshState.refreshing else homeRefreshState.refreshing
+        currentDest?.hasRoute(ServixRoute.Bookings::class) == true -> bookingsRefreshState.refreshing
+        currentDest?.hasRoute(ServixRoute.Notifications::class) == true -> notificationsState.refreshing
+        else -> false
+    }
+    ForegroundRefresh(refreshKey) { if (sessionUserId != null) notificationsViewModel.load(refresh = true) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val shellScope = rememberCoroutineScope()
     // Chat entry point from a booking; the API creates or returns the one thread per booking.
@@ -292,21 +301,64 @@ fun ServixAppShell(
             }
         }
     }
-    DisposableEffect(lifecycleOwner, sessionUserId) {
+    DisposableEffect(lifecycleOwner, sessionUserId, isOnline) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> if (sessionUserId != null) chatsViewModel.startStream()
-                Lifecycle.Event.ON_STOP -> chatsViewModel.stopStream()
+                Lifecycle.Event.ON_RESUME -> if (sessionUserId != null && isOnline) chatsViewModel.startStream()
+                Lifecycle.Event.ON_PAUSE -> chatsViewModel.stopStream()
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) && sessionUserId != null) {
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && sessionUserId != null && isOnline) {
             chatsViewModel.startStream()
         }
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             chatsViewModel.stopStream()
+        }
+    }
+
+    // Boolean connectivity alone misses Wi-Fi ↔ mobile handovers where both networks are online.
+    DisposableEffect(lifecycleOwner, sessionUserId) {
+        val manager = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val disposed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val previousNetwork = java.util.concurrent.atomic.AtomicReference(manager.activeNetwork)
+        val callback = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                val previous = previousNetwork.getAndSet(network)
+                if (previous != null && previous != network) shellScope.launch {
+                    if (!disposed.get() && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+                        (authViewModel.sessionState.value as? SessionState.Authenticated)?.user?.id == sessionUserId && sessionUserId != null) {
+                        chatsViewModel.stopStream()
+                        chatsViewModel.startStream()
+                    }
+                }
+            }
+        }
+        val registered = runCatching { manager.registerDefaultNetworkCallback(callback) }.isSuccess
+        onDispose {
+            disposed.set(true)
+            if (registered) runCatching { manager.unregisterNetworkCallback(callback) }
+        }
+    }
+
+    LaunchedEffect(chatEventStream, sessionUserId, sessionRole) {
+        chatEventStream.events.collect { event ->
+            val threadId = when (event) {
+                is ng.name.servix.app.data.realtime.ChatEvent.Message -> event.threadId
+                is ng.name.servix.app.data.realtime.ChatEvent.ThreadEvent -> event.threadId
+                else -> null
+            }
+            if (threadId != null && sessionUserId != null) {
+                val thread = chatsViewModel.thread(threadId)
+                if (thread == null || !thread.bookingId.isNullOrBlank() || thread.booking != null) {
+                    bookingsViewModel.loadBookings(forceRefresh = true)
+                    if (sessionRole == "professional") homeViewModel.loadProfessionalHome(sessionUserId, forceRefresh = true)
+                    else homeViewModel.loadHome(sessionUserId, forceRefresh = true)
+                    notificationsViewModel.load(refresh = true)
+                }
+            }
         }
     }
 
@@ -342,7 +394,7 @@ fun ServixAppShell(
     }
 
     val isAuthenticated = sessionState is SessionState.Authenticated
-    var unreadNotifications by remember { mutableStateOf(0) }
+    val unreadNotifications = notificationsState.unread
     // One light tick when a sign-in (email, provider or security finish) lands.
     val signInTick = rememberSuccessTick()
     var lastAuthState by remember { mutableStateOf<Boolean?>(null) }
@@ -351,13 +403,6 @@ fun ServixAppShell(
         lastAuthState = isAuthenticated
     }
 
-    LaunchedEffect(isAuthenticated, currentDest) {
-        unreadNotifications = if (isAuthenticated) {
-            accountRepository.getUnreadNotificationCount().getOrNull()?.unread ?: 0
-        } else {
-            0
-        }
-    }
     val startRoute: ServixRoute = if (isAuthenticated) {
         ServixRoute.Home
     } else {
@@ -437,7 +482,13 @@ fun ServixAppShell(
 
     ServixInsetScaffold(
         topBar = {
-            OfflineBanner(isOnline = isOnline)
+            Column {
+                OfflineBanner(isOnline = isOnline)
+                if (showRefreshLine) androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = ng.name.servix.app.ui.theme.ForestGreen,
+                )
+            }
         },
         bottomBar = {
             if (!isAuthDestination) {
@@ -715,6 +766,18 @@ fun ServixAppShell(
                 val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                 val aiUiState by aiViewModel.state.collectAsStateWithLifecycle()
                 val professionalHome by homeViewModel.professionalState.collectAsStateWithLifecycle()
+                var professionalActionWasBusy by remember(user?.id) { mutableStateOf(false) }
+                LaunchedEffect(professionalHome.busyBookingId) {
+                    if (professionalActionWasBusy && professionalHome.busyBookingId == null) {
+                        bookingsViewModel.loadBookings(forceRefresh = true)
+                        notificationsViewModel.load(refresh = true)
+                    }
+                    professionalActionWasBusy = professionalHome.busyBookingId != null
+                }
+                ForegroundRefresh(refreshKey) {
+                    if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
+                    else homeViewModel.loadHome(user?.id, forceRefresh = true)
+                }
 
                 if (user?.role == "professional") {
                     ng.name.servix.app.ui.home.ProfessionalHomeScreen(
@@ -855,7 +918,7 @@ fun ServixAppShell(
                     onToggleSave = profileViewModel::toggleSaveProfessional,
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onOpenService = { serviceSlug ->
-                        navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug))
+                        navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug, openBookingSheet = true))
                     },
                 )
             }
@@ -928,7 +991,8 @@ fun ServixAppShell(
                     },
                     onNavigateToBookingAfterPay = { bookingId ->
                         bookingsViewModel.loadBookings(forceRefresh = true)
-                        homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
+                        if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
+                        else homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
                         navController.navigate(
                             ServixRoute.BookingDetail(
                                 id = bookingId,
@@ -947,16 +1011,12 @@ fun ServixAppShell(
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val bookingsUiState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
-
-                LaunchedEffect(user?.id) {
-                    if (user != null) {
-                        bookingsViewModel.loadBookings(forceRefresh = false)
-                    }
-                }
+                ForegroundRefresh(refreshKey) { if (user != null) bookingsViewModel.loadBookings(forceRefresh = true) }
 
                 BookingsScreen(
                     user = user,
-                    uiState = bookingsUiState,
+                    uiState = if (bookingsUiState.ownerId == user?.id) bookingsUiState
+                        else ng.name.servix.app.ui.bookings.BookingsUiState(ownerId = user?.id, loading = user != null),
                     onTabSelect = bookingsViewModel::selectTab,
                     onRefresh = { bookingsViewModel.loadBookings(forceRefresh = true) },
                     onExploreServicesClick = {
@@ -979,15 +1039,33 @@ fun ServixAppShell(
                 val user = (sessionState as? SessionState.Authenticated)?.user
                 val detailViewModel: BookingDetailViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
+                    key = "booking-${user?.id.orEmpty()}-${route.id}",
                     factory = BookingDetailViewModel.factory(bookingRepository),
                 )
                 val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(route.id) {
-                    detailViewModel.loadBooking(
-                        id = route.id,
-                        startPollingIfPending = route.pollingAfterPay,
-                        forceRefresh = false,
+                val detailLifecycle = LocalLifecycleOwner.current
+                LaunchedEffect(detailLifecycle, route.id, sessionUserId) {
+                    detailLifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        chatEventStream.events.collect { event ->
+                            val threadId = when (event) {
+                                is ng.name.servix.app.data.realtime.ChatEvent.Message -> event.threadId
+                                is ng.name.servix.app.data.realtime.ChatEvent.ThreadEvent -> event.threadId
+                                else -> null
+                            }
+                            if (threadId != null && sessionUserId != null) {
+                                val thread = chatsViewModel.thread(threadId)
+                                if (thread == null || thread.bookingId == route.id) detailViewModel.loadBooking(route.id, forceRefresh = true)
+                            }
+                        }
+                    }
+                }
+
+                ForegroundRefresh(refreshKey to route.id) {
+                    if (user != null) detailViewModel.loadBooking(
+                        route.id,
+                        startPollingIfPending = route.pollingAfterPay && !detailUiState.isPollingPayment && !detailUiState.paymentPollTimedOut,
+                        forceRefresh = true,
                     )
                 }
 
@@ -995,7 +1073,9 @@ fun ServixAppShell(
                 LaunchedEffect(detailUiState.booking?.status, detailUiState.booking?.hasReview) {
                     if (detailUiState.booking != null) {
                         bookingsViewModel.loadBookings(forceRefresh = true)
-                        homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
+                        notificationsViewModel.load(refresh = true)
+                        if (user?.role == "professional") homeViewModel.loadProfessionalHome(user.id, forceRefresh = true)
+                        else homeViewModel.loadHome(userId = user?.id, forceRefresh = true)
                     }
                 }
 
@@ -1003,6 +1083,7 @@ fun ServixAppShell(
                     uiState = detailUiState,
                     pollingAfterPay = route.pollingAfterPay,
                     onResumeCheck = detailViewModel::onScreenResumed,
+                    onPause = detailViewModel::onScreenPaused,
                     onBackClick = {
                         if (!navController.popBackStack()) {
                             navController.navigate(ServixRoute.Bookings)
@@ -1074,8 +1155,6 @@ fun ServixAppShell(
             }
 
             composable<ServixRoute.Notifications> {
-                val notificationsViewModel = remember { NotificationsViewModel(accountRepository) }
-                val notificationsState by notificationsViewModel.uiState.collectAsStateWithLifecycle()
                 NotificationsScreen(
                     uiState = notificationsState,
                     onBackClick = { navController.popBackStack() },
@@ -1114,6 +1193,14 @@ fun ServixAppShell(
                 popExitTransition = { fadeOut(tween(tabMs)) },
             ) {
                 val user = (sessionState as? SessionState.Authenticated)?.user
+                ForegroundRefresh(refreshKey) {
+                    if (user != null) {
+                        authViewModel.refreshSessionUser()
+                        if ((authViewModel.sessionState.value as? SessionState.Authenticated)?.user?.id == user.id)
+                            homeViewModel.loadHome(user.id, forceRefresh = true)
+                    }
+                }
+                androidx.compose.runtime.key(user?.id) {
                 AccountHubScreen(
                     user = user,
                     accountRepository = accountRepository,
@@ -1134,6 +1221,7 @@ fun ServixAppShell(
                         }
                     }
                 )
+                }
             }
 
             composable<ServixRoute.Chats>(
@@ -1176,7 +1264,26 @@ fun ServixAppShell(
                 val conversationState by conversationViewModel.uiState.collectAsStateWithLifecycle()
                 val thread = chatsState.threads.firstOrNull { it.id == route.threadId }
                 var contactCardOpen by remember { mutableStateOf(false) }
-                LaunchedEffect(route.threadId) { chatsViewModel.markReadLocally(route.threadId) }
+                val conversationLifecycle = LocalLifecycleOwner.current
+                DisposableEffect(conversationLifecycle, route.threadId) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        when (event) {
+                            Lifecycle.Event.ON_RESUME -> { chatsViewModel.setActiveThread(route.threadId); conversationViewModel.setVisible(true) }
+                            Lifecycle.Event.ON_PAUSE -> { chatsViewModel.setActiveThread(null); conversationViewModel.setVisible(false) }
+                            else -> Unit
+                        }
+                    }
+                    conversationLifecycle.lifecycle.addObserver(observer)
+                    if (conversationLifecycle.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        chatsViewModel.setActiveThread(route.threadId)
+                        conversationViewModel.setVisible(true)
+                    }
+                    onDispose {
+                        conversationLifecycle.lifecycle.removeObserver(observer)
+                        chatsViewModel.setActiveThread(null)
+                        conversationViewModel.setVisible(false)
+                    }
+                }
                 ConversationScreen(
                     uiState = conversationState,
                     thread = thread,

@@ -88,6 +88,10 @@ class ServixNetworkModule(
                         .build()
                 }
 
+                // A request made as a guest must never expire a session that is being established.
+                // If a token appeared above we retry with it once; otherwise there is no session to refresh.
+                if (requestToken.isNullOrBlank()) return null
+
                 // Perform single-flight POST /auth/refresh
                 val refreshResult = executeSyncRefresh()
                 return if (refreshResult != null && !refreshResult.accessToken.isNullOrBlank()) {
@@ -109,6 +113,8 @@ class ServixNetworkModule(
      */
     fun executeSyncRefresh(): AuthSessionResponse? {
         synchronized(refreshLock) {
+            // Login/logout may complete while the refresh request is in flight.
+            val refreshTokenOwner = tokenStore.getAccessToken()
             val baseUrl = BuildConfig.API_BASE_URL.trimEnd('/')
             // Empty body with no Content-Type header so Fastify accepts it cleanly
             val emptyBody = ByteArray(0).toRequestBody(null, 0, 0)
@@ -126,18 +132,22 @@ class ServixNetworkModule(
                         val parsed = ApiErrorParser.json.decodeFromString<AuthSessionResponse>(raw)
                         val newToken = parsed.accessToken
                         if (!newToken.isNullOrBlank()) {
-                            tokenStore.setAccessToken(newToken)
-                            parsed.user?.let { tokenStore.setCachedUser(it) }
-                            onSessionRefreshed(parsed.user, newToken)
-                            parsed
+                            val applied = tokenStore.runIfTokenUnchanged(refreshTokenOwner) {
+                                tokenStore.setAccessToken(newToken)
+                                parsed.user?.let { tokenStore.setCachedUser(it) }
+                                onSessionRefreshed(parsed.user, newToken)
+                            }
+                            if (applied) parsed else null
                         } else {
                             null
                         }
                     } else {
                         if (res.code == 401 || res.code == 403) {
-                            tokenStore.clear()
-                            cookieJar.clear()
-                            onSessionExpired()
+                            tokenStore.runIfTokenUnchanged(refreshTokenOwner) {
+                                tokenStore.clear()
+                                cookieJar.clear()
+                                onSessionExpired()
+                            }
                         }
                         null
                     }

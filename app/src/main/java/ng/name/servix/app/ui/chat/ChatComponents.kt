@@ -57,6 +57,7 @@ fun ChatThreadRow(
     myUserId: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    typing: Boolean = false,
 ) {
     val name = thread.person?.fullName.orEmpty().ifBlank { "Servix user" }
     val title = thread.person?.professionalProfile?.title
@@ -107,7 +108,7 @@ fun ChatThreadRow(
             }
             Text(title, style = MaterialTheme.typography.labelSmall, color = MutedGray, maxLines = 1)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (thread.lastMessageSenderId == myUserId && thread.lastMessage.isNotBlank()) {
+                if (!typing && thread.lastMessageSenderId == myUserId && thread.lastMessage.isNotBlank()) {
                     TickGlyph(
                         state = ChatTicks.state(
                             ChatMessageDto(
@@ -122,9 +123,9 @@ fun ChatThreadRow(
                     )
                 }
                 Text(
-                    text = thread.lastMessage.ifBlank { "No messages yet" },
+                    text = if (typing) "Typing…" else thread.lastMessage.ifBlank { "No messages yet" },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (thread.unreadCount > 0) Charcoal else MutedGray,
+                    color = if (typing) ForestGreen else if (thread.unreadCount > 0) Charcoal else MutedGray,
                     maxLines = 1,
                     modifier = Modifier.weight(1f),
                 )

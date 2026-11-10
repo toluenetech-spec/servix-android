@@ -3,6 +3,12 @@ package ng.name.servix.app.screenshots
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import okhttp3.OkHttpClient
@@ -224,26 +230,53 @@ class ScreenshotTest {
     }
 
     @Test
-    fun professionalProfile() = rule.capture("08_professional_profile") {
+    fun professionalProfile() = rule.capture("08_professional_profile") { profilePreview() }
+
+    @Test
+    fun professionalProfileServices() = rule.capture("70_profile_services", afterContent = {
+        rule.onNodeWithTag("profile_tab_services").performClick()
+    }) { profilePreview() }
+
+    @Test
+    fun professionalProfilePortfolio() = rule.capture("71_profile_portfolio", afterContent = {
+        rule.onNodeWithTag("profile_tab_portfolio").performClick()
+    }) { profilePreview() }
+
+    @Test
+    fun professionalProfileReviews() = rule.capture("72_profile_reviews", afterContent = {
+        rule.onNodeWithTag("profile_tab_reviews").performScrollTo().performClick()
+    }) { profilePreview() }
+
+    @Composable
+    private fun profilePreview() {
         ProfessionalProfileScreen(
             user = Fixtures.user,
             uiState = ProfessionalProfileUiState(
-                slug = "tunde-bakare",
-                loading = false,
-                professional = Fixtures.professionalDetail,
-                services = Fixtures.services,
-                reviews = Fixtures.reviews,
-                availability = AvailabilitySummaryDto("2026-11-06T09:00:00.000Z", true, true, true),
-                isSaved = false,
+                slug = "tunde-bakare", loading = false,
+                professional = Fixtures.professionalDetail.copy(portfolio = listOf(
+                    PortfolioItemDto(id = "work-1", title = "Brand identity", description = "Identity design"),
+                    PortfolioItemDto(id = "work-2", title = "Packaging", description = "Product packaging"),
+                )),
+                services = Fixtures.services, reviews = Fixtures.reviews,
+                serviceMediaCounts = mapOf(Fixtures.services.first().id to
+                    ng.name.servix.app.ui.catalogue.ServiceMediaCounts(3, 1, 1)),
+                availability = AvailabilitySummaryDto("2026-11-06T09:00:00.000Z", true, true, true), isSaved = false,
             ),
-            categoryNameFor = { "Graphic Design" },
-            onBackClick = {}, onRetry = {}, onBrowseProfessionalsClick = {}, onToggleSave = {},
-            onSignInClick = {}, onOpenService = {},
+            categoryNameFor = { "Graphic Design" }, onBackClick = {}, onRetry = {}, onBrowseProfessionalsClick = {},
+            onToggleSave = {}, onSignInClick = {}, onOpenService = {},
         )
     }
 
     @Test
-    fun serviceDetail() = rule.capture("09_service_detail") {
+    fun serviceDetail() = rule.capture("09_service_detail") { serviceDetailPreview() }
+
+    @Test
+    fun serviceDetailProtection() = rule.capture("73_service_detail_protection", afterContent = {
+        rule.onNodeWithText("Reviews").performScrollTo()
+    }) { serviceDetailPreview() }
+
+    @Composable
+    private fun serviceDetailPreview() {
         ServiceDetailScreen(
             user = Fixtures.user,
             uiState = ServiceDetailUiState(
@@ -271,6 +304,7 @@ class ScreenshotTest {
             uiState = BookingsUiState(
                 loading = false,
                 bookings = listOf(
+                    Fixtures.booking("delivered", "99999999-9999-4999-8999-999999999999", "Brand identity review").copy(scheduledAt = at(today)),
                     Fixtures.booking("requested", "55555555-5555-4555-8555-555555555555", "Logo suite").copy(scheduledAt = at(today)),
                     Fixtures.booking("accepted", "66666666-6666-4666-8666-666666666666", "Social media starter kit").copy(scheduledAt = at(today.plusDays(2))),
                     Fixtures.booking("in_progress", "77777777-7777-4777-8777-777777777777", "Pitch deck design").copy(scheduledAt = at(today.plusDays(30))),
@@ -415,6 +449,25 @@ class ScreenshotTest {
                 booking = Fixtures.booking("completed", "44444444-4444-4444-8444-444444444444", "Pitch deck design"),
             ),
         )
+    }
+
+    @Test
+    fun bookingStatusVariants() {
+        listOf("pending_payment", "requested", "accepted", "in_progress", "delivered", "completed", "disputed",
+            "cancelled", "declined", "refunded").forEach { status ->
+            rule.capture("74_booking_$status") {
+                BookingDetail(BookingDetailUiState(bookingId = Fixtures.BOOKING_ID, loading = false,
+                    booking = Fixtures.booking(status)))
+            }
+        }
+    }
+
+    @Test
+    fun bookingDeliveredChecklist() = rule.capture("75_booking_before_confirm", afterContent = {
+        rule.onNodeWithTag("booking_detail_end").performScrollTo()
+    }) {
+        BookingDetail(BookingDetailUiState(bookingId = Fixtures.BOOKING_ID, loading = false,
+            booking = Fixtures.booking("delivered")))
     }
 
     @Test

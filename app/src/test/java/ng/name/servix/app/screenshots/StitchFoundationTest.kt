@@ -23,7 +23,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
@@ -98,6 +107,278 @@ class StitchFoundationTest {
             onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
             onOpenProfessional = {}, onOpenService = {},
         )
+    }
+
+    @Test
+    fun exploreSearchSubmitClearAndFilterSheet() {
+        val query = mutableStateOf("plumbing")
+        var submissions = 0
+        var clearedFilters = 0
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = ng.name.servix.app.ui.catalogue.SearchUiState(query = query.value, loading = false,
+                        selectedCategory = "graphic-design", categories = Fixtures.categories, total = 0),
+                    categoryNameFor = { "Graphic Design" }, onQueryChange = { query.value = it },
+                    onQuerySubmit = { submissions++ }, onModeChange = {}, onCategorySelect = {},
+                    onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+                    onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = { clearedFilters++ },
+                    onRefresh = {}, onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNode(hasSetTextAction()).performClick().performImeAction()
+        rule.runOnIdle { org.junit.Assert.assertEquals(1, submissions) }
+        rule.onNodeWithTag("explore_search_field_clear").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("", query.value); org.junit.Assert.assertEquals(2, submissions) }
+        rule.onNodeWithTag("explore_filters_chip").performClick()
+        rule.onNodeWithTag("explore_show_results").assertIsDisplayed()
+        rule.onNodeWithTag("explore_clear_filters").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals(1, clearedFilters) }
+        rule.onNodeWithTag("explore_show_results").performClick()
+        rule.onNodeWithTag("explore_clear_filters").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h480dp-xxhdpi")
+    fun exploreFilterSheetScrollsOnShortScreen() {
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = ng.name.servix.app.ui.catalogue.SearchUiState(loading = false,
+                        selectedCategory = "graphic-design", categories = Fixtures.categories),
+                    categoryNameFor = { "Graphic Design" }, onQueryChange = {}, onQuerySubmit = {},
+                    onModeChange = {}, onCategorySelect = {}, onLocationChange = {}, onRatingSelect = {},
+                    onPriceSelect = {}, onPriceLimitChange = {}, onAvailabilitySelect = {}, onSortSelect = {},
+                    onClearFilters = {}, onRefresh = {}, onLoadNextPage = {}, onOpenProfessional = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("explore_filters_chip").performClick()
+        rule.onNodeWithText("Availability").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithTag("explore_show_results").assertIsDisplayed().performClick()
+        rule.onNodeWithTag("explore_clear_filters").assertDoesNotExist()
+    }
+
+    @Test
+    fun bookingStatusHeadersCoverAllTenStates() {
+        val expected = mapOf("pending_payment" to "Payment due", "requested" to "Waiting for acceptance",
+            "accepted" to "Booking accepted", "in_progress" to "Work in progress",
+            "delivered" to "Awaiting your confirmation", "completed" to "Completed", "disputed" to "Under review",
+            "cancelled" to "Cancelled", "declined" to "Declined", "refunded" to "Refunded")
+        expected.forEach { (status, title) ->
+            org.junit.Assert.assertEquals(title, ng.name.servix.app.ui.bookings.bookingStatusTitle(status))
+            org.junit.Assert.assertTrue(ng.name.servix.app.ui.bookings.bookingNextStepSentence(status).isNotBlank())
+        }
+    }
+
+    @Test
+    fun deliveredChecklistIsInformationalAndDoesNotGateConfirmation() {
+        val state = mutableStateOf(ng.name.servix.app.ui.bookings.BookingDetailUiState(
+            loading = false, booking = Fixtures.booking("delivered")))
+        var disputeReason = ""
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.bookings.BookingDetailScreen(uiState = state.value, pollingAfterPay = false,
+                    onResumeCheck = {}, onBackClick = {}, onRetry = {}, onRefreshPaymentStatus = {}, onPayClick = {},
+                    onOpenModal = { state.value = state.value.copy(activeModal = it) },
+                    onCloseModal = { state.value = state.value.copy(activeModal = null) }, onSubmitCancel = {},
+                    onSubmitConfirmCompletion = {}, onSubmitDispute = { disputeReason = it }, onSubmitReview = { _, _ -> },
+                    onStartBookAgain = {}, onContinueRebook = { _, _, _ -> }, onOpenProfessional = {}, onOpenService = {})
+            }
+        }
+        rule.onNodeWithTag("booking_before_confirm").assertExists()
+        rule.onNodeWithText("The work described in this booking is done").assertExists()
+        rule.onNodeWithText("You have checked the result yourself").assertExists()
+        rule.onNodeWithText("Anything wrong? Raise a dispute instead of confirming").assertExists()
+        rule.onNodeWithTag("booking_header_confirm").performClick()
+        rule.onNodeWithTag("modal_confirm_completion_submit").assertIsEnabled()
+        rule.runOnIdle { state.value = state.value.copy(activeModal = null) }
+        rule.onNodeWithTag("booking_header_dispute").performClick()
+        rule.onNodeWithTag("modal_dispute_reason_input").performTextInput("Work was not completed")
+        rule.onNodeWithTag("modal_dispute_submit_button").assertIsEnabled().performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("Work was not completed", disputeReason) }
+        rule.runOnIdle { state.value = state.value.copy(activeModal = null, booking = Fixtures.booking("accepted")) }
+        rule.onNodeWithTag("booking_before_confirm").assertDoesNotExist()
+    }
+
+    @Test
+    fun bookingsHubFiltersAndOpensActualBooking() {
+        val selected = mutableStateOf(ng.name.servix.app.ui.bookings.BookingsListTab.ACTIVE)
+        val delivered = Fixtures.booking("delivered", "delivered-1", "Work to review")
+        val active = Fixtures.booking("in_progress", "active-1", "Work in progress")
+        val past = Fixtures.booking("completed", "past-1", "Completed work")
+        var opened = ""
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.bookings.BookingsScreen(user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.bookings.BookingsUiState(bookings = listOf(delivered, active, past),
+                        selectedTab = selected.value), onTabSelect = { selected.value = it }, onRefresh = {},
+                    onExploreServicesClick = {}, onSignInClick = {}, onOpenBooking = { opened = it })
+            }
+        }
+        rule.onNodeWithTag("booking_attention_delivered-1").assertExists()
+        rule.onNodeWithTag("booking_attention_open_delivered-1").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("delivered-1", opened) }
+        rule.onNodeWithText("Needs Attention (1)").performClick()
+        rule.onNodeWithTag("booking_card_SVX-4712").assertExists()
+        rule.onNodeWithTag("segmented_PAST").performClick()
+        rule.onNodeWithText("Completed work").assertExists()
+        rule.onNodeWithTag("booking_attention_delivered-1").assertDoesNotExist()
+    }
+
+    @Test
+    fun bookingsFiltersUseStatusesRatherThanGuessingFromDates() {
+        val rows = listOf(Fixtures.booking("pending_payment", "p"), Fixtures.booking("delivered", "d"),
+            Fixtures.booking("in_progress", "i"), Fixtures.booking("accepted", "a"), Fixtures.booking("completed", "c"))
+        org.junit.Assert.assertEquals(listOf("p", "d"), ng.name.servix.app.ui.bookings.filterBookings(rows,
+            ng.name.servix.app.ui.bookings.BookingFilter.ATTENTION).map { it.id })
+        org.junit.Assert.assertEquals(listOf("a"), ng.name.servix.app.ui.bookings.filterBookings(rows,
+            ng.name.servix.app.ui.bookings.BookingFilter.SCHEDULED).map { it.id })
+    }
+
+    @Test
+    fun serviceGalleryUsesTypedMediaAndOnlyOneVideo() {
+        val source = Fixtures.serviceDetail.copy(media = listOf(
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/a", kind = "image"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/b", kind = "document", fileName = "details.pdf"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/c", kind = "video"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/d", kind = "video"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/e.pdf", kind = "image"),
+        ))
+        val items = ng.name.servix.app.ui.catalogue.serviceGalleryItems(source)
+        org.junit.Assert.assertEquals(listOf("image", "document", "video", "image"), items.map { it.kind })
+        org.junit.Assert.assertEquals("details.pdf", items[1].fileName)
+    }
+
+    @Test
+    fun serviceGalleryPagesThroughDocumentsAndVideo() {
+        val media = listOf(
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/doc", kind = "document", fileName = "details.pdf"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/video", kind = "video", fileName = "video"),
+        )
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ServiceDetailScreen(
+                    user = Fixtures.user, uiState = ng.name.servix.app.ui.catalogue.ServiceDetailUiState(
+                        loading = false, service = Fixtures.serviceDetail.copy(media = media)),
+                    categoryNameFor = { "Graphic Design" }, onSelectSlot = {}, onNotesChange = {},
+                    onSubmitBookAndPay = {}, onBackClick = {}, onRetry = {}, onBrowseServicesClick = {},
+                    onOpenProfessional = {}, onSignInToBookClick = {}, onCreateAccountToBookClick = {},
+                    onNavigateToBookingAfterPay = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("service_media_document").assertIsDisplayed()
+        rule.onNodeWithTag("service_detail_pager").performTouchInput { swipeLeft() }
+        rule.onNodeWithTag("service_media_video").assertIsDisplayed()
+    }
+
+    @Test
+    fun serviceDetailKeepsBookingAndOmitsSchedulingAndFaqBlocks() {
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ServiceDetailScreen(
+                    user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.catalogue.ServiceDetailUiState(loading = false,
+                        service = Fixtures.serviceDetail, availabilitySlots = Fixtures.availabilitySlots),
+                    categoryNameFor = { "Graphic Design" }, onSelectSlot = {}, onNotesChange = {},
+                    onSubmitBookAndPay = {}, onBackClick = {}, onRetry = {}, onBrowseServicesClick = {},
+                    onOpenProfessional = {}, onSignInToBookClick = {}, onCreateAccountToBookClick = {},
+                    onNavigateToBookingAfterPay = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("service_detail_title").assertExists()
+        rule.onNodeWithTag("service_faq_0").assertDoesNotExist()
+        rule.onNodeWithTag("service_book_bar_button").performClick()
+        rule.onNodeWithTag("booking_sheet_container").assertExists()
+    }
+
+    @Test
+    fun profileMediaCountsUseTypedServiceMedia() {
+        val media = listOf(
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "image"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "image"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "video"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "document"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "other"),
+        )
+        org.junit.Assert.assertEquals("2 photos · 1 video · 1 PDF",
+            ng.name.servix.app.ui.catalogue.serviceMediaCounts(media).label())
+        org.junit.Assert.assertEquals("", ng.name.servix.app.ui.catalogue.serviceMediaCounts(emptyList()).label())
+    }
+
+    @Test
+    fun profileServiceCardShowsActualMediaCountsAndOpensService() {
+        var opened = ""
+        val service = Fixtures.services.first()
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen(
+                    user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.catalogue.ProfessionalProfileUiState(
+                        loading = false, professional = Fixtures.professionalDetail, services = listOf(service),
+                        serviceMediaCounts = mapOf(service.id to ng.name.servix.app.ui.catalogue.ServiceMediaCounts(3, 1, 1))),
+                    categoryNameFor = { "" }, onBackClick = {}, onRetry = {}, onBrowseProfessionalsClick = {},
+                    onToggleSave = {}, onSignInClick = {}, onOpenService = { opened = it },
+                )
+            }
+        }
+        rule.onNodeWithTag("profile_tab_services").performClick()
+        rule.onNodeWithText("3 photos · 1 video · 1 PDF").assertExists()
+        rule.onNodeWithTag("profile_select_service_${service.id}").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals(service.id, opened) }
+    }
+
+    @Test
+    fun profileShowsServiceLoadErrorAndRetriesInsteadOfClaimingNoServices() {
+        var retries = 0
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen(
+                    user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.catalogue.ProfessionalProfileUiState(
+                        loading = false, professional = Fixtures.professionalDetail,
+                        servicesError = "Services could not be loaded."),
+                    categoryNameFor = { "" }, onBackClick = {}, onRetry = { retries++ },
+                    onBrowseProfessionalsClick = {}, onToggleSave = {}, onSignInClick = {}, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("profile_tab_services").performClick()
+        rule.onNodeWithText("Services could not be loaded.").assertExists()
+        rule.onNodeWithText("No services listed").assertDoesNotExist()
+        rule.onNodeWithTag("retry_button").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals(1, retries) }
+        rule.onNodeWithTag("profile_request_booking_button").performClick()
+        rule.onNodeWithTag("profile_sheet_services_error").assertExists()
+        rule.onNodeWithText("Booking coming soon").assertDoesNotExist()
+    }
+
+    @Test
+    fun exploreResultUsesRealFieldsAndOpensProfile() {
+        var opened = ""
+        val pro = ng.name.servix.app.data.model.ProfessionalSummaryDto(id = "pro-1", name = "Ada Example",
+            title = "Technician", location = "Ibadan", rating = 4.8, reviewCount = 12,
+            startingPrice = 12000, completedProjects = 7, verified = false)
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.explore.ExploreScreen(
+                    uiState = ng.name.servix.app.ui.catalogue.SearchUiState(query = "technician", loading = false,
+                        professionals = listOf(pro), total = 1), categoryNameFor = { "" },
+                    onQueryChange = {}, onQuerySubmit = {}, onModeChange = {}, onCategorySelect = {},
+                    onLocationChange = {}, onRatingSelect = {}, onPriceSelect = {}, onPriceLimitChange = {},
+                    onAvailabilitySelect = {}, onSortSelect = {}, onClearFilters = {}, onRefresh = {}, onLoadNextPage = {},
+                    onOpenProfessional = { opened = it }, onOpenService = {},
+                )
+            }
+        }
+        rule.onNodeWithText("Ada Example").assertExists()
+        rule.onNodeWithText("7 jobs completed").assertExists()
+        rule.onNodeWithContentDescription("Verified professional").assertDoesNotExist()
+        rule.onNodeWithTag("explore_profile_pro-1").performScrollTo().performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("pro-1", opened) }
     }
 
     @Test fun sessionSplash() = rule.capture("49_session_splash_stitch") {

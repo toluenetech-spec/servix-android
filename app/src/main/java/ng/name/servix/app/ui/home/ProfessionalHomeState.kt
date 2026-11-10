@@ -7,6 +7,7 @@ import ng.name.servix.app.data.model.ProfessionalAnalyticsTotalsDto
 data class ProfessionalHomeState(
     val userId: String? = null,
     val loading: Boolean = true,
+    val refreshing: Boolean = false,
     val jobs: List<BookingDto> = emptyList(),
     val totals: ProfessionalAnalyticsTotalsDto? = null,
     val services: List<OwnServiceDto> = emptyList(),

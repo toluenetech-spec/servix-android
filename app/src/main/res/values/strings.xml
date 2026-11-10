@@ -310,8 +310,8 @@
     <string name="booking_payment_received_banner">Payment received — request sent to %1$s</string>
     <string name="booking_payment_confirming_banner">We\'re still confirming your payment</string>
     <string name="booking_refresh">Refresh</string>
-    <string name="booking_delivered_notice_title">Confirm within 3 days.</string>
-    <string name="booking_delivered_notice_body">If you don’t confirm, the booking completes automatically and payment is released.</string>
+    <string name="booking_delivered_notice_title">Review the work.</string>
+    <string name="booking_delivered_notice_body">If you don’t confirm, the booking may complete automatically after the review window and payment is released.</string>
     <string name="booking_disputed_notice_title">Dispute open.</string>
     <string name="booking_disputed_notice_body">Funds are held while the Servix team reviews: “%1$s”.</string>
     <string name="booking_pay_cta">Pay %1$s</string>

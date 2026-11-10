@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +18,9 @@ import ng.name.servix.app.data.model.ProfessionalSummaryDto
 import ng.name.servix.app.data.repository.AccountRepository
 import ng.name.servix.app.data.repository.BookingRepository
 import ng.name.servix.app.data.repository.CatalogueRepository
+import ng.name.servix.app.data.repository.SessionState
+import ng.name.servix.app.data.repository.retrySessionRead
+import ng.name.servix.app.data.repository.signedInError
 
 /** One row of the "needs your attention" strip: what happened, the verb, and the booking it belongs to. */
 data class HomeAttention(
@@ -82,6 +87,7 @@ class HomeViewModel(
     private val catalogueRepository: CatalogueRepository,
     private val accountRepository: AccountRepository,
     private val bookingRepository: BookingRepository,
+    private val session: StateFlow<SessionState>? = null,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -111,22 +117,25 @@ class HomeViewModel(
             proAction?.cancel()
             _professionalState.value = ProfessionalHomeState(userId = userId)
         }
-        else _professionalState.update { it.copy(loading = true) }
+        else _professionalState.update { if (forceRefresh && !it.loading) it.copy(refreshing = true) else it.copy(loading = true) }
         val generation = proGeneration
         proLoad = viewModelScope.launch {
-            val jobs = async { bookingRepository.getProfessionalBookings() }
-            val analytics = async { bookingRepository.getProfessionalAnalytics() }
-            val services = async { bookingRepository.getOwnServices() }
+            val isCurrent = { generation == proGeneration && _professionalState.value.userId == userId &&
+                (session == null || (session.value as? SessionState.Authenticated)?.user?.id == userId) }
+            val jobs = async { retrySessionRead(isCurrent) { bookingRepository.getProfessionalBookings() } }
+            val analytics = async { retrySessionRead(isCurrent) { bookingRepository.getProfessionalAnalytics() } }
+            val services = async { retrySessionRead(isCurrent) { bookingRepository.getOwnServices() } }
             val j = jobs.await(); val a = analytics.await(); val s = services.await()
             _professionalState.update { old ->
                 if (old.userId != userId || generation != proGeneration) old else old.copy(
                     loading = false,
+                    refreshing = false,
                     jobs = j.getOrNull() ?: old.jobs,
                     totals = a.getOrNull()?.totals ?: old.totals,
                     services = s.getOrNull() ?: old.services,
-                    jobsError = j.exceptionOrNull()?.message,
-                    analyticsError = a.exceptionOrNull()?.message,
-                    servicesError = s.exceptionOrNull()?.message,
+                    jobsError = signedInError(j.exceptionOrNull(), "Could not load your jobs. Please try again."),
+                    analyticsError = signedInError(a.exceptionOrNull(), "Could not load your analytics. Please try again."),
+                    servicesError = signedInError(s.exceptionOrNull(), "Could not load your services. Please try again."),
                 )
             }
         }
@@ -141,7 +150,7 @@ class HomeViewModel(
         proAction = viewModelScope.launch {
             val result = bookingRepository.performProfessionalAction(id, action)
             if (_professionalState.value.userId != userId || generation != proGeneration) return@launch
-            _professionalState.update { it.copy(busyBookingId = null, actionError = result.exceptionOrNull()?.message) }
+            _professionalState.update { it.copy(busyBookingId = null, actionError = signedInError(result.exceptionOrNull(), "Could not update this booking. Please try again.")) }
             // Refresh server data even on conflict; transition responses omit included names.
             loadProfessionalHome(userId, forceRefresh = true)
         }
@@ -150,6 +159,25 @@ class HomeViewModel(
     private var lastLoadedUserId: String? = "__uninitialized__"
     private var homeLoad: kotlinx.coroutines.Job? = null
     private var homeGeneration = 0
+
+    init {
+        session?.let { states ->
+            viewModelScope.launch {
+                states.map { state ->
+                    val user = (state as? SessionState.Authenticated)?.user
+                    Triple(state !is SessionState.Initializing, user?.id, user?.role)
+                }.distinctUntilChanged().collect { (ready, id, role) ->
+                    clearProfessionalHome()
+                    clearCustomerHome()
+                    if (ready) {
+                        if (id != null && role == "professional") loadProfessionalHome(id)
+                        else loadHome(id)
+                    }
+                }
+            }
+        }
+    }
+
 
     /** Clear private customer data and cancel any requests when the shell identity changes. */
     fun clearCustomerHome() {
@@ -171,7 +199,7 @@ class HomeViewModel(
 
         homeLoad = viewModelScope.launch {
             _uiState.update {
-                if (forceRefresh && (it.categories.isNotEmpty() || it.bookings.isNotEmpty())) {
+                if (forceRefresh && !it.loading) {
                     it.copy(refreshing = true, error = null)
                 } else {
                     it.copy(loading = true, error = null)
@@ -182,8 +210,10 @@ class HomeViewModel(
             val professionalsDeferred = async {
                 catalogueRepository.getProfessionals(sort = "rating", page = 1, pageSize = 6)
             }
-            val overviewDeferred = if (signedIn) async { accountRepository.getAccountOverview() } else null
-            val bookingsDeferred = if (signedIn) async { bookingRepository.getMyBookings() } else null
+            val isCurrent = { generation == homeGeneration && lastLoadedUserId == userId &&
+                (session == null || (session.value as? SessionState.Authenticated)?.user?.id == userId) }
+            val overviewDeferred = if (signedIn) async { retrySessionRead(isCurrent) { accountRepository.getAccountOverview() } } else null
+            val bookingsDeferred = if (signedIn) async { retrySessionRead(isCurrent) { bookingRepository.getMyBookings() } } else null
 
             val categoriesRes = categoriesDeferred.await()
             val professionalsRes = professionalsDeferred.await()
@@ -199,7 +229,10 @@ class HomeViewModel(
             }
 
             val accountError = if (signedIn) {
-                overviewRes?.exceptionOrNull()?.message ?: bookingsRes?.exceptionOrNull()?.message
+                (overviewRes?.exceptionOrNull() ?: bookingsRes?.exceptionOrNull())?.let { error ->
+                    if ((error as? ng.name.servix.app.data.model.ServixApiException)?.status == 401)
+                        "Your account could not be loaded. Please try again." else error.message
+                }
             } else {
                 null
             }
@@ -224,11 +257,12 @@ class HomeViewModel(
             catalogueRepository: CatalogueRepository,
             accountRepository: AccountRepository,
             bookingRepository: BookingRepository,
+            session: StateFlow<SessionState>? = null,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return HomeViewModel(catalogueRepository, accountRepository, bookingRepository) as T
+                    return HomeViewModel(catalogueRepository, accountRepository, bookingRepository, session) as T
                 }
             }
     }
