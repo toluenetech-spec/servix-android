@@ -3,6 +3,9 @@ package ng.name.servix.app.screenshots
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import okhttp3.OkHttpClient
@@ -224,26 +227,53 @@ class ScreenshotTest {
     }
 
     @Test
-    fun professionalProfile() = rule.capture("08_professional_profile") {
+    fun professionalProfile() = rule.capture("08_professional_profile") { profilePreview() }
+
+    @Test
+    fun professionalProfileServices() = rule.capture("70_profile_services", afterContent = {
+        rule.onNodeWithTag("profile_tab_services").performClick()
+    }) { profilePreview() }
+
+    @Test
+    fun professionalProfilePortfolio() = rule.capture("71_profile_portfolio", afterContent = {
+        rule.onNodeWithTag("profile_tab_portfolio").performClick()
+    }) { profilePreview() }
+
+    @Test
+    fun professionalProfileReviews() = rule.capture("72_profile_reviews", afterContent = {
+        rule.onNodeWithTag("profile_tab_reviews").performScrollTo().performClick()
+    }) { profilePreview() }
+
+    @Composable
+    private fun profilePreview() {
         ProfessionalProfileScreen(
             user = Fixtures.user,
             uiState = ProfessionalProfileUiState(
-                slug = "tunde-bakare",
-                loading = false,
-                professional = Fixtures.professionalDetail,
-                services = Fixtures.services,
-                reviews = Fixtures.reviews,
-                availability = AvailabilitySummaryDto("2026-11-06T09:00:00.000Z", true, true, true),
-                isSaved = false,
+                slug = "tunde-bakare", loading = false,
+                professional = Fixtures.professionalDetail.copy(portfolio = listOf(
+                    PortfolioItemDto(id = "work-1", title = "Brand identity", description = "Identity design"),
+                    PortfolioItemDto(id = "work-2", title = "Packaging", description = "Product packaging"),
+                )),
+                services = Fixtures.services, reviews = Fixtures.reviews,
+                serviceMediaCounts = mapOf(Fixtures.services.first().id to
+                    ng.name.servix.app.ui.catalogue.ServiceMediaCounts(3, 1, 1)),
+                availability = AvailabilitySummaryDto("2026-11-06T09:00:00.000Z", true, true, true), isSaved = false,
             ),
-            categoryNameFor = { "Graphic Design" },
-            onBackClick = {}, onRetry = {}, onBrowseProfessionalsClick = {}, onToggleSave = {},
-            onSignInClick = {}, onOpenService = {},
+            categoryNameFor = { "Graphic Design" }, onBackClick = {}, onRetry = {}, onBrowseProfessionalsClick = {},
+            onToggleSave = {}, onSignInClick = {}, onOpenService = {},
         )
     }
 
     @Test
-    fun serviceDetail() = rule.capture("09_service_detail") {
+    fun serviceDetail() = rule.capture("09_service_detail") { serviceDetailPreview() }
+
+    @Test
+    fun serviceDetailProtection() = rule.capture("73_service_detail_protection", afterContent = {
+        rule.onNodeWithTag("service_protection_card").performScrollTo()
+    }) { serviceDetailPreview() }
+
+    @Composable
+    private fun serviceDetailPreview() {
         ServiceDetailScreen(
             user = Fixtures.user,
             uiState = ServiceDetailUiState(

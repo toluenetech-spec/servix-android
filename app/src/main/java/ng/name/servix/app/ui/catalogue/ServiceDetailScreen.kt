@@ -83,6 +83,7 @@ import kotlinx.coroutines.launch
 import ng.name.servix.app.R
 import ng.name.servix.app.data.model.ReviewDto
 import ng.name.servix.app.data.model.ServiceDetailDto
+import ng.name.servix.app.data.model.ServiceMediaDto
 import ng.name.servix.app.data.model.ServiceFaqDto
 import ng.name.servix.app.data.model.ServixApiException
 import ng.name.servix.app.data.model.UserDto
@@ -351,549 +352,119 @@ fun ServiceDetailScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .padding(bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        // Back button + Breadcrumb (ServiceDetailPage.jsx:211-220)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp).padding(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .size(48.dp)
-                    .testTag("service_detail_back_button"),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
-                    tint = DeepForest,
-                )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(onClick = onBackClick, modifier = Modifier.size(48.dp).testTag("service_detail_back_button")) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back), tint = DeepForest)
+                }
+                Text("Service Detail", style = MaterialTheme.typography.titleLarge, color = DeepForest)
             }
-            Text(
-                text = buildString {
-                    append("Services")
-                    uiState.service?.let { svc ->
-                        val cat = categoryNameFor(svc.categoryId)
-                        if (cat.isNotBlank()) append(" / $cat")
+            when {
+                uiState.loading -> ServiceDetailSkeleton()
+                uiState.notFound -> EmptyStateCard(title = stringResource(R.string.service_not_found_title),
+                    message = stringResource(R.string.service_not_found_message), actionLabel = "Browse all services",
+                    onActionClick = onBrowseServicesClick)
+                uiState.error != null || uiState.service == null -> ErrorStateCard(
+                    message = uiState.error ?: stringResource(R.string.error_load_service_detail), onRetry = onRetry)
+                else -> {
+                    val service = uiState.service
+                    ServiceMediaGallery(service = service, onOpenMedia = { url ->
+                        val resolved = ServixFormatters.resolveServixMediaUrl(url) ?: url
+                        CustomTabLauncher.launchUrl(context, resolved)
+                    })
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        val categoryName = categoryNameFor(service.categoryId)
+                        if (categoryName.isNotBlank()) ServixBadge(text = categoryName, containerColor = SoftSand, contentColor = DeepForest)
+                        if (service.duration.isNotBlank()) Text(service.duration, style = MaterialTheme.typography.labelMedium, color = MutedGray)
                     }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedGray,
-            )
-        }
-
-        if (uiState.loading) {
-            ServiceDetailSkeleton()
-            return@Column
-        }
-
-        if (uiState.notFound) {
-            EmptyStateCard(
-                title = stringResource(R.string.service_not_found_title),
-                message = stringResource(R.string.service_not_found_message),
-                actionLabel = "Browse all services",
-                onActionClick = onBrowseServicesClick,
-            )
-            return@Column
-        }
-
-        if (uiState.error != null || uiState.service == null) {
-            ErrorStateCard(
-                message = uiState.error ?: stringResource(R.string.error_load_service_detail),
-                onRetry = onRetry,
-            )
-            return@Column
-        }
-
-        val service = uiState.service
-        val categoryName = categoryNameFor(service.categoryId)
-
-        // Category, Title, Rating, Location, Duration (ServiceDetailPage.jsx:225-246)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = service.title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = DeepForest,
-                modifier = Modifier.testTag("service_detail_title"),
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                RatingRow(rating = service.rating, reviewCount = service.reviewCount)
-                if (service.location.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.LocationOn,
-                            contentDescription = null,
-                            tint = MutedGray,
-                            modifier = Modifier.size(15.dp),
-                        )
-                        Text(
-                            text = service.location,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedGray,
-                        )
-                    }
-                }
-                if (service.duration.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Schedule,
-                            contentDescription = null,
-                            tint = MutedGray,
-                            modifier = Modifier.size(15.dp),
-                        )
-                        Text(
-                            text = service.duration,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedGray,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Gallery (images; video/PDF items shown as a link to the website)
-        val galleryUrls = remember(service) {
-            val fromGallery = service.gallery.filter { it.isNotBlank() }
-            if (fromGallery.isNotEmpty()) {
-                fromGallery
-            } else {
-                listOfNotNull(service.image?.takeIf { it.isNotBlank() })
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val pagerState = rememberPagerState(pageCount = { galleryUrls.size.coerceAtLeast(1) })
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 10f)
-                    .testTag("service_detail_pager"),
-            ) { page ->
-                ServixMediaImage(
-                    rawImageUrl = galleryUrls.getOrNull(page),
-                    contentDescription = service.title,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            if (galleryUrls.size > 1) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    galleryUrls.indices.forEach { index ->
-                        val current = pagerState.currentPage == index
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 3.dp)
-                                .size(if (current) 8.dp else 6.dp)
-                                .clip(CircleShape)
-                                .background(if (current) DeepForest else BorderSand),
-                        )
-                    }
-                }
-            }
-
-            // Video item link to website (Stage 2 requirement)
-            val videoUrl = service.video?.url?.takeIf { it.isNotBlank() }
-            if (videoUrl != null) {
-                val resolvedVideo = ServixFormatters.resolveServixMediaUrl(videoUrl) ?: videoUrl
-                ServixCard(
-                    modifier = Modifier
-                        .clickable { CustomTabLauncher.launchUrl(context, resolvedVideo) }
-                        .testTag("service_video_web_link"),
-                    containerColor = SoftSand,
-                    contentPadding = PaddingValues(14.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.PlayCircleOutline,
-                            contentDescription = null,
-                            tint = DeepForest,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = service.video.fileName.ifBlank { "Watch service video on www.servix.name.ng" },
-                            style = MaterialTheme.typography.labelLarge,
-                            color = DeepForest,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Icon(
-                            imageVector = Icons.Outlined.OpenInNew,
-                            contentDescription = "Open video",
-                            tint = DeepForest,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        // Professional Strip Card (ServiceDetailPage.jsx:258-272)
-        service.professional?.let { pro ->
-            ServixCard(
-                modifier = Modifier
-                    .clickable { onOpenProfessional(pro.id) }
-                    .testTag("service_detail_pro_card"),
-                contentPadding = PaddingValues(16.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    ServixAvatarImage(
-                        rawImageUrl = pro.image,
-                        name = pro.name,
-                        size = 52.dp,
-                        shape = CircleShape,
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = pro.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = Charcoal,
-                            )
-                            VerifiedBadgeChip(verified = pro.verified, compact = true)
-                        }
-                        Text(
-                            text = "Professional on Servix",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedGray,
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.view_profile),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = DeepForest,
-                    )
-                }
-            }
-        }
-
-        // Booking Card (ServiceDetailPage.jsx:382-423)
-        ServixCard(contentPadding = PaddingValues(20.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = ServixFormatters.formatNaira(service.price),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = DeepForest,
-                        modifier = Modifier.testTag("service_detail_price"),
-                    )
-                    Text(
-                        text = service.priceUnit,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MutedGray,
-                        modifier = Modifier.padding(bottom = 3.dp),
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val deliveryText = if (service.deliveryDays != null) {
-                        "Delivery: ${if (service.deliveryDays == 1) "1 day" else "${service.deliveryDays} days"}"
-                    } else {
-                        "Duration: ${service.duration.ifBlank { "On request" }}"
-                    }
-                    MetaRowItem(icon = Icons.Outlined.Schedule, text = deliveryText)
-
-                    if (service.revisions != null) {
-                        val revText = when {
-                            service.revisions == 0 -> "No revisions"
-                            service.revisions >= 20 -> "Unlimited revisions"
-                            service.revisions == 1 -> "1 revision"
-                            else -> "${service.revisions} revisions"
-                        }
-                        MetaRowItem(icon = Icons.Outlined.Edit, text = revText)
-                    }
-
-                    if (service.location.isNotBlank()) {
-                        MetaRowItem(icon = Icons.Outlined.LocationOn, text = service.location)
-                    }
-
-                    val availText = if (service.availability == "available") {
-                        "Available now"
-                    } else {
-                        "Limited availability"
-                    }
-                    MetaRowItem(icon = Icons.Outlined.CalendarMonth, text = availText)
-                }
-
-                ServixPrimaryButton(
-                    text = stringResource(R.string.request_booking),
-                    onClick = { bookingSheetOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    testTag = "service_request_booking_button",
-                )
-
-                Text(
-                    text = stringResource(R.string.no_payment_taken_yet),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedGray,
-                )
-
-                HorizontalDivider(color = SoftSand)
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Shield,
-                        contentDescription = null,
-                        tint = ForestGreen,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = Charcoal)) {
-                                append("${stringResource(R.string.servix_protection_title)} ")
-                            }
-                            append(stringResource(R.string.servix_protection_body))
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MutedGray,
-                    )
-                }
-            }
-        }
-
-        // About this service (ServiceDetailPage.jsx:274-292)
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "About this service",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Charcoal,
-                )
-                Text(
-                    text = service.description.ifBlank { service.shortDescription },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                )
-
-                if (service.searchTags.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        service.searchTags.forEach { tag ->
-                            ServixBadge(
-                                text = tag,
-                                containerColor = SoftSand,
-                                contentColor = Charcoal,
-                            )
-                        }
-                    }
-                }
-
-                if (service.documents.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        service.documents.forEach { doc ->
-                            val docUrl = ServixFormatters.resolveServixMediaUrl(doc.url) ?: doc.url
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier
-                                    .clickable { CustomTabLauncher.launchUrl(context, docUrl) }
-                                    .padding(vertical = 4.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Description,
-                                    contentDescription = null,
-                                    tint = DeepForest,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Text(
-                                    text = doc.fileName.ifBlank { "Download document (PDF)" },
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = DeepForest,
-                                )
-                                Icon(
-                                    imageVector = Icons.Outlined.OpenInNew,
-                                    contentDescription = null,
-                                    tint = DeepForest,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            }
-                        }
+                        Text(service.title, style = MaterialTheme.typography.headlineMedium, color = DeepForest,
+                            modifier = Modifier.testTag("service_detail_title"))
+                        Text(ServixFormatters.formatNaira(service.price), style = MaterialTheme.typography.headlineMedium,
+                            color = ForestGreen, modifier = Modifier.testTag("service_detail_price"))
+                        if (service.priceUnit.isNotBlank()) Text(service.priceUnit, style = MaterialTheme.typography.bodySmall, color = MutedGray)
                     }
-                }
-            }
-        }
-
-        // What's included (ServiceDetailPage.jsx:294-304)
-        if (service.included.isNotEmpty()) {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "What’s included",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Charcoal,
-                    )
-                    service.included.forEach { item ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Check,
-                                contentDescription = null,
-                                tint = ForestGreen,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                text = item,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Charcoal,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // What the professional needs from you (ServiceDetailPage.jsx:306-326)
-        if (service.requirements.isNotEmpty()) {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "What the professional needs from you",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Charcoal,
-                    )
-                    service.requirements.forEach { req ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                                contentDescription = null,
-                                tint = DeepForest,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                text = buildString {
-                                    append(req.question)
-                                    if (req.required) append(" (required)")
-                                    if (req.type == "choice" && req.options.isNotEmpty()) {
-                                        append(" — ${req.options.joinToString(" / ")}")
+                    service.professional?.let { pro ->
+                        ServixCard(modifier = Modifier.clickable { onOpenProfessional(pro.id) }.testTag("service_detail_pro_card"),
+                            contentPadding = PaddingValues(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                ServixAvatarImage(rawImageUrl = pro.image, name = pro.name, size = 52.dp, shape = CircleShape)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(pro.name, style = MaterialTheme.typography.titleSmall, color = DeepForest)
+                                        VerifiedBadgeChip(verified = pro.verified, compact = true)
                                     }
-                                    if (req.type == "file") {
-                                        append(" — attach a file")
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text("Service rating", style = MaterialTheme.typography.labelSmall, color = MutedGray)
+                                        RatingRow(rating = service.rating, reviewCount = service.reviewCount)
                                     }
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Charcoal,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Availability preview from live GET /services/:slug/availability
-        AvailabilityPreviewSection(slots = uiState.availabilitySlots)
-
-        // Reviews (ServiceDetailPage.jsx:348-371)
-        ServixCard(modifier = Modifier.testTag("service_reviews_card")) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "Reviews",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Charcoal,
-                )
-                if (uiState.reviews.isEmpty()) {
-                    Text(
-                        text = "No reviews yet.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MutedGray,
-                    )
-                } else {
-                    uiState.reviews.forEachIndexed { idx, review ->
-                        if (idx > 0) HorizontalDivider(color = SoftSand)
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text(
-                                        text = review.author,
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = Charcoal,
-                                    )
-                                    RatingRow(rating = review.rating.toDouble(), showCount = false)
                                 }
-                                Text(
-                                    text = ServixFormatters.formatDate(review.date),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MutedGray,
-                                )
-                            }
-                            if (review.text.isNotBlank()) {
-                                Text(
-                                    text = review.text,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Charcoal,
-                                )
+                                Text(stringResource(R.string.view_profile), style = MaterialTheme.typography.labelLarge, color = DeepForest)
                             }
                         }
+                    }
+                    if (service.included.isNotEmpty()) {
+                        ServixCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("What’s Included in This Service", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                                service.included.forEach { item ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                                        Icon(Icons.Outlined.Check, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(18.dp))
+                                        Text(item, style = MaterialTheme.typography.bodyMedium, color = Charcoal)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ServixCard(containerColor = SoftSand, modifier = Modifier.testTag("service_protection_card")) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Outlined.Shield, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(22.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(stringResource(R.string.servix_protection_title), style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                                Text(stringResource(R.string.servix_protection_body), style = MaterialTheme.typography.bodySmall, color = MutedGray)
+                            }
+                        }
+                    }
+                    if (service.description.isNotBlank() || service.shortDescription.isNotBlank()) {
+                        ServixCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("About this service", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                                Text(service.description.ifBlank { service.shortDescription }, style = MaterialTheme.typography.bodyMedium, color = Charcoal)
+                            }
+                        }
+                    }
+                    if (service.requirements.isNotEmpty()) {
+                        ServixCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("What the professional needs from you", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                                service.requirements.forEach { req ->
+                                    Text(buildString {
+                                        append(req.question)
+                                        if (req.required) append(" (required)")
+                                        if (req.type == "choice" && req.options.isNotEmpty()) append(" — ${req.options.joinToString(" / ")}")
+                                        if (req.type == "file") append(" — attach a file")
+                                    }, style = MaterialTheme.typography.bodyMedium, color = Charcoal)
+                                }
+                            }
+                        }
+                    }
+                    if (uiState.reviews.isNotEmpty()) {
+                        Text("Reviews", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+                        ReviewsTabSection(uiState.reviews)
                     }
                 }
             }
         }
-
-        // Frequently asked questions (ServiceDetailPage.jsx:373-378)
-        if (service.faqs.isNotEmpty()) {
-            FaqAccordionSection(faqs = service.faqs)
+        val barService = uiState.service
+        if (barService != null && !uiState.loading && uiState.error == null) {
+            ServiceBookBar(priceLabel = ServixFormatters.formatNaira(barService.price), priceUnit = barService.priceUnit,
+                onClick = { bookingSheetOpen = true }, modifier = Modifier.align(Alignment.BottomCenter))
         }
-    }
-
-    val barService = uiState.service
-    if (barService != null && !uiState.loading) {
-        ServiceBookBar(
-            priceLabel = ServixFormatters.formatNaira(barService.price),
-            priceUnit = barService.priceUnit,
-            onClick = { bookingSheetOpen = true },
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
-    }
     }
 
     // Stage 3: Booking Bottom Sheet (ServiceDetailPage.jsx:58-160, 426-446)
@@ -940,6 +511,54 @@ fun ServiceDetailScreen(
     }
 }
 
+
+/** Typed service media only: the API already identifies images, documents and the first video. */
+internal fun serviceGalleryItems(service: ServiceDetailDto): List<ServiceMediaDto> {
+    val source = if (service.media.isNotEmpty()) service.media else buildList {
+        service.gallery.forEach { add(ServiceMediaDto(url = it, kind = "image")) }
+        if (isEmpty()) service.image?.let { add(ServiceMediaDto(url = it, kind = "image")) }
+        service.video?.let { add(it) }
+        addAll(service.documents)
+    }
+    var sawVideo = false
+    return source.filter { item ->
+        if (item.url.isBlank() || item.kind !in setOf("image", "video", "document")) false
+        else if (item.kind == "video") { if (sawVideo) false else { sawVideo = true; true } }
+        else true
+    }.distinctBy { it.kind to it.url }
+}
+
+@Composable
+private fun ServiceMediaGallery(service: ServiceDetailDto, onOpenMedia: (String) -> Unit) {
+    val items = remember(service) { serviceGalleryItems(service) }
+    val pagerState = rememberPagerState(pageCount = { items.size.coerceAtLeast(1) })
+    Box {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
+            .testTag("service_detail_pager")) { page ->
+            val item = items.getOrNull(page)
+            if (item == null || item.kind == "image") {
+                ServixMediaImage(rawImageUrl = item?.url, contentDescription = service.title,
+                    shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxSize())
+            } else {
+                Surface(onClick = { onOpenMedia(item.url) }, color = SoftSand, shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxSize().testTag("service_media_${item.kind}")) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(20.dp)) {
+                        Icon(if (item.kind == "video") Icons.Outlined.PlayCircleOutline else Icons.Outlined.Description,
+                            contentDescription = null, tint = ForestGreen, modifier = Modifier.size(40.dp))
+                        Text(item.fileName.ifBlank { if (item.kind == "video") "Open video" else "Open PDF" },
+                            style = MaterialTheme.typography.labelLarge, color = DeepForest)
+                    }
+                }
+            }
+        }
+        if (items.size > 1) Surface(color = DeepForest, shape = CircleShape,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
+            Text("${pagerState.currentPage + 1}/${items.size}", color = PureWhite,
+                style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
+        }
+    }
+}
 
 /** Sticky bottom action bar for service detail (plan §5). */
 @Composable

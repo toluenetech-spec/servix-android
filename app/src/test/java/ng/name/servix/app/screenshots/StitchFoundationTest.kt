@@ -26,6 +26,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.runtime.mutableStateOf
@@ -157,6 +159,64 @@ class StitchFoundationTest {
     }
 
     @Test
+    fun serviceGalleryUsesTypedMediaAndOnlyOneVideo() {
+        val source = Fixtures.serviceDetail.copy(media = listOf(
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/a", kind = "image"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/b", kind = "document", fileName = "details.pdf"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/c", kind = "video"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/d", kind = "video"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/e.pdf", kind = "image"),
+        ))
+        val items = ng.name.servix.app.ui.catalogue.serviceGalleryItems(source)
+        org.junit.Assert.assertEquals(listOf("image", "document", "video", "image"), items.map { it.kind })
+        org.junit.Assert.assertEquals("details.pdf", items[1].fileName)
+    }
+
+    @Test
+    fun serviceGalleryPagesThroughDocumentsAndVideo() {
+        val media = listOf(
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/doc", kind = "document", fileName = "details.pdf"),
+            ng.name.servix.app.data.model.ServiceMediaDto(url = "/video", kind = "video", fileName = "video"),
+        )
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ServiceDetailScreen(
+                    user = Fixtures.user, uiState = ng.name.servix.app.ui.catalogue.ServiceDetailUiState(
+                        loading = false, service = Fixtures.serviceDetail.copy(media = media)),
+                    categoryNameFor = { "Graphic Design" }, onSelectSlot = {}, onNotesChange = {},
+                    onSubmitBookAndPay = {}, onBackClick = {}, onRetry = {}, onBrowseServicesClick = {},
+                    onOpenProfessional = {}, onSignInToBookClick = {}, onCreateAccountToBookClick = {},
+                    onNavigateToBookingAfterPay = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("service_media_document").assertIsDisplayed()
+        rule.onNodeWithTag("service_detail_pager").performTouchInput { swipeLeft() }
+        rule.onNodeWithTag("service_media_video").assertIsDisplayed()
+    }
+
+    @Test
+    fun serviceDetailKeepsBookingAndOmitsSchedulingAndFaqBlocks() {
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ServiceDetailScreen(
+                    user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.catalogue.ServiceDetailUiState(loading = false,
+                        service = Fixtures.serviceDetail, availabilitySlots = Fixtures.availabilitySlots),
+                    categoryNameFor = { "Graphic Design" }, onSelectSlot = {}, onNotesChange = {},
+                    onSubmitBookAndPay = {}, onBackClick = {}, onRetry = {}, onBrowseServicesClick = {},
+                    onOpenProfessional = {}, onSignInToBookClick = {}, onCreateAccountToBookClick = {},
+                    onNavigateToBookingAfterPay = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("service_detail_title").assertExists()
+        rule.onNodeWithTag("service_faq_0").assertDoesNotExist()
+        rule.onNodeWithTag("service_book_bar_button").performClick()
+        rule.onNodeWithTag("booking_sheet_container").assertExists()
+    }
+
+    @Test
     fun profileMediaCountsUseTypedServiceMedia() {
         val media = listOf(
             ng.name.servix.app.data.model.ServiceMediaDto(kind = "image"),
@@ -168,6 +228,28 @@ class StitchFoundationTest {
         org.junit.Assert.assertEquals("2 photos · 1 video · 1 PDF",
             ng.name.servix.app.ui.catalogue.serviceMediaCounts(media).label())
         org.junit.Assert.assertEquals("", ng.name.servix.app.ui.catalogue.serviceMediaCounts(emptyList()).label())
+    }
+
+    @Test
+    fun profileServiceCardShowsActualMediaCountsAndOpensService() {
+        var opened = ""
+        val service = Fixtures.services.first()
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.catalogue.ProfessionalProfileScreen(
+                    user = Fixtures.user,
+                    uiState = ng.name.servix.app.ui.catalogue.ProfessionalProfileUiState(
+                        loading = false, professional = Fixtures.professionalDetail, services = listOf(service),
+                        serviceMediaCounts = mapOf(service.id to ng.name.servix.app.ui.catalogue.ServiceMediaCounts(3, 1, 1))),
+                    categoryNameFor = { "" }, onBackClick = {}, onRetry = {}, onBrowseProfessionalsClick = {},
+                    onToggleSave = {}, onSignInClick = {}, onOpenService = { opened = it },
+                )
+            }
+        }
+        rule.onNodeWithTag("profile_tab_services").performClick()
+        rule.onNodeWithText("3 photos · 1 video · 1 PDF").assertExists()
+        rule.onNodeWithTag("profile_select_service_${service.id}").performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals(service.id, opened) }
     }
 
     @Test
