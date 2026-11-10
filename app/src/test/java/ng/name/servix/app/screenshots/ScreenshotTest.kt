@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
@@ -271,7 +272,7 @@ class ScreenshotTest {
 
     @Test
     fun serviceDetailProtection() = rule.capture("73_service_detail_protection", afterContent = {
-        rule.onNodeWithTag("service_detail_scroll").performTouchInput { swipeUp(); swipeUp() }
+        rule.onNodeWithText("Reviews").performScrollTo()
     }) { serviceDetailPreview() }
 
     @Composable
