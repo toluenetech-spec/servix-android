@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import okhttp3.OkHttpClient
@@ -269,7 +271,7 @@ class ScreenshotTest {
 
     @Test
     fun serviceDetailProtection() = rule.capture("73_service_detail_protection", afterContent = {
-        rule.onNodeWithTag("service_protection_card").performScrollTo()
+        rule.onNodeWithTag("service_detail_scroll").performTouchInput { swipeUp(); swipeUp() }
     }) { serviceDetailPreview() }
 
     @Composable

@@ -740,45 +740,6 @@ private fun AboutTabSection(
     onOpenWebsite: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        ServixCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Professional Bio",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Charcoal,
-                )
-                Text(
-                    text = pro.about.ifBlank { "No bio added yet." },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MutedGray,
-                )
-            }
-        }
-
-        if (pro.skills.isNotEmpty()) {
-            ServixCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Skills",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Charcoal,
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        pro.skills.forEach { skill ->
-                            ServixBadge(
-                                text = skill,
-                                containerColor = SoftSand,
-                                contentColor = Charcoal,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         val details = pro.details
         if (details != null) {
             if (details.experience.isNotEmpty()) {

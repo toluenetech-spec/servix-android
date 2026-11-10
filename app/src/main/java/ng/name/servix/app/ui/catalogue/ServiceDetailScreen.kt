@@ -353,7 +353,7 @@ fun ServiceDetailScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxSize().testTag("service_detail_scroll").verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp).padding(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
@@ -421,12 +421,12 @@ fun ServiceDetailScreen(
                             }
                         }
                     }
-                    ServixCard(containerColor = SoftSand, modifier = Modifier.testTag("service_protection_card")) {
+                    ServixCard(containerColor = DeepForest, modifier = Modifier.testTag("service_protection_card")) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Outlined.Shield, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(22.dp))
+                            Icon(Icons.Outlined.Shield, contentDescription = null, tint = WarmIvory, modifier = Modifier.size(22.dp))
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(stringResource(R.string.servix_protection_title), style = MaterialTheme.typography.titleMedium, color = DeepForest)
-                                Text(stringResource(R.string.servix_protection_body), style = MaterialTheme.typography.bodySmall, color = MutedGray)
+                                Text("Protected payment", style = MaterialTheme.typography.titleMedium, color = WarmIvory)
+                                Text(stringResource(R.string.payment_protection_copy), style = MaterialTheme.typography.bodySmall, color = WarmIvory)
                             }
                         }
                     }

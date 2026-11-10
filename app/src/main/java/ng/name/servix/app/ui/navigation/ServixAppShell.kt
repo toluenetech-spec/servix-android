@@ -918,7 +918,7 @@ fun ServixAppShell(
                     onToggleSave = profileViewModel::toggleSaveProfessional,
                     onSignInClick = { navController.navigate(ServixRoute.Login) },
                     onOpenService = { serviceSlug ->
-                        navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug))
+                        navController.navigate(ServixRoute.ServiceDetail(slug = serviceSlug, openBookingSheet = true))
                     },
                 )
             }
