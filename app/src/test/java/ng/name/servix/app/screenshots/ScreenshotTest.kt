@@ -464,7 +464,7 @@ class ScreenshotTest {
 
     @Test
     fun bookingDeliveredChecklist() = rule.capture("75_booking_before_confirm", afterContent = {
-        rule.onNodeWithTag("booking_before_confirm").performScrollTo()
+        rule.onNodeWithTag("booking_detail_end").performScrollTo()
     }) {
         BookingDetail(BookingDetailUiState(bookingId = Fixtures.BOOKING_ID, loading = false,
             booking = Fixtures.booking("delivered")))

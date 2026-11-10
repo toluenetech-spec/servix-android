@@ -595,7 +595,7 @@ fun BookingDetailScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 104.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Top back row
@@ -1065,12 +1065,9 @@ fun BookingDetailScreen(
                                     withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = Charcoal)) {
                                         append("${stringResource(R.string.booking_disputed_notice_title)} ")
                                     }
-                                    append(
-                                        stringResource(
-                                            R.string.booking_disputed_notice_body,
-                                            booking.disputeReason.orEmpty(),
-                                        )
-                                    )
+                                    val reason = booking.disputeReason?.takeIf { it.isNotBlank() }
+                                    if (reason != null) append(stringResource(R.string.booking_disputed_notice_body, reason))
+                                    else append("Funds are held while the Servix team reviews the dispute.")
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Charcoal,
@@ -1083,6 +1080,7 @@ fun BookingDetailScreen(
             }
         }
         if (booking.status == "delivered") BeforeYouConfirmChecklist()
+        Spacer(Modifier.height(104.dp).testTag("booking_detail_end"))
     }
 
     val barBooking = uiState.booking
