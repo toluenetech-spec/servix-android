@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,6 +63,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,6 +78,7 @@ import ng.name.servix.app.data.model.PortfolioItemDto
 import ng.name.servix.app.data.model.ProfessionalDetailDto
 import ng.name.servix.app.data.model.ReviewDto
 import ng.name.servix.app.data.model.ServiceSummaryDto
+import ng.name.servix.app.data.model.ServiceMediaDto
 import ng.name.servix.app.data.model.ServixApiException
 import ng.name.servix.app.data.model.TrustSummaryDto
 import ng.name.servix.app.data.model.UserDto
@@ -102,11 +111,26 @@ data class ProfessionalProfileUiState(
     val professional: ProfessionalDetailDto? = null,
     val services: List<ServiceSummaryDto> = emptyList(),
     val servicesError: String? = null,
+    val serviceMediaCounts: Map<String, ServiceMediaCounts> = emptyMap(),
     val reviews: List<ReviewDto> = emptyList(),
     val availability: AvailabilitySummaryDto? = null,
     val isSaved: Boolean? = null,
     val saveBusy: Boolean = false,
     val saveError: String? = null,
+)
+
+data class ServiceMediaCounts(val photos: Int, val videos: Int, val documents: Int) {
+    fun label(): String = listOfNotNull(
+        photos.takeIf { it > 0 }?.let { "$it ${if (it == 1) "photo" else "photos"}" },
+        videos.takeIf { it > 0 }?.let { "$it ${if (it == 1) "video" else "videos"}" },
+        documents.takeIf { it > 0 }?.let { "$it ${if (it == 1) "PDF" else "PDFs"}" },
+    ).joinToString(" · ")
+}
+
+internal fun serviceMediaCounts(media: List<ServiceMediaDto>) = ServiceMediaCounts(
+    photos = media.count { it.kind == "image" },
+    videos = media.count { it.kind == "video" },
+    documents = media.count { it.kind == "document" },
 )
 
 class ProfessionalProfileViewModel(
@@ -115,12 +139,16 @@ class ProfessionalProfileViewModel(
 
     private val _uiState = MutableStateFlow(ProfessionalProfileUiState())
     val uiState: StateFlow<ProfessionalProfileUiState> = _uiState.asStateFlow()
+    private var loadJob: Job? = null
+    private var generation = 0L
 
     fun loadProfile(slug: String, isAuthenticated: Boolean, forceRefresh: Boolean = false) {
         if (!forceRefresh && _uiState.value.slug == slug && _uiState.value.professional != null && _uiState.value.error == null) {
             return
         }
-        viewModelScope.launch {
+        loadJob?.cancel()
+        val requestGeneration = ++generation
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 ProfessionalProfileUiState(
                     slug = slug,
@@ -139,6 +167,7 @@ class ProfessionalProfileViewModel(
             }
 
             val proRes = proDeferred.await()
+            if (requestGeneration != generation) return@launch
             if (proRes.isFailure) {
                 val ex = proRes.exceptionOrNull() as? ServixApiException
                 _uiState.update {
@@ -161,6 +190,7 @@ class ProfessionalProfileViewModel(
             val availability = availDeferred.await().getOrNull()
             val savedList = savedDeferred?.await()?.getOrNull()
             val isSaved = savedList?.any { it.professional.slug == slug }
+            if (requestGeneration != generation) return@launch
 
             _uiState.update {
                 it.copy(
@@ -176,8 +206,21 @@ class ProfessionalProfileViewModel(
                 )
             }
 
-            // Fire-and-forget view count (ProfessionalProfilePage.jsx:61)
-            catalogueRepository.countView("professional", pro.id)
+            // The service-list endpoint has no typed media. Fetch existing detail endpoints with
+            // bounded concurrency; failures omit the hint rather than inventing a zero count.
+            val permits = Semaphore(4)
+            services.map { service ->
+                async {
+                    permits.withPermit {
+                        service.id to catalogueRepository.getService(service.id).getOrNull()?.media?.let(::serviceMediaCounts)
+                    }
+                }
+            }.awaitAll().forEach { (id, counts) ->
+                if (counts != null && requestGeneration == generation) {
+                    _uiState.update { it.copy(serviceMediaCounts = it.serviceMediaCounts + (id to counts)) }
+                }
+            }
+            if (requestGeneration == generation) catalogueRepository.countView("professional", pro.id)
         }
     }
 
@@ -230,10 +273,10 @@ class ProfessionalProfileViewModel(
 }
 
 private enum class ProfileTab(val label: String) {
-    ABOUT("About"),
+    ABOUT("About & Bio"),
     TRUST("Trust & performance"),
-    SERVICES("Services"),
-    PORTFOLIO("Portfolio"),
+    SERVICES("Services & Pricing"),
+    PORTFOLIO("Past Work"),
     REVIEWS("Reviews"),
 }
 
@@ -254,6 +297,8 @@ fun ProfessionalProfileScreen(
 
     var selectedTab by rememberSaveable { mutableStateOf(ProfileTab.SERVICES) }
     var bookingSheetOpen by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     val pro = uiState.professional
@@ -261,6 +306,7 @@ fun ProfessionalProfileScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(bottom = if (pro == null) 24.dp else 108.dp),
         ) {
             item(key = "top_bar") { ServixTopBar(back = onBackClick) }
@@ -291,45 +337,53 @@ fun ProfessionalProfileScreen(
                             availability = uiState.availability,
                         )
                     }
-                    item(key = "stats") { ProfileStatsStrip(pro = pro) }
+                    item(key = "stats") { ProfileStatsStrip(pro = pro, serviceCount = uiState.services.takeIf { uiState.servicesError == null }?.size) }
                     stickyHeader(key = "tabs") {
                         ProfileTabStrip(
-                            tabs = listOf(
-                                ProfileTab.SERVICES,
-                                ProfileTab.ABOUT,
-                                ProfileTab.PORTFOLIO,
-                                ProfileTab.REVIEWS,
-                            ),
+                            tabs = listOf(ProfileTab.SERVICES, ProfileTab.ABOUT, ProfileTab.PORTFOLIO, ProfileTab.REVIEWS),
                             selected = selectedTab,
-                            onSelect = { selectedTab = it },
+                            onSelect = { tab ->
+                                selectedTab = tab
+                                val index = when (tab) {
+                                    ProfileTab.ABOUT -> 4
+                                    ProfileTab.SERVICES -> 5
+                                    ProfileTab.PORTFOLIO -> 6
+                                    ProfileTab.REVIEWS -> 7
+                                    ProfileTab.TRUST -> 4
+                                }
+                                scope.launch { listState.animateScrollToItem(index) }
+                            },
                         )
                     }
-                    item(key = "content") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            when (selectedTab) {
-                                ProfileTab.ABOUT -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    AboutTabSection(
-                                        pro = pro,
-                                        onOpenWebsite = { url -> CustomTabLauncher.launchUrl(context, url) },
-                                    )
-                                    pro.trust?.let { trust -> TrustTabSection(trust = trust) }
-                                }
-                                ProfileTab.SERVICES -> if (uiState.servicesError != null) {
-                                    ErrorStateCard(message = uiState.servicesError, onRetry = onRetry)
-                                } else ServicesTabSection(
-                                    services = uiState.services,
-                                    categoryNameFor = categoryNameFor,
-                                    onOpenService = onOpenService,
-                                )
-                                ProfileTab.PORTFOLIO -> PortfolioTabSection(portfolio = pro.portfolio)
-                                ProfileTab.REVIEWS -> ReviewsTabSection(reviews = uiState.reviews)
-                                ProfileTab.TRUST -> pro.trust?.let { trust -> TrustTabSection(trust = trust) }
-                            }
+                    item(key = "about") {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            ProfileBioPreview(pro)
+                        }
+                    }
+                    item(key = "services") {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            if (uiState.servicesError != null) {
+                                ErrorStateCard(message = uiState.servicesError, onRetry = onRetry)
+                            } else ServicesTabSection(services = uiState.services,
+                                mediaCounts = uiState.serviceMediaCounts, onOpenService = onOpenService)
+                        }
+                    }
+                    item(key = "portfolio") {
+                        ProfilePortfolioStrip(pro.portfolio)
+                    }
+                    item(key = "reviews") {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("Reviews", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+                            ReviewsTabSection(reviews = uiState.reviews)
+                        }
+                    }
+                    item(key = "profile_details") {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            AboutTabSection(pro = pro, onOpenWebsite = { url -> CustomTabLauncher.launchUrl(context, url) })
+                            pro.trust?.let { TrustTabSection(trust = it) }
                         }
                     }
                 }
@@ -518,28 +572,16 @@ private fun ProfileHeader(
 
 /** Rating / reviews / completed projects as three compact stats (plan §5). */
 @Composable
-private fun ProfileStatsStrip(pro: ProfessionalDetailDto) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ProfileStatCompact(
-            value = String.format(Locale.US, "%.1f", pro.rating),
-            label = "Rating",
-            modifier = Modifier.weight(1f),
-        )
-        ProfileStatCompact(
-            value = pro.reviewCount.toString(),
-            label = "Reviews",
-            modifier = Modifier.weight(1f),
-        )
-        ProfileStatCompact(
-            value = pro.completedProjects.toString(),
-            label = "Projects",
-            modifier = Modifier.weight(1f),
-        )
+private fun ProfileStatsStrip(pro: ProfessionalDetailDto, serviceCount: Int?) {
+    Surface(color = SoftSand, shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ProfileStatCompact(value = String.format(Locale.US, "%.1f", pro.rating),
+                label = "${pro.reviewCount} reviews", modifier = Modifier.weight(1f))
+            ProfileStatCompact(value = pro.completedProjects.toString(), label = "Done jobs", modifier = Modifier.weight(1f))
+            if (serviceCount != null) ProfileStatCompact(value = serviceCount.toString(), label = "Services", modifier = Modifier.weight(1f))
+            ProfileStatCompact(value = "✓", label = "Protected pay", modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -678,6 +720,21 @@ private fun ProfileStatCell(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+private fun ProfileBioPreview(pro: ProfessionalDetailDto) {
+    ServixCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Professional Bio", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+            Text(pro.about.ifBlank { "No bio added yet." }, style = MaterialTheme.typography.bodyMedium, color = MutedGray)
+            if (pro.skills.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                pro.skills.forEach { skill -> ServixBadge(text = skill, containerColor = SoftSand, contentColor = Charcoal) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
 private fun AboutTabSection(
     pro: ProfessionalDetailDto,
     onOpenWebsite: (String) -> Unit,
@@ -686,7 +743,7 @@ private fun AboutTabSection(
         ServixCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "About",
+                    text = "Professional Bio",
                     style = MaterialTheme.typography.titleMedium,
                     color = Charcoal,
                 )
@@ -919,24 +976,63 @@ private fun TrustTabSection(trust: TrustSummaryDto) {
 @Composable
 private fun ServicesTabSection(
     services: List<ServiceSummaryDto>,
-    categoryNameFor: (String?) -> String,
+    mediaCounts: Map<String, ServiceMediaCounts>,
     onOpenService: (String) -> Unit,
 ) {
-    if (services.isEmpty()) {
-        EmptyStateCard(
-            title = "No services listed",
-            message = "This professional has not published any services yet.",
-        )
-        return
-    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Service offerings & pricing", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+        Text("Service Offerings & Pricing", style = MaterialTheme.typography.titleLarge, color = DeepForest)
+        Text("Prices are agreed before you book.", style = MaterialTheme.typography.bodySmall, color = MutedGray)
+        if (services.isEmpty()) {
+            EmptyStateCard(title = "No services listed", message = "This professional has not published any services yet.")
+        }
         services.forEach { service ->
-            ServiceCardItem(
-                service = service,
-                categoryName = categoryNameFor(service.categoryId),
-                onClick = { onOpenService(service.id) },
-            )
+            ServixCard(modifier = Modifier.fillMaxWidth().testTag("service_card_${service.id}"),
+                contentPadding = PaddingValues(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(service.title, style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                            if (service.shortDescription.isNotBlank()) Text(service.shortDescription,
+                                style = MaterialTheme.typography.bodySmall, color = MutedGray)
+                            if (service.duration.isNotBlank()) Text(service.duration,
+                                style = MaterialTheme.typography.labelMedium, color = MutedGray)
+                            mediaCounts[service.id]?.label()?.takeIf { it.isNotBlank() }?.let { label ->
+                                Text(label, style = MaterialTheme.typography.labelMedium, color = ForestGreen,
+                                    modifier = Modifier.testTag("service_media_count_${service.id}"))
+                            }
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(ServixFormatters.formatNaira(service.price), style = MaterialTheme.typography.titleMedium, color = DeepForest)
+                            Text(service.priceUnit, style = MaterialTheme.typography.labelSmall, color = MutedGray)
+                        }
+                    }
+                    ServixSecondaryButton(text = "Select & Book", onClick = { onOpenService(service.id) },
+                        modifier = Modifier.fillMaxWidth(), testTag = "profile_select_service_${service.id}")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfilePortfolioStrip(portfolio: List<PortfolioItemDto>) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Recent Work", style = MaterialTheme.typography.titleLarge, color = DeepForest,
+            modifier = Modifier.padding(horizontal = 16.dp))
+        if (portfolio.isEmpty()) {
+            Text("No portfolio items yet.", style = MaterialTheme.typography.bodyMedium, color = MutedGray,
+                modifier = Modifier.padding(horizontal = 16.dp))
+        } else {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(portfolio, key = { it.id }) { item ->
+                    Column(Modifier.width(160.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        ServixMediaImage(rawImageUrl = item.image, contentDescription = item.title,
+                            shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(120.dp))
+                        Text(item.title, style = MaterialTheme.typography.titleSmall, color = DeepForest)
+                        if (item.description.isNotBlank()) Text(item.description, style = MaterialTheme.typography.bodySmall, color = MutedGray)
+                    }
+                }
+            }
         }
     }
 }

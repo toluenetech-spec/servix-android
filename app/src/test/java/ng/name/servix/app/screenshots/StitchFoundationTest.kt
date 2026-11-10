@@ -157,6 +157,20 @@ class StitchFoundationTest {
     }
 
     @Test
+    fun profileMediaCountsUseTypedServiceMedia() {
+        val media = listOf(
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "image"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "image"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "video"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "document"),
+            ng.name.servix.app.data.model.ServiceMediaDto(kind = "other"),
+        )
+        org.junit.Assert.assertEquals("2 photos · 1 video · 1 PDF",
+            ng.name.servix.app.ui.catalogue.serviceMediaCounts(media).label())
+        org.junit.Assert.assertEquals("", ng.name.servix.app.ui.catalogue.serviceMediaCounts(emptyList()).label())
+    }
+
+    @Test
     fun profileShowsServiceLoadErrorAndRetriesInsteadOfClaimingNoServices() {
         var retries = 0
         rule.setContent {
@@ -171,6 +185,7 @@ class StitchFoundationTest {
                 )
             }
         }
+        rule.onNodeWithTag("profile_tab_services").performClick()
         rule.onNodeWithText("Services could not be loaded.").assertExists()
         rule.onNodeWithText("No services listed").assertDoesNotExist()
         rule.onNodeWithTag("retry_button").performClick()
