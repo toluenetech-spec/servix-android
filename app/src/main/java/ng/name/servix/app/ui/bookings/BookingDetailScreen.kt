@@ -616,8 +616,8 @@ fun BookingDetailScreen(
                 )
             }
             Text(
-                text = stringResource(R.string.bookings_title),
-                style = MaterialTheme.typography.bodySmall,
+                text = "Booking Details",
+                style = MaterialTheme.typography.titleLarge,
                 color = MutedGray,
             )
         }
@@ -667,34 +667,41 @@ fun BookingDetailScreen(
             )
         }
 
-        // Status header: one plain sentence of what happens next in this state.
-        val nextStep = bookingNextStepSentence(booking.status)
-        ServixCard(
-            modifier = Modifier.testTag("booking_status_header"),
-            containerColor = SoftSand,
-            borderColor = BorderSand,
-            contentPadding = PaddingValues(18.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    BookingStatusChip(status = booking.status)
-                    Text(
-                        text = ServixFormatters.formatNaira(booking.amount),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = DeepForest,
-                    )
+        // Customer status headers are driven only by the serialized booking and permitted actions.
+        ServixCard(modifier = Modifier.testTag("booking_status_header"), containerColor = SoftSand,
+            borderColor = BorderSand, contentPadding = PaddingValues(18.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                BookingStatusChip(status = booking.status)
+                Text(bookingStatusTitle(booking.status), style = MaterialTheme.typography.headlineSmall,
+                    color = DeepForest, modifier = Modifier.testTag("booking_status_title").heading())
+                Text(bookingNextStepSentence(booking.status), style = MaterialTheme.typography.bodyMedium,
+                    color = Charcoal, modifier = Modifier.testTag("booking_next_step"))
+                when (booking.status) {
+                    "pending_payment" -> ServixPrimaryButton(text = stringResource(R.string.booking_pay_cta,
+                        ServixFormatters.formatNaira(booking.amount)), onClick = { onPayClick { CustomTabLauncher.launchUrl(context, it) } },
+                        enabled = !uiState.actionBusy, modifier = Modifier.fillMaxWidth(), testTag = "booking_header_pay")
+                    "delivered" -> {
+                        ServixPrimaryButton(text = "Confirm completion", onClick = { onOpenModal(BookingActionModal.CONFIRM_COMPLETION) },
+                            enabled = !uiState.actionBusy, modifier = Modifier.fillMaxWidth(), testTag = "booking_header_confirm")
+                        ServixSecondaryButton(text = "Raise a dispute", onClick = { onOpenModal(BookingActionModal.DISPUTE) },
+                            enabled = !uiState.actionBusy, modifier = Modifier.fillMaxWidth(), testTag = "booking_header_dispute")
+                    }
+                    "requested", "accepted", "in_progress" -> if (onMessageClick != null) {
+                        ServixSecondaryButton(text = "Message professional", onClick = onMessageClick,
+                            modifier = Modifier.fillMaxWidth(), testTag = "booking_header_message")
+                    }
+                    "completed" -> if (!booking.hasReview) {
+                        ServixSecondaryButton(text = "Leave a review", onClick = { onOpenModal(BookingActionModal.REVIEW) },
+                            enabled = !uiState.actionBusy, modifier = Modifier.fillMaxWidth(), testTag = "booking_header_review")
+                    }
+                    "cancelled", "declined", "refunded" -> ServixSecondaryButton(text = "Book again", onClick = onStartBookAgain,
+                        enabled = !uiState.actionBusy && !uiState.rebookLoading, modifier = Modifier.fillMaxWidth(),
+                        testTag = "booking_header_rebook")
                 }
-                Text(
-                    text = nextStep,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Charcoal,
-                    modifier = Modifier.testTag("booking_next_step"),
-                )
             }
         }
+
+        BookingActivity(booking)
 
         // Payment received banner (when status transitions from pending_payment -> requested)
         if (!uiState.paymentConfirmedBanner.isNullOrBlank()) {
@@ -1075,6 +1082,7 @@ fun BookingDetailScreen(
                 // Actions moved to the sticky bottom action bar + "More" sheet below.
             }
         }
+        if (booking.status == "delivered") BeforeYouConfirmChecklist()
     }
 
     val barBooking = uiState.booking
@@ -1210,19 +1218,71 @@ fun BookingDetailScreen(
     }
 }
 
-/** One plain sentence describing what happens next, per booking state. */
+/** Titles and messages are intentionally neutral when a timestamp or refund outcome is not returned. */
+internal fun bookingStatusTitle(status: String): String = when (status) {
+    "pending_payment" -> "Payment due"
+    "requested" -> "Waiting for acceptance"
+    "accepted" -> "Booking accepted"
+    "in_progress" -> "Work in progress"
+    "delivered" -> "Awaiting your confirmation"
+    "completed" -> "Completed"
+    "disputed" -> "Under review"
+    "cancelled" -> "Cancelled"
+    "declined" -> "Declined"
+    "refunded" -> "Refunded"
+    else -> "Booking status"
+}
+
 internal fun bookingNextStepSentence(status: String): String = when (status) {
-    "pending_payment" -> "Pay now to hold this slot — you pay through Servix, and it is released to the professional after you confirm the work."
-    "requested" -> "Waiting for the professional to accept. You can cancel free of charge until they do."
-    "accepted" -> "The professional accepted. You pay through Servix; it is released to the professional after you confirm the work is done."
-    "in_progress" -> "Work is under way. Confirm when it is delivered and the payment is released."
-    "delivered" -> "The professional marked this delivered — check the work, then confirm to release payment."
-    "completed" -> "All done and paid. Leave a review to help the next customer decide."
-    "cancelled" -> "This booking was cancelled. Nothing was charged, or your payment was refunded."
-    "declined" -> "The professional could not take this booking. Try another professional or time."
-    "disputed" -> "You reported a problem. Servix support reviews the details and contacts both sides."
-    "refunded" -> "Your payment was refunded. It can take a few working days to reach your bank."
+    "pending_payment" -> "Pay through Servix to confirm this booking. The professional is paid after you confirm the work."
+    "requested" -> "Waiting for the professional to accept this booking."
+    "accepted" -> "The professional accepted this booking."
+    "in_progress" -> "Work is in progress. Check the work when it is delivered."
+    "delivered" -> "The professional marked this job complete. Inspect the work, then confirm."
+    "completed" -> "This booking is complete."
+    "cancelled" -> "This booking was cancelled. Check your payment updates for any refund."
+    "declined" -> "The professional could not take this booking."
+    "disputed" -> "The Servix team is reviewing the dispute."
+    "refunded" -> "This booking has been refunded."
     else -> "We will show the next step here as this booking moves along."
+}
+
+@Composable
+private fun BookingActivity(booking: BookingDto) {
+    val events = listOfNotNull(
+        booking.createdAt.takeIf { it.isNotBlank() }?.let { "Booking created" to ServixFormatters.formatDateTimeMedium(it) },
+        booking.deliveredAt?.takeIf { it.isNotBlank() }?.let { "Work marked delivered" to ServixFormatters.formatDateTimeMedium(it) },
+        booking.completedAt?.takeIf { it.isNotBlank() }?.let { (if (booking.autoConfirmed) "Automatically confirmed" else "Completion confirmed") to ServixFormatters.formatDateTimeMedium(it) },
+    )
+    if (events.isNotEmpty()) ServixCard(modifier = Modifier.testTag("booking_activity")) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Job Progress", style = MaterialTheme.typography.titleMedium, color = DeepForest)
+            events.forEach { (label, date) ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.CheckCircleOutline, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(18.dp))
+                    Column { Text(label, style = MaterialTheme.typography.labelLarge, color = Charcoal)
+                        Text(date, style = MaterialTheme.typography.bodySmall, color = MutedGray) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BeforeYouConfirmChecklist() {
+    ServixCard(modifier = Modifier.testTag("booking_before_confirm"), containerColor = SoftSand) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Before you confirm", style = MaterialTheme.typography.titleMedium, color = DeepForest,
+                modifier = Modifier.heading())
+            listOf("The work described in this booking is done", "You have checked the result yourself",
+                "Anything wrong? Raise a dispute instead of confirming").forEach { reminder ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Outlined.CheckCircleOutline, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(18.dp))
+                    Text(reminder, style = MaterialTheme.typography.bodyMedium, color = Charcoal)
+                }
+            }
+        }
+    }
 }
 
 /** One offered action: exactly one primary is shown in the bar, the rest live under "More". */
@@ -1255,7 +1315,7 @@ internal fun bookingActionsFor(
     if (booking.status == "completed" && !booking.hasReview) {
         actions += BookingAction("Leave a review", secondary = false, enabled = !busy, testTag = "booking_action_review", onClick = { onOpenModal(BookingActionModal.REVIEW) })
     }
-    if (booking.status in setOf("completed", "cancelled", "declined")) {
+    if (booking.status in setOf("completed", "cancelled", "declined", "refunded")) {
         actions += BookingAction(if (rebookLoading) "Preparing…" else "Book again", secondary = false, enabled = !busy && !rebookLoading, testTag = "booking_action_rebook", onClick = onStartBookAgain)
     }
     if (booking.status in setOf("pending_payment", "requested", "accepted")) {
@@ -1441,6 +1501,7 @@ private fun DisputeModalContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp)
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

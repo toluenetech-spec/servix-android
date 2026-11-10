@@ -452,6 +452,25 @@ class ScreenshotTest {
     }
 
     @Test
+    fun bookingStatusVariants() {
+        listOf("pending_payment", "requested", "accepted", "in_progress", "delivered", "completed", "disputed",
+            "cancelled", "declined", "refunded").forEach { status ->
+            rule.capture("74_booking_$status") {
+                BookingDetail(BookingDetailUiState(bookingId = Fixtures.BOOKING_ID, loading = false,
+                    booking = Fixtures.booking(status)))
+            }
+        }
+    }
+
+    @Test
+    fun bookingDeliveredChecklist() = rule.capture("75_booking_before_confirm", afterContent = {
+        rule.onNodeWithTag("booking_before_confirm").performScrollTo()
+    }) {
+        BookingDetail(BookingDetailUiState(bookingId = Fixtures.BOOKING_ID, loading = false,
+            booking = Fixtures.booking("delivered")))
+    }
+
+    @Test
     fun aiChat() = rule.capture("14_ai_chat") {
         AiScreen(
             user = Fixtures.user,

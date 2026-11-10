@@ -15,3 +15,7 @@ The S10 and S11 mockups also show share controls and S11 shows a service bookmar
 ## S12 bookings hub
 
 The booking list API supplies status, amount, service title, scheduled time and participant names, but not the example address, professional ratings or individual payment breakdown. The hub uses only available fields. Its attention cards open the real booking detail for review or payment, rather than inventing direct list actions or a held-payment state. “Scheduled” filters accepted bookings; attention covers pending payment and delivered bookings.
+
+## S13 booking detail
+
+The status header uses the real status and available actions. The API exposes booking creation, delivery and completion timestamps, but not a full status-event timeline, address, line-item breakdown, service-specific checklist or a support-chat endpoint. The activity section therefore shows only returned timestamps and never invents a five-step history. Per owner decision, the delivered-only “Before you confirm” section contains three generic, informational reminders, with no checkboxes and no extra gate before the existing confirmation sheet. Refund timing and amounts are not guessed. Professional job transitions remain on the existing professional Home workspace; this customer detail endpoint is customer-owned and does not fabricate a professional detail route.

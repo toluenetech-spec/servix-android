@@ -26,6 +26,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.hasSetTextAction
@@ -156,6 +158,48 @@ class StitchFoundationTest {
         rule.onNodeWithText("Availability").performScrollTo().assertIsDisplayed()
         rule.onNodeWithTag("explore_show_results").assertIsDisplayed().performClick()
         rule.onNodeWithTag("explore_clear_filters").assertDoesNotExist()
+    }
+
+    @Test
+    fun bookingStatusHeadersCoverAllTenStates() {
+        val expected = mapOf("pending_payment" to "Payment due", "requested" to "Waiting for acceptance",
+            "accepted" to "Booking accepted", "in_progress" to "Work in progress",
+            "delivered" to "Awaiting your confirmation", "completed" to "Completed", "disputed" to "Under review",
+            "cancelled" to "Cancelled", "declined" to "Declined", "refunded" to "Refunded")
+        expected.forEach { (status, title) ->
+            org.junit.Assert.assertEquals(title, ng.name.servix.app.ui.bookings.bookingStatusTitle(status))
+            org.junit.Assert.assertTrue(ng.name.servix.app.ui.bookings.bookingNextStepSentence(status).isNotBlank())
+        }
+    }
+
+    @Test
+    fun deliveredChecklistIsInformationalAndDoesNotGateConfirmation() {
+        val state = mutableStateOf(ng.name.servix.app.ui.bookings.BookingDetailUiState(
+            loading = false, booking = Fixtures.booking("delivered")))
+        var disputeReason = ""
+        rule.setContent {
+            ServixTheme {
+                ng.name.servix.app.ui.bookings.BookingDetailScreen(uiState = state.value, pollingAfterPay = false,
+                    onResumeCheck = {}, onBackClick = {}, onRetry = {}, onRefreshPaymentStatus = {}, onPayClick = {},
+                    onOpenModal = { state.value = state.value.copy(activeModal = it) },
+                    onCloseModal = { state.value = state.value.copy(activeModal = null) }, onSubmitCancel = {},
+                    onSubmitConfirmCompletion = {}, onSubmitDispute = { disputeReason = it }, onSubmitReview = { _, _ -> },
+                    onStartBookAgain = {}, onContinueRebook = { _, _, _ -> }, onOpenProfessional = {}, onOpenService = {})
+            }
+        }
+        rule.onNodeWithTag("booking_before_confirm").assertExists()
+        rule.onNodeWithText("The work described in this booking is done").assertExists()
+        rule.onNodeWithText("You have checked the result yourself").assertExists()
+        rule.onNodeWithText("Anything wrong? Raise a dispute instead of confirming").assertExists()
+        rule.onNodeWithTag("booking_header_confirm").performClick()
+        rule.onNodeWithTag("modal_confirm_completion_submit").assertIsEnabled()
+        rule.runOnIdle { state.value = state.value.copy(activeModal = null) }
+        rule.onNodeWithTag("booking_header_dispute").performClick()
+        rule.onNodeWithTag("modal_dispute_reason_input").performTextInput("Work was not completed")
+        rule.onNodeWithTag("modal_dispute_submit_button").assertIsEnabled().performClick()
+        rule.runOnIdle { org.junit.Assert.assertEquals("Work was not completed", disputeReason) }
+        rule.runOnIdle { state.value = state.value.copy(activeModal = null, booking = Fixtures.booking("accepted")) }
+        rule.onNodeWithTag("booking_before_confirm").assertDoesNotExist()
     }
 
     @Test
